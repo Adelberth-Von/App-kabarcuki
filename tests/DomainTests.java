@@ -17,7 +17,7 @@ public class DomainTests {
     public static void main(String[] args)throws Exception{
         if(args.length>0&&args[0].equals("device-publisher")){devicePublisher(args[1]);return;}
         if(args.length>0&&args[0].equals("device-subscriber")){deviceSubscriber(args[1]);System.out.println("PASS device sender interoperability: "+checks+" assertions");return;}
-        mealRules();stateRules();cryptoRules();
+        mealRules();stateRules();locationAndManualMealRules();cryptoRules();
         if(args.length>0&&args[0].equals("live")){liveRelay();liveStream();}
         System.out.println("PASS "+checks+" assertions");
     }
@@ -77,6 +77,37 @@ public class DomainTests {
         rejects(()->KabarState.parse(bad.toString()),"reject malicious schedule");
         rejects(()->KabarState.parse(s.json().put("name","").toString()),"reject empty name");
         rejects(()->KabarState.parse(s.json().put("location","gps").toString()),"reject unknown location");
+    }
+    private static void locationAndManualMealRules()throws Exception{
+        KabarState s=new KabarState();s.zone=TZ.getID();
+        s.record("home",at(2,7,0));long home=s.homeAt;
+        GpsPoint point=new GpsPoint(-6.200001,106.816666,12.3,at(2,23,0),"Asia/Jakarta");
+        s.record("meal",at(2,23,0),"Sarapan",point);
+        ok(s.hasMealToday("Sarapan",at(2,23,1)),"manual breakfast outside schedule updates checklist");
+        eq(s.mealCategory,"Sarapan","manual category respected");eq(s.homeAt,home,"manual meal preserves home");
+        eq(s.gps.coordinates(),"-6.20000, 106.81667","coordinates formatted consistently");
+        eq(s.gps.accuracy,13.0,"accuracy rounded conservatively");
+        eq(KabarState.parse(s.json().toString()).gps.lat,point.lat,"GPS state survives roundtrip");
+        ok(!point.old(at(2,23,14)),"point younger than 15 minutes");ok(point.old(at(2,23,15)),"old point marked at 15 minutes");
+        rejects(()->new GpsPoint(91,0,10,1,"UTC"),"reject out-of-range latitude");
+        rejects(()->new GpsPoint(0,-181,10,1,"UTC"),"reject out-of-range longitude");
+        rejects(()->new GpsPoint(Double.NaN,0,10,1,"UTC"),"reject NaN coordinate");
+        rejects(()->new GpsPoint(0,0,0,1,"UTC"),"reject missing accuracy");
+        rejects(()->new GpsPoint(0,0,1,1,"not/a/zone"),"reject invalid GPS timezone");
+        rejects(()->s.record("meal",at(2,23,1),"Snack",null),"reject unknown manual category");
+        s.record("meal",at(2,23,2),"Makan malam",null);ok(s.hasMealToday("Makan malam",at(2,23,3)),"manual dinner updates independent category");
+        eq(s.gps.at,point.at,"action without GPS preserves explicitly dated last point");
+        s.zone="Asia/Makassar";s.record("outside",at(2,23,4));
+        eq(s.events.getJSONObject(0).getString("zone"),"Asia/Makassar","new event uses current sender zone");
+        eq(s.events.getJSONObject(1).getString("zone"),"Asia/Jakarta","previous event retains its original zone");
+        JSONObject legacy=s.json();legacy.remove("gps");for(int i=0;i<legacy.getJSONArray("events").length();i++){legacy.getJSONArray("events").getJSONObject(i).remove("zone");legacy.getJSONArray("events").getJSONObject(i).remove("gps");}
+        eq(KabarState.parse(legacy.toString()).gps,null,"old APK snapshot remains compatible");
+        for(int i=0;i<12;i++)s.record("meal",at(2,23,5)+i,"Makan",point);
+        int points=0;for(int i=0;i<s.events.length();i++)if(s.events.getJSONObject(i).has("gps"))points++;
+        eq(points,3,"only three historical GPS points retained");
+        String encrypted=Pairing.create().encrypt(new JSONObject().put("state",s.json()).put("notify",true).toString());
+        ok(encrypted.getBytes(StandardCharsets.UTF_8).length<=4096,"GPS history and timezone fit relay");
+        ok(StatusLogic.zoneLabel(TimeZone.getTimeZone("Asia/Makassar"),at(2,12,0)).startsWith("UTC+08:00"),"sender timezone offset shown");
     }
     private static void cryptoRules()throws Exception{
         Pairing sender=Pairing.create(),receiver=Pairing.parse(sender.code());

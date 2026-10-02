@@ -66,10 +66,26 @@ public struct Pairing {
         return publicKey.isValidSignature(signature, for: Data(("kabar-alert-v1:"+envelope).utf8))
     }
 }
+public struct GpsPoint: Codable, Equatable {
+    public var lat: Double, lon: Double, accuracy: Double
+    public var at: Int64
+    public var zone: String
+    public init(lat: Double, lon: Double, accuracy: Double, at: Int64, zone: String) throws {
+        self.lat = (lat*1_000_000).rounded()/1_000_000; self.lon = (lon*1_000_000).rounded()/1_000_000
+        self.accuracy = accuracy.rounded(.up); self.at = at; self.zone = zone; try validate()
+    }
+    public func validate() throws {
+        guard lat.isFinite, lon.isFinite, accuracy.isFinite, abs(lat)<=90, abs(lon)<=180, accuracy>0, accuracy<=1_000_000, at>0, zone.utf16.count<=80, TimeZone(identifier:zone) != nil else { throw KabarError.invalid("Lokasi tidak valid") }
+    }
+    public var coordinates: String { String(format:"%.5f, %.5f",locale:Locale(identifier:"en_US_POSIX"),lat,lon) }
+    public var old: Bool { KabarState.now-at >= 15*60*1000 }
+}
 public struct KabarEvent: Codable, Equatable, Identifiable {
     public var kind: String
     public var at: Int64
     public var label: String
+    public var zone: String? = nil
+    public var gps: GpsPoint? = nil
     public var id: String { "\(at)-\(kind)" }
 }
 public struct KabarState: Codable, Equatable {
@@ -82,6 +98,7 @@ public struct KabarState: Codable, Equatable {
     public var locationAt: Int64 = 0, homeAt: Int64 = 0, mealAt: Int64 = 0
     public var breakfastAt: Int64 = 0, lunchAt: Int64 = 0, dinnerAt: Int64 = 0
     public var events: [KabarEvent] = []
+    public var gps: GpsPoint? = nil
     public init() {}
     public var timeZone: TimeZone { TimeZone(identifier: zone) ?? .gmt }
     public var locationText: String { location == "home" ? "Di " + home.lowercased() : location == "outside" ? outside : "Lokasi belum tercatat" }
@@ -117,11 +134,12 @@ public struct KabarState: Codable, Equatable {
         return prefix + " · " + f.string(from: date)
     }
     public var stale: Bool { locationAt > 0 && Self.now - locationAt >= 6*60*60*1000 }
-    public mutating func record(_ kind: String, at: Int64 = Self.now) throws {
+    public mutating func record(_ kind: String, at: Int64 = Self.now, meal: String? = nil, point: GpsPoint? = nil) throws {
         guard ["home","outside","meal"].contains(kind), at > 0 else { throw KabarError.invalid("Status tidak valid") }
         let label: String
         if kind == "meal" {
-            mealAt = at; mealCategory = category(at: at); label = mealCategory
+            guard meal == nil || ["Sarapan","Makan siang","Makan malam","Makan"].contains(meal!) else { throw KabarError.invalid("Kategori makan tidak valid") }
+            mealAt = at; mealCategory = meal ?? category(at: at); label = mealCategory
             if mealCategory == "Sarapan" { breakfastAt = at }
             if mealCategory == "Makan siang" { lunchAt = at }
             if mealCategory == "Makan malam" { dinnerAt = at }
@@ -130,7 +148,9 @@ public struct KabarState: Codable, Equatable {
             if kind == "home" { homeAt = at }
             label = locationText
         }
-        revision += 1; events.insert(KabarEvent(kind: kind, at: at, label: label), at: 0); events = Array(events.prefix(12))
+        if let point { try point.validate(); gps = point }
+        revision += 1; events.insert(KabarEvent(kind: kind, at: at, label: label, zone: zone, gps: point), at: 0); events = Array(events.prefix(12))
+        for i in events.indices where i>=3 { events[i].gps = nil }
     }
     public func validate() throws {
         guard v == 1, revision >= 0, ["", "home", "outside"].contains(location), zone.utf16.count <= 80,
@@ -139,7 +159,11 @@ public struct KabarState: Codable, Equatable {
         for label in [name,outside,home,meal] {
             guard !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, label.utf16.count <= 24, !label.contains("\n") else { throw KabarError.invalid("Nama dan tombol harus 1–24 karakter") }
         }
-        for e in events { guard ["home","outside","meal"].contains(e.kind), e.at > 0, e.label.utf16.count <= 40 else { throw KabarError.invalid("Riwayat tidak valid") } }
+        try gps?.validate()
+        for e in events {
+            guard ["home","outside","meal"].contains(e.kind), e.at > 0, e.label.utf16.count <= 40, e.zone == nil || (e.zone!.utf16.count<=80 && TimeZone(identifier:e.zone!) != nil) else { throw KabarError.invalid("Riwayat tidak valid") }
+            try e.gps?.validate()
+        }
     }
 }
 public struct Packet: Codable {

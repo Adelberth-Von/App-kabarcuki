@@ -19,7 +19,7 @@ final class KabarDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCe
         WindowGroup {
             KabarView().environmentObject(model).preferredColorScheme(.light)
                 .onAppear { model.start() }
-                .onChange(of: phase) { phase in if phase == .active { model.start() } else if phase == .background { model.stop() } }
+                .onChange(of: phase) { phase in if phase == .active { model.start() } else if phase == .background { model.cancelLocation(); model.stop() } }
                 .onReceive(NotificationCenter.default.publisher(for: .init("KabarToken"))) { _ in model.registerPush() }
         }
     }

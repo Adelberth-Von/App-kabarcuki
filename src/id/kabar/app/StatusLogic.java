@@ -50,4 +50,5 @@ public final class StatusLogic {
         return prefix+" · "+clock.format(timestamp);
     }
     public static boolean stale(long timestamp,long now) { return timestamp>0 && now-timestamp>=6L*60*60*1000; }
+    public static String zoneLabel(TimeZone zone,long at){int minutes=zone.getOffset(at)/60000;return String.format(Locale.ROOT,"UTC%s%02d:%02d · %s",minutes<0?"−":"+",Math.abs(minutes)/60,Math.abs(minutes)%60,zone.getID());}
 }

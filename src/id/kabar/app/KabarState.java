@@ -9,13 +9,18 @@ public final class KabarState {
     public String name="Aku", outside="Keluar", home="Kost", meal="Makan", location="", mealCategory="", zone=TimeZone.getDefault().getID();
     public int[] windows=StatusLogic.DEFAULT_WINDOWS.clone();
     public JSONArray events=new JSONArray();
+    public GpsPoint gps;
     public String locationText() { return "home".equals(location)?"Di "+home.toLowerCase(new java.util.Locale("id")):"outside".equals(location)?outside:"Lokasi belum tercatat"; }
     public void record(String kind,long timestamp) throws JSONException {
+        record(kind,timestamp,null,null);
+    }
+    public void record(String kind,long timestamp,String chosenMeal,GpsPoint point) throws JSONException {
         if(!kind.equals("outside")&&!kind.equals("home")&&!kind.equals("meal")) throw new IllegalArgumentException("Tombol tidak dikenal");
         if(timestamp<=0) throw new IllegalArgumentException("Waktu tidak valid");
         String label;
         if(kind.equals("meal")) {
-            mealAt=timestamp; mealCategory=StatusLogic.mealAt(timestamp,windows,TimeZone.getTimeZone(zone)); label=mealCategory;
+            if(chosenMeal!=null&&!java.util.Arrays.asList("Sarapan","Makan siang","Makan malam","Makan").contains(chosenMeal))throw new IllegalArgumentException("Kategori makan tidak valid");
+            mealAt=timestamp; mealCategory=chosenMeal==null?StatusLogic.mealAt(timestamp,windows,TimeZone.getTimeZone(zone)):chosenMeal; label=mealCategory;
             if(mealCategory.equals("Sarapan"))breakfastAt=timestamp;
             if(mealCategory.equals("Makan siang"))lunchAt=timestamp;
             if(mealCategory.equals("Makan malam"))dinnerAt=timestamp;
@@ -25,11 +30,14 @@ public final class KabarState {
             label=locationText();
         }
         revision++;
-        JSONObject event=new JSONObject().put("kind",kind).put("at",timestamp).put("label",label);
+        JSONObject event=new JSONObject().put("kind",kind).put("at",timestamp).put("label",label).put("zone",zone);
+        if(point!=null){gps=point;event.put("gps",point.json());}
         JSONArray recent=new JSONArray();
         recent.put(event);
         for(int i=0;i<Math.min(11,events.length());i++) recent.put(events.getJSONObject(i));
         events=recent;
+        // Keep at most three historical points so the encrypted snapshot fits the relay limit.
+        for(int i=3;i<events.length();i++)events.getJSONObject(i).remove("gps");
     }
     public boolean hasMealToday(String category,long now) {
         TimeZone tz=TimeZone.getTimeZone(zone);
@@ -42,7 +50,7 @@ public final class KabarState {
             .put("outside",outside).put("home",home).put("meal",meal).put("zone",zone).put("windows",schedule)
             .put("location",location).put("locationAt",locationAt).put("homeAt",homeAt).put("mealAt",mealAt)
             .put("breakfastAt",breakfastAt).put("lunchAt",lunchAt).put("dinnerAt",dinnerAt)
-            .put("mealCategory",mealCategory).put("events",events);
+            .put("mealCategory",mealCategory).put("events",events).put("gps",gps==null?JSONObject.NULL:gps.json());
     }
     private static String label(JSONObject j,String key) throws JSONException {
         String s=j.getString(key).trim();
@@ -66,11 +74,14 @@ public final class KabarState {
         if(s.locationAt<0||s.homeAt<0||s.mealAt<0||s.breakfastAt<0||s.lunchAt<0||s.dinnerAt<0)throw new JSONException("Waktu tidak valid");
         s.mealCategory=j.getString("mealCategory");if(s.mealCategory.length()>24)throw new JSONException("Kategori tidak valid");
         s.events=j.getJSONArray("events");if(s.events.length()>12)throw new JSONException("Riwayat terlalu banyak");
+        if(j.has("gps")&&!j.isNull("gps"))s.gps=GpsPoint.parse(j.getJSONObject("gps"));
         for(int i=0;i<s.events.length();i++) {
             JSONObject e=s.events.getJSONObject(i);
             String k=e.getString("kind");
             if(!k.equals("home")&&!k.equals("outside")&&!k.equals("meal"))throw new JSONException("Jenis riwayat salah");
             if(e.getLong("at")<=0||e.getString("label").length()>40)throw new JSONException("Riwayat tidak valid");
+            if(e.has("zone")&&!GpsPoint.validZone(e.getString("zone")))throw new JSONException("Zona riwayat tidak valid");
+            if(e.has("gps")&&!e.isNull("gps"))GpsPoint.parse(e.getJSONObject("gps"));
         }
         return s;
     }

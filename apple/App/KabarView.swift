@@ -3,12 +3,14 @@ import KabarCore
 
 private let cream = Color(red:0.97,green:0.96,blue:0.92)
 private let sage = Color(red:0.29,green:0.42,blue:0.32)
+private struct StatusDraft: Identifiable { let id = UUID(); var kind: String; var category: String? = nil }
 struct KabarView: View {
     @EnvironmentObject var model: KabarModel
     @State private var joinCode = ""
     @State private var tab = 0
     @State private var editing = false
     @State private var confirm = ""
+    @State private var draft: StatusDraft?
     var body: some View {
         TimelineView(.periodic(from:.now,by:60)) { _ in
         Group {
@@ -24,9 +26,10 @@ struct KabarView: View {
         }
         .alert("Kabar", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("Mengerti") { model.error = nil } } message: { Text(model.error ?? "") }
         .confirmationDialog(confirm, isPresented: Binding(get: { !confirm.isEmpty }, set: { if !$0 { confirm = "" } }), titleVisibility: .visible) {
-            Button(confirm, role: .destructive) { if confirm == "Hapus riwayat" { model.clearHistory() } else if confirm == "Ganti kode pasangan" { model.beginSender() } else { model.disconnect() }; confirm = "" }
+            Button(confirm, role: confirm == "Bagikan lokasi HP" ? nil : .destructive) { if confirm == "Hapus riwayat" { model.clearHistory() } else if confirm == "Ganti kode pasangan" { model.beginSender() } else if confirm == "Bagikan lokasi HP" { model.refreshLocation() } else if confirm == "Hapus lokasi HP" { model.clearGps() } else { model.disconnect() }; confirm = "" }
         }
         .sheet(isPresented: $editing) { EditView(state:model.state) { n,o,h,m,w in model.edit(name:n,outside:o,home:h,meal:m,windows:w) } }
+        .sheet(item:$draft) { value in StatusConfirmView(draft:value,state:model.state) { category,share in SharedStore.defaults.set(share,forKey:"shareLocation"); model.record(value.kind,meal:category,share:share) } }
     }
     private func page<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         ScrollView { VStack(alignment:.leading,spacing:20) { content() }.padding(24).frame(maxWidth:600).frame(maxWidth:.infinity) }.background(cream)
@@ -48,6 +51,7 @@ struct KabarView: View {
         page {
             HStack { Text("kabar.").font(.largeTitle.bold()).foregroundStyle(sage); Spacer(); Text(model.role == "sender" ? "PENGIRIM" : "PENERIMA").font(.caption.monospaced()).foregroundStyle(sage) }
             Text("Kabar \(model.state.name)").font(.title2.bold())
+            Text("Waktu pengirim · \(model.state.zone)").font(.caption).foregroundStyle(.secondary)
             VStack(alignment:.leading,spacing:14) {
                 PixelScene(outside:model.state.location == "outside").frame(height:150)
                 Text(model.state.locationText).font(.title.bold())
@@ -64,9 +68,16 @@ struct KabarView: View {
                 ViewThatFits(in:.horizontal) { actionRow; VStack(spacing:12) { actions } }
             }
             Text("Makan hari ini").font(.headline)
+            Text(model.role == "sender" ? "Ketuk kategori untuk mencatat atau memperbarui waktu makan." : "Mengikuti catatan HP pengirim.").font(.caption).foregroundStyle(.secondary)
             ForEach(["Sarapan","Makan siang","Makan malam"],id:\.self) { category in
-                Label(category + (model.state.hasMealToday(category) ? " · tercatat" : " · belum tercatat"),systemImage:model.state.hasMealToday(category) ? "checkmark.circle.fill" : "circle").foregroundStyle(sage)
+                let at = category == "Sarapan" ? model.state.breakfastAt : category == "Makan siang" ? model.state.lunchAt : model.state.dinnerAt
+                Button { if model.role == "sender" { draft = StatusDraft(kind:"meal",category:category) } } label: {
+                    HStack { Image(systemName:model.state.hasMealToday(category) ? "checkmark.circle.fill" : "plus.circle"); VStack(alignment:.leading,spacing:5) { Text(category).font(.headline); Text(model.state.hasMealToday(category) ? model.state.when(at) : "Belum tercatat").font(.caption) }; Spacer(); if model.role == "sender" { Image(systemName:"chevron.right").font(.caption) } }.padding(16).background(.white,in:RoundedRectangle(cornerRadius:16))
+                }.foregroundStyle(sage).disabled(model.role != "sender" || model.locating).accessibilityIdentifier("meal-"+category)
             }
+            if model.state.mealCategory == "Makan", model.state.day(model.state.mealAt) == model.state.day(KabarState.now) { Text("Makan lainnya · "+model.state.when(model.state.mealAt)).font(.caption).foregroundStyle(.secondary) }
+            gpsCard
+            if !model.locationNote.isEmpty { Text(model.locationNote).font(.caption).foregroundStyle(.secondary) }
             Text(model.connection + (model.pending > 0 ? " · \(model.pending) antrean" : "")).font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -75,14 +86,30 @@ struct KabarView: View {
         action(model.state.outside,"outside","figure.walk"); action(model.state.home,"home","house.fill"); action(model.state.meal,"meal","fork.knife")
     }
     private func action(_ label: String,_ kind: String,_ icon: String) -> some View {
-        Button { model.record(kind) } label: { VStack(spacing:10) { Image(systemName:icon).font(.title2); Text(label).font(.headline).multilineTextAlignment(.center) }.frame(minWidth:68,minHeight:80).padding(12).frame(maxWidth:.infinity).background(Color(red:0.88,green:0.91,blue:0.83),in:RoundedRectangle(cornerRadius:18)) }.foregroundStyle(sage).accessibilityIdentifier(kind)
+        Button { draft = StatusDraft(kind:kind) } label: { VStack(spacing:10) { Image(systemName:icon).font(.title2); Text(label).font(.headline).multilineTextAlignment(.center) }.frame(minWidth:68,minHeight:80).padding(12).frame(maxWidth:.infinity).background(Color(red:0.88,green:0.91,blue:0.83),in:RoundedRectangle(cornerRadius:18)) }.foregroundStyle(sage).disabled(model.locating).accessibilityIdentifier(kind)
+    }
+    private func pointTime(_ point: GpsPoint) -> String { var state = model.state; state.zone = point.zone; return state.when(point.at)+" · "+point.zone }
+    private func eventTime(_ event: KabarEvent) -> String { var state = model.state; state.zone = event.zone ?? state.zone; return state.when(event.at)+" · "+state.zone }
+    private func mapLink(_ point: GpsPoint) -> some View { Link("Lihat di peta",destination:URL(string:"https://maps.apple.com/?ll=\(point.lat),\(point.lon)&q=Kabar")!).buttonStyle(.bordered).tint(sage) }
+    private var gpsCard: some View {
+        VStack(alignment:.leading,spacing:12) {
+            Text("Lokasi HP").font(.headline)
+            if let point = model.state.gps {
+                Text(point.coordinates+" · perkiraan akurasi ±\(Int(point.accuracy)) m").font(.subheadline)
+                Text("Diambil "+pointTime(point)).font(.caption).foregroundStyle(.secondary)
+                if point.old { Text("Lokasi terakhir sudah lebih dari 15 menit. Posisi sekarang bisa berbeda.").font(.caption).foregroundStyle(.orange) }
+                mapLink(point)
+            } else { Text("Pengirim belum membagikan lokasi HP.").font(.subheadline).foregroundStyle(.secondary) }
+            if model.role == "sender" { Button(model.locating ? "Mengambil lokasi…" : "Perbarui lokasi") { confirm = "Bagikan lokasi HP" }.buttonStyle(.bordered).disabled(model.locating) }
+            Text("Lokasi diambil saat memberi kabar. Bukan pelacakan otomatis.").font(.caption).foregroundStyle(.secondary)
+        }.padding(20).frame(maxWidth:.infinity,alignment:.leading).background(.white,in:RoundedRectangle(cornerRadius:20))
     }
     private var history: some View {
         page {
             Text("Riwayat kabar").font(.largeTitle.bold())
             if model.state.events.isEmpty { Text("Belum ada kabar. Status baru akan muncul di sini.").foregroundStyle(.secondary) }
             ForEach(Array(model.state.events.enumerated()),id:\.offset) { _, event in
-                VStack(alignment:.leading,spacing:8) { Text(event.label).font(.headline); Text(model.state.when(event.at)).font(.subheadline).foregroundStyle(.secondary) }.padding(18).frame(maxWidth:.infinity,alignment:.leading).background(.white,in:RoundedRectangle(cornerRadius:18))
+                VStack(alignment:.leading,spacing:8) { Text(event.label).font(.headline); Text(eventTime(event)).font(.subheadline).foregroundStyle(.secondary); if let point = event.gps { Text("Diambil "+pointTime(point)).font(.caption).foregroundStyle(.secondary); mapLink(point) } }.padding(18).frame(maxWidth:.infinity,alignment:.leading).background(.white,in:RoundedRectangle(cornerRadius:18))
             }
         }
     }
@@ -91,6 +118,8 @@ struct KabarView: View {
             Text("Pengaturan").font(.largeTitle.bold())
             if model.role == "sender" {
                 Button("Edit nama, tombol & jam makan") { editing = true }.buttonStyle(.bordered)
+                Button("Hapus lokasi yang dibagikan",role:.destructive) { confirm = "Hapus lokasi HP" }
+                Text("Nonaktifkan Sertakan lokasi HP pada konfirmasi untuk menghentikan pengambilan berikutnya. Hapus lokasi mengosongkan koordinat pada kabar terbaru; salinan lama tidak dapat ditarik kembali.").font(.caption).foregroundStyle(.secondary)
                 ShareLink(item:model.code) { Label("Bagikan kode pasangan",systemImage:"square.and.arrow.up") }.buttonStyle(.bordered)
                 Text("Kode ini memberi akses membaca kabar. Bagikan kepada keluarga yang dipercaya.").font(.caption).foregroundStyle(.secondary)
                 Button("Ganti kode pasangan",role:.destructive) { confirm = "Ganti kode pasangan" }
@@ -111,13 +140,14 @@ struct KabarView: View {
             Divider()
             Button("Putuskan hubungan HP ini",role:.destructive) { confirm = "Putuskan hubungan HP ini" }
             Text("Menghapus data lokal dan kode pasangan. Untuk menghapus aplikasi, tahan ikon Kabar > Hapus App. iOS mengatur penghapusan aplikasi.").font(.caption).foregroundStyle(.secondary)
-            Text("Kabar 0.2.0 · status manual").font(.caption).foregroundStyle(.secondary)
+            Text("Kabar 0.3.0 · lokasi opsional · maksimal 3 titik pada riwayat terbaru").font(.caption).foregroundStyle(.secondary)
         }
     }
 }
 private struct EditView: View {
     @Environment(\.dismiss) var dismiss
     @State var state: KabarState
+    @State private var confirmSave = false
     let save: (String,String,String,String,[Int]) -> Bool
     var body: some View {
         NavigationStack {
@@ -135,8 +165,31 @@ private struct EditView: View {
                 }
             }.navigationTitle("Personalisasi").toolbar {
                 ToolbarItem(placement:.cancellationAction) { Button("Batal") { dismiss() } }
-                ToolbarItem(placement:.confirmationAction) { Button("Simpan") { if save(state.name,state.outside,state.home,state.meal,state.windows) { dismiss() } }.disabled(!KabarState.validWindows(state.windows)) }
+                ToolbarItem(placement:.confirmationAction) { Button("Simpan") { confirmSave = true }.disabled(!KabarState.validWindows(state.windows)) }
             }
+            .confirmationDialog("Konfirmasi perubahan",isPresented:$confirmSave,titleVisibility:.visible) { Button("Ya, simpan") { if save(state.name,state.outside,state.home,state.meal,state.windows) { dismiss() } } } message: { Text("Nama: \(state.name)\nTombol: \(state.outside), \(state.home), \(state.meal)\nPerubahan dikirim ke penerima.") }
+        }
+    }
+}
+private struct StatusConfirmView: View {
+    @Environment(\.dismiss) private var dismiss
+    let draft: StatusDraft
+    @State var state: KabarState
+    let save: (String?,Bool) -> Void
+    @State private var selected = "Otomatis"
+    @State private var share = SharedStore.defaults.bool(forKey:"shareLocation")
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Kabar yang akan dikirim") {
+                    Text(draft.kind == "home" ? "Di "+state.home.lowercased() : draft.kind == "outside" ? state.outside : draft.category ?? state.meal).font(.title2.bold())
+                    Text("Waktu sekarang · "+TimeZone.current.identifier).font(.subheadline)
+                    if draft.kind == "meal", draft.category == nil { Picker("Waktu makan",selection:$selected) { ForEach(["Otomatis","Sarapan","Makan siang","Makan malam","Makan lainnya"],id:\.self) { Text($0) } } }
+                    if draft.kind == "meal" { Text("Kategori terpilih diperbarui dengan waktu sekarang. Status tempat tinggal tetap.").font(.caption) }
+                }
+                Section("Lokasi opsional") { Toggle("Sertakan lokasi HP",isOn:$share); Text("Lokasi diambil saat memberi kabar dan dibagikan kepada pemilik kode pasangan. Izin lokasi diminta ketika dipakai.").font(.caption) }
+                Button("Kirim status") { let category = draft.category ?? (selected == "Otomatis" ? nil : selected == "Makan lainnya" ? "Makan" : selected); save(category,share); dismiss() }.accessibilityIdentifier("confirm-status")
+            }.navigationTitle("Konfirmasi status").toolbar { ToolbarItem(placement:.cancellationAction) { Button("Batal") { dismiss() } } }
         }
     }
 }

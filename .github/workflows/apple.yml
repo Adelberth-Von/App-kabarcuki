@@ -1,7 +1,7 @@
 name: Apple build and interoperability
 on:
   push:
-    paths: ['apple/**', 'src/id/kabar/app/Pairing.java', 'src/id/kabar/app/KabarState.java', 'src/id/kabar/app/StatusLogic.java', 'tests/Interop.java', 'scripts/test-apple.sh', '.github/workflows/apple.yml']
+    paths: ['apple/**', 'src/id/kabar/app/Pairing.java', 'src/id/kabar/app/GpsPoint.java', 'src/id/kabar/app/KabarState.java', 'src/id/kabar/app/StatusLogic.java', 'tests/Interop.java', 'scripts/test-apple.sh', '.github/workflows/apple.yml']
   pull_request:
   workflow_dispatch:
 permissions:

@@ -22,6 +22,10 @@ public class MainActivity extends Activity {
     private int renderedPage=-1;
     private String renderedRole="";
     private boolean registered=false,busy=false;
+    AlertDialog confirmationDialog;
+    private LocationCapture locationCapture;
+    private boolean locating=false;
+    private Runnable permissionAction;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final BroadcastReceiver updates=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){render();}};
     private final Runnable clockRefresh=new Runnable(){public void run(){render();handler.postDelayed(this,60000);}};
@@ -64,14 +68,14 @@ public class MainActivity extends Activity {
         if(!Store.role(this).isEmpty()) {SyncService.start(this);requestNotifications();}
         handler.postDelayed(clockRefresh,60000);render();
     }
-    @Override protected void onPause(){if(registered){unregisterReceiver(updates);registered=false;}handler.removeCallbacks(clockRefresh);super.onPause();}
+    @Override protected void onPause(){if(locationCapture!=null)locationCapture.cancel();if(registered){unregisterReceiver(updates);registered=false;}handler.removeCallbacks(clockRefresh);super.onPause();}
     private void requestNotifications(){
         SyncService.channels(this);
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED&&!Store.prefs(this).getBoolean("askedNotifications",false)){
             Store.prefs(this).edit().putBoolean("askedNotifications",true).apply();requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},33);
         }
     }
-    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){super.onRequestPermissionsResult(request,permissions,results);render();}
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){super.onRequestPermissionsResult(request,permissions,results);if(request==41&&permissionAction!=null){Runnable next=permissionAction;permissionAction=null;next.run();}render();}
     private void render() {
         if(root==null)return;
         String role=Store.role(this);
@@ -133,6 +137,7 @@ public class MainActivity extends Activity {
     private void home() {
         KabarState s=Store.state(this);boolean sender=Store.role(this).equals("sender");long now=System.currentTimeMillis();TimeZone zone=TimeZone.getTimeZone(s.zone);
         title(sender?"Hai, "+s.name:"Kabar "+s.name,sender?"Kasih kabar hari ini.":"Kabar kecil dari orang tersayang.");
+        para(body,"Waktu pengirim · "+StatusLogic.zoneLabel(zone,now));gap(body,12);
         TextView role=text(sender?"PENGIRIM":"PENERIMA",11,GREEN,true);body.addView(role);gap(body,12);
         statusCard(s.locationText(),s.locationAt==0?"Pilih lokasi untuk memberi kabar.":"Diperbarui "+StatusLogic.when(s.locationAt,now,zone),s.location.equals("outside")?"outside":"home",SAGE);
         if(StatusLogic.stale(s.locationAt,now)){para(body,"Lokasi ini sudah lebih dari 6 jam. Belum ada pembaruan baru.");gap(body,12);}
@@ -145,15 +150,24 @@ public class MainActivity extends Activity {
             actionTile(row,s.home,"home",s.location.equals("home")?SAGE:Color.WHITE);
             body.addView(row,new LinearLayout.LayoutParams(-1,-2));gap(body,10);
             wideButton(body,s.meal,PEACH,()->record("meal"));
-            para(body,"Sekali ketuk untuk mencatat. Makan tidak mengubah lokasi.");gap(body,20);
+            para(body,"Periksa kabar, lalu konfirmasi. Makan tidak mengubah status tempat tinggal.");gap(body,20);
         }
         body.addView(text("Makan hari ini",18,INK,true));gap(body,10);
         String[] categories={"Sarapan","Makan siang","Makan malam"};
+        long[] mealTimes={s.breakfastAt,s.lunchAt,s.dinnerAt};int completed=0;
+        for(String category:categories)if(s.hasMealToday(category,now))completed++;
+        para(body,completed+" dari 3 waktu makan tercatat"+(sender?" · Ketuk untuk mencatat atau memperbarui.":" · Mengikuti catatan pengirim."));gap(body,10);
         for(int i=0;i<3;i++) {
             boolean done=s.hasMealToday(categories[i],now);
-            body.addView(text((done?"✓ ":"· ")+categories[i]+" — "+(done?"Tercatat":"Belum tercatat"),14,done?GREEN:MUTED,false));gap(body,6);
+            final String category=categories[i];final long at=mealTimes[i];
+            String hours=String.format(Locale.ROOT,"%02d.00–%02d.00",s.windows[i*2],s.windows[i*2+1]);
+            Button row=button((done?"✓  ":"＋  ")+category+"\n"+(done?StatusLogic.when(at,now,zone):"Belum tercatat · "+hours),done?SAGE:Color.WHITE,()->{
+                if(sender)confirmStatus("meal",category);else new AlertDialog.Builder(this).setTitle(category).setMessage(StatusLogic.when(at,System.currentTimeMillis(),zone)+"\nCatatan diperbarui dari HP pengirim.").setPositiveButton("Mengerti",null).show();
+            });
+            row.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);row.setContentDescription(category);body.addView(row,new LinearLayout.LayoutParams(-1,-2));gap(body,8);
         }
-        gap(body,14);
+        if(s.mealCategory.equals("Makan")&&StatusLogic.dayKey(s.mealAt,zone).equals(StatusLogic.dayKey(now,zone)))para(body,"Makan lainnya · "+StatusLogic.when(s.mealAt,now,zone));
+        gap(body,14);gpsCard(s.gps,sender);
         String connection=Store.prefs(this).getString("connection","Menyiapkan koneksi…");
         if(Store.pending(this)>0)connection=Store.pending(this)+" kabar menunggu dikirim · otomatis saat online";
         TextView connectionView=text(connection,12,MUTED,false);body.addView(connectionView);gap(body,8);
@@ -175,12 +189,80 @@ public class MainActivity extends Activity {
         tile.setMinimumHeight(dp(116));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.setMargins(0,0,row.getChildCount()==0?dp(10):0,0);row.addView(tile,lp);
     }
     private void record(String action) {
+        confirmStatus(action,null);
+    }
+    private void confirmStatus(String action,String category) {
+        if(!Store.role(this).equals("sender"))return;
+        if(locating){toast("Sedang mengambil lokasi. Tunggu sebentar.");return;}
+        if(confirmationDialog!=null&&confirmationDialog.isShowing())return;
+        KabarState s=Store.state(this);LinearLayout f=form();TimeZone zone=TimeZone.getDefault();
+        String label=action.equals("home")?"Di "+s.home.toLowerCase(new Locale("id")):action.equals("outside")?s.outside:category==null?s.meal:category;
+        para(f,"Kabar: "+label+"\n"+StatusLogic.when(System.currentTimeMillis(),System.currentTimeMillis(),zone)+"\n"+StatusLogic.zoneLabel(zone,System.currentTimeMillis()));gap(f,12);
+        Spinner choice=null;
+        if(action.equals("meal")&&category==null){
+            para(f,"Pilih waktu makan. Pilihan otomatis mengikuti jam HP.");
+            choice=new Spinner(this);choice.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Otomatis · "+StatusLogic.mealAt(System.currentTimeMillis(),s.windows,zone),"Sarapan","Makan siang","Makan malam","Makan lainnya"}));f.addView(choice);gap(f,12);
+        }
+        if(action.equals("meal")){para(f,"Status tempat tinggal tetap. Catatan pada kategori yang dipilih akan memakai waktu sekarang.");gap(f,12);}
+        CheckBox share=new CheckBox(this);share.setText("Sertakan lokasi HP");share.setTextColor(INK);share.setChecked(Store.prefs(this).getBoolean("shareLocation",false));f.addView(share);
+        para(f,"Opsional. Lokasi diambil saat memberi kabar dan dibagikan ke pemilik kode pasangan. Bukan pelacakan otomatis.");
+        final Spinner select=choice;
+        confirmationDialog=new AlertDialog.Builder(this).setTitle("Konfirmasi status").setView(f).setNegativeButton("Batal",null).setPositiveButton("Kirim status",(d,w)->{
+            String selected=category;
+            if(select!=null&&select.getSelectedItemPosition()>0)selected=select.getSelectedItemPosition()==4?"Makan":select.getSelectedItem().toString();
+            Store.prefs(this).edit().putBoolean("shareLocation",share.isChecked()).apply();
+            captureAndSave(action,selected,share.isChecked());
+        }).create();confirmationDialog.show();
+    }
+    private void captureAndSave(String action,String category,boolean share) {
+        if(!Store.role(this).equals("sender"))return;
+        if(Store.pending(this)>=25){error("Kabar belum tersimpan",new IllegalStateException("25 kabar masih menunggu. Hubungkan internet sebelum menambah kabar."));return;}
+        if(!share){saveRecord(action,category,null,"");return;}
+        final String session=Store.prefs(this).getString("code","");
+        if(!LocationCapture.allowed(this)){
+            permissionAction=()->{if(session.equals(Store.prefs(this).getString("code","")))captureGranted(action,category,session);};
+            requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION,android.Manifest.permission.ACCESS_FINE_LOCATION},41);return;
+        }
+        captureGranted(action,category,session);
+    }
+    private void captureGranted(String action,String category,String session){
+        locating=true;render();
+        locationCapture=LocationCapture.start(this,(point,message)->{
+            locationCapture=null;locating=false;
+            if(!session.equals(Store.prefs(this).getString("code","")))return;
+            if(action.isEmpty()&&point==null){render();new AlertDialog.Builder(this).setTitle("Lokasi belum dibagikan").setMessage(message+" Aktifkan izin/lokasi HP lalu coba lagi.").setPositiveButton("Mengerti",null).show();return;}
+            saveRecord(action,category,point,message);
+        });
+    }
+    private void saveRecord(String action,String category,GpsPoint point,String message){
         if(!Store.role(this).equals("sender"))return;
         try {
-            synchronized(Store.LOCK){KabarState s=Store.state(this);s.record(action,System.currentTimeMillis());Store.saveAndQueue(this,s,true);}
-            SyncService.start(this);render();toast("Kabar dicatat");
+            synchronized(Store.LOCK){KabarState s=Store.state(this);s.zone=TimeZone.getDefault().getID();if(action.isEmpty()){s.gps=point;s.revision++;}else s.record(action,System.currentTimeMillis(),category,point);Store.saveAndQueue(this,s,!action.isEmpty());}
+            SyncService.start(this);render();toast(message.isEmpty()?(action.isEmpty()?"Lokasi dibagikan":"Kabar dicatat"):message);
         }catch(Exception e){error("Kabar belum tersimpan",e);}
     }
+    private void gpsCard(GpsPoint point,boolean sender){
+        LinearLayout card=column();card.setPadding(dp(16),dp(16),dp(16),dp(8));card.setBackground(background(Color.WHITE,20));
+        card.addView(text("Lokasi HP",18,INK,true));gap(card,8);
+        if(point==null)para(card,sender?"Belum dibagikan. Sertakan lokasi saat mengirim status atau tekan tombol di bawah.":"Pengirim belum membagikan lokasi HP.");
+        else{
+            para(card,point.coordinates()+" · perkiraan akurasi ±"+(int)point.accuracy+" m");gap(card,5);
+            para(card,"Diambil "+StatusLogic.when(point.at,System.currentTimeMillis(),TimeZone.getTimeZone(point.zone))+"\n"+StatusLogic.zoneLabel(TimeZone.getTimeZone(point.zone),point.at));gap(card,6);
+            if(point.old(System.currentTimeMillis()))para(card,"Lokasi terakhir sudah lebih dari 15 menit. Posisi sekarang bisa berbeda.");
+            wideButton(card,"Lihat di peta",SAGE,()->openMap(point));
+        }
+        if(sender)wideButton(card,locating?"Mengambil lokasi…":"Perbarui lokasi",SAGE,()->{
+            if(locating)return;
+            confirmChange("Bagikan lokasi HP?","Lokasi dan waktu pengambilan dikirim ke penerima yang memiliki kode pasangan. Status Kost/Keluar tidak berubah.",()->{Store.prefs(this).edit().putBoolean("shareLocation",true).apply();captureAndSave("",null,true);});
+        });
+        body.addView(card,new LinearLayout.LayoutParams(-1,-2));gap(body,20);
+    }
+    private void openMap(GpsPoint point){
+        String coordinates=point.lat+","+point.lon;
+        try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("geo:"+coordinates+"?q="+Uri.encode(coordinates+" (Kabar)"))));}
+        catch(ActivityNotFoundException e){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://www.google.com/maps/search/?api=1&query="+Uri.encode(coordinates))));}catch(ActivityNotFoundException missing){toast("Aplikasi peta atau browser belum tersedia.");}}
+    }
+    private void confirmChange(String title,String message,Runnable save){confirmationDialog=new AlertDialog.Builder(this).setTitle(title).setMessage(message).setPositiveButton("Ya, simpan",(d,w)->save.run()).setNegativeButton("Batal",null).create();confirmationDialog.show();}
     private void history() {
         title("Riwayat kabar","12 kabar terbaru tersimpan di kedua HP.");
         KabarState s=Store.state(this);TimeZone zone=TimeZone.getTimeZone(s.zone);
@@ -188,7 +270,9 @@ public class MainActivity extends Activity {
         for(int i=0;i<s.events.length();i++){
             JSONObject event=s.events.optJSONObject(i);if(event==null)continue;
             LinearLayout card=column();card.setPadding(dp(16),dp(14),dp(16),dp(14));card.setBackground(background(Color.WHITE,16));
-            card.addView(text(event.optString("label"),17,INK,true));gap(card,5);card.addView(text(StatusLogic.when(event.optLong("at"),System.currentTimeMillis(),zone),13,MUTED,false));
+            TimeZone eventZone=TimeZone.getTimeZone(event.optString("zone",s.zone));
+            card.addView(text(event.optString("label"),17,INK,true));gap(card,5);card.addView(text(StatusLogic.when(event.optLong("at"),System.currentTimeMillis(),eventZone)+" · "+eventZone.getID(),13,MUTED,false));
+            if(event.optJSONObject("gps")!=null)try{GpsPoint point=GpsPoint.parse(event.getJSONObject("gps"));gap(card,8);wideButton(card,"Lihat lokasi catatan",SAGE,()->openMap(point));}catch(JSONException ignored){}
             body.addView(card,new LinearLayout.LayoutParams(-1,-2));gap(body,10);
         }
     }
@@ -198,6 +282,10 @@ public class MainActivity extends Activity {
         if(sender){
             wideButton(body,"Edit nama & tombol",SAGE,()->editLabels());
             wideButton(body,"Atur jam makan",Color.WHITE,()->editSchedule());
+            Switch share=new Switch(this);share.setText("Sertakan lokasi saat memberi kabar");share.setTextColor(INK);share.setChecked(Store.prefs(this).getBoolean("shareLocation",false));
+            share.setOnCheckedChangeListener((b,checked)->Store.prefs(this).edit().putBoolean("shareLocation",checked).apply());body.addView(share);gap(body,10);
+            para(body,"Izin lokasi diminta ketika dipakai. Mematikan pilihan ini menghentikan pengambilan lokasi berikutnya; lokasi sebelumnya tetap terlihat dengan waktu pengambilannya.");gap(body,10);
+            wideButton(body,"Hapus lokasi yang dibagikan",Color.WHITE,()->confirmChange("Hapus lokasi HP?","Koordinat terakhir dan koordinat pada riwayat dihapus dari kabar terbaru. Salinan yang sudah diterima dan cache relay lama tidak bisa ditarik kembali.",()->clearGps()));
             para(body,"Nama tombol bebas diubah. Keluar dan Kost tetap mencatat lokasi; Makan tetap mencatat waktu makan.");gap(body,18);
             body.addView(text("Hubungkan HP lain",19,INK,true));gap(body,8);
             para(body,"Di HP kedua pilih “Aku menerima kabar”, lalu tempel kode pasangan ini. Tidak perlu akun atau aplikasi ntfy.");gap(body,12);
@@ -219,7 +307,7 @@ public class MainActivity extends Activity {
         }
         wideButton(body,"Putuskan hubungan HP ini",PEACH,()->disconnect());
         wideButton(body,"Uninstall Kabar",Color.WHITE,()->new AlertDialog.Builder(this).setTitle("Uninstall Kabar?").setMessage("Android akan meminta konfirmasi. Menghapus aplikasi tidak menghapus salinan kabar di HP lain.").setPositiveButton("Lanjutkan",(d,w)->uninstall()).setNegativeButton("Batal",null).show());
-        gap(body,12);para(body,"Kabar 0.2.0 · versi uji\nTidak memakai GPS. Semua lokasi berasal dari tombol yang kamu tekan. Pesan dienkripsi dan ditandatangani di perangkat; relay ntfy.sh menerima ciphertext. Layanan publik memiliki batas dan cache sementara (umumnya 12 jam). Jika penerima lama offline, tekan status kembali pada pengirim. Riwayat lokal dibatasi 12 kabar.");
+        gap(body,12);para(body,"Kabar 0.3.0 · versi uji\nLokasi HP opsional, diambil hanya saat kamu memberi kabar atau memperbarui lokasi. Kost/Keluar tetap status manual. Waktu mengikuti zona HP pengirim. Pesan termasuk koordinat dienkripsi dan ditandatangani; relay ntfy.sh menerima ciphertext. Riwayat 12 kabar menyimpan paling banyak 3 titik lokasi terbaru.");
     }
     private void editLabels() {
         KabarState s=Store.state(this);LinearLayout f=form();
@@ -229,10 +317,12 @@ public class MainActivity extends Activity {
         AlertDialog d=new AlertDialog.Builder(this).setTitle("Edit nama & tombol").setView(f).setPositiveButton("Simpan",null).setNegativeButton("Batal",null).create();
         d.setOnShowListener(x->d.getButton(-1).setOnClickListener(v->{
             for(EditText e:fields)if(e.getText().toString().trim().isEmpty()||e.getText().toString().trim().length()>24){e.setError("Isi 1–24 karakter");return;}
-            try{s.name=name.getText().toString().trim();s.outside=outside.getText().toString().trim();s.home=home.getText().toString().trim();s.meal=meal.getText().toString().trim();
-                synchronized(Store.LOCK){KabarState current=Store.state(this);current.name=s.name;current.outside=s.outside;current.home=s.home;current.meal=s.meal;current.revision++;Store.saveAndQueue(this,current,false);}
-                SyncService.start(this);d.dismiss();render();
-            }catch(Exception e){error("Perubahan belum tersimpan",e);}
+            s.name=name.getText().toString().trim();s.outside=outside.getText().toString().trim();s.home=home.getText().toString().trim();s.meal=meal.getText().toString().trim();
+            confirmChange("Konfirmasi perubahan","Nama: "+s.name+"\nKeluar → "+s.outside+"\nKost → "+s.home+"\nMakan → "+s.meal+"\n\nPerubahan dikirim ke HP penerima.",()->{
+                try{synchronized(Store.LOCK){KabarState current=Store.state(this);current.name=s.name;current.outside=s.outside;current.home=s.home;current.meal=s.meal;current.revision++;Store.saveAndQueue(this,current,false);}
+                    SyncService.start(this);d.dismiss();render();toast("Perubahan disimpan");
+                }catch(Exception e){error("Perubahan belum tersimpan",e);}
+            });
         }));d.show();
     }
     private void editSchedule() {
@@ -247,12 +337,15 @@ public class MainActivity extends Activity {
         d.setOnShowListener(x->d.getButton(-1).setOnClickListener(v->{
             try{int[] windows=new int[6];for(int i=0;i<6;i++)windows[i]=Integer.parseInt(fields[i].getText().toString());
                 if(!StatusLogic.validWindows(windows))throw new IllegalArgumentException("Jadwal harus berurutan, 0–24, dan tidak tumpang tindih.");
-                synchronized(Store.LOCK){KabarState current=Store.state(this);current.windows=windows;current.revision++;Store.saveAndQueue(this,current,false);}
-                SyncService.start(this);d.dismiss();render();
+                confirmChange("Konfirmasi jadwal","Sarapan "+windows[0]+"–"+windows[1]+"\nMakan siang "+windows[2]+"–"+windows[3]+"\nMakan malam "+windows[4]+"–"+windows[5]+"\n\nPilihan otomatis mengikuti zona waktu HP pengirim.",()->{
+                    try{synchronized(Store.LOCK){KabarState current=Store.state(this);current.windows=windows;current.revision++;Store.saveAndQueue(this,current,false);}SyncService.start(this);d.dismiss();render();}
+                    catch(Exception e){error("Jadwal belum tersimpan",e);}
+                });
             }catch(Exception e){error("Jadwal belum tersimpan",e);}
         }));d.show();
     }
-    private void clearHistory(){try{synchronized(Store.LOCK){KabarState current=Store.state(this);current.location="";current.locationAt=0;current.homeAt=0;current.mealAt=0;current.breakfastAt=0;current.lunchAt=0;current.dinnerAt=0;current.mealCategory="";current.events=new JSONArray();current.revision++;Store.saveAndQueue(this,current,false);}SyncService.start(this);render();}catch(Exception e){error("Belum bisa menghapus",e);}}
+    private void clearGps(){try{synchronized(Store.LOCK){KabarState current=Store.state(this);current.gps=null;for(int i=0;i<current.events.length();i++)current.events.getJSONObject(i).remove("gps");current.revision++;Store.saveAndQueue(this,current,false);}Store.prefs(this).edit().putBoolean("shareLocation",false).apply();SyncService.start(this);render();toast("Lokasi dihapus dari kabar terbaru");}catch(Exception e){error("Lokasi belum dihapus",e);}}
+    private void clearHistory(){try{synchronized(Store.LOCK){KabarState current=Store.state(this);current.location="";current.locationAt=0;current.homeAt=0;current.mealAt=0;current.breakfastAt=0;current.lunchAt=0;current.dinnerAt=0;current.mealCategory="";current.events=new JSONArray();current.gps=null;current.revision++;Store.saveAndQueue(this,current,false);}SyncService.start(this);render();}catch(Exception e){error("Belum bisa menghapus",e);}}
     private void rotate(){try{synchronized(Store.LOCK){Pairing p=Pairing.create();Store.prefs(this).edit().putString("code",p.code()).putString("private",Pairing.encode(p.privateKey.getEncoded())).putString("queue","[]").remove("cursor").remove("publishedAt").commit();KabarState s=Store.state(this);s.revision++;Store.saveAndQueue(this,s,false);}SyncService.start(this);render();toast("Kode diganti. Hubungkan ulang HP penerima.");}catch(Exception e){error("Kode belum diganti",e);}}
     private void disconnect(){new AlertDialog.Builder(this).setTitle("Putuskan hubungan?").setMessage("Data lokal dan kode pasangan di HP ini dihapus. HP lain tetap menyimpan kabar terakhir. Jika HP pengirim diputuskan, buat kode baru untuk menghubungkan ulang.").setPositiveButton("Putuskan",(d,w)->{SyncService.stop(this);synchronized(Store.LOCK){Store.prefs(this).edit().clear().commit();}page=0;Store.changed(this);render();}).setNegativeButton("Batal",null).show();}
     private void copyCode(){android.content.ClipboardManager cm=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);ClipData clip=ClipData.newPlainText("Kode pasangan Kabar",Store.prefs(this).getString("code",""));if(Build.VERSION.SDK_INT>=33){PersistableBundle extra=new PersistableBundle();extra.putBoolean("android.content.extra.IS_SENSITIVE",true);clip.getDescription().setExtras(extra);}cm.setPrimaryClip(clip);toast("Kode disalin");}

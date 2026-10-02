@@ -10,6 +10,9 @@ import KabarCore
     @Published var connection = "Belum terhubung"
     @Published var error: String?
     @Published var pending = 0
+    @Published var locating = false
+    @Published var locationNote = ""
+    private var sampler: LocationSampler?
     @Published var pushEndpoint = SharedStore.defaults.string(forKey: "pushEndpoint") ?? ""
     private var sync: Task<Void, Never>?
     private var registration: Task<Void, Never>?
@@ -41,8 +44,31 @@ import KabarCore
         self.role = role; state = KabarState(); try SharedStore.save(state); pending = 0; pushEndpoint = ""
         WidgetCenter.shared.reloadAllTimelines()
     }
-    func record(_ kind: String) {
-        do { var next = state; try next.record(kind); try enqueue(next, notify: true) } catch { self.error = error.localizedDescription }
+    func record(_ kind: String, meal: String? = nil, share: Bool = false) {
+        guard role == "sender", !locating else { return }
+        guard pending<25 else { error = "Antrean 25 kabar penuh. Hubungkan internet sebelum menambah kabar."; return }
+        let session = code
+        let save: (GpsPoint?,String) -> Void = { [weak self] point,note in
+            guard let self, self.role == "sender", self.code == session else { return }
+            self.locating = false; self.sampler = nil; self.locationNote = note
+            if kind.isEmpty && point == nil { self.error = note; return }
+            do {
+                var next = self.state; next.zone = TimeZone.current.identifier
+                if kind.isEmpty { next.gps = point; next.revision += 1 }
+                else { try next.record(kind,meal:meal,point:point) }
+                try self.enqueue(next,notify:!kind.isEmpty)
+            } catch { self.error = error.localizedDescription }
+        }
+        if share { locating = true; sampler = LocationSampler(completion:save); sampler?.start() }
+        else { save(nil,"") }
+    }
+    func refreshLocation() { SharedStore.defaults.set(true,forKey:"shareLocation"); record("",share:true) }
+    func cancelLocation() { sampler?.cancel() }
+    func clearGps() {
+        do {
+            var next = state; next.gps = nil; for i in next.events.indices { next.events[i].gps = nil }; next.revision += 1
+            try enqueue(next,notify:false); SharedStore.defaults.set(false,forKey:"shareLocation"); locationNote = "Lokasi dihapus dari kabar terbaru"
+        } catch { self.error = error.localizedDescription }
     }
     private func enqueue(_ next: KabarState, notify: Bool) throws {
         guard role == "sender", let pair = SharedStore.pairing() else { throw KabarError.invalid("Pasangan pengirim belum tersedia") }
@@ -60,7 +86,7 @@ import KabarCore
     }
     func clearHistory() {
         var next = state; next.location = ""; next.locationAt = 0; next.homeAt = 0; next.mealAt = 0; next.breakfastAt = 0; next.lunchAt = 0; next.dinnerAt = 0
-        next.mealCategory = ""; next.events = []; next.revision += 1
+        next.mealCategory = ""; next.events = []; next.gps = nil; next.revision += 1
         do { try enqueue(next, notify: false) } catch { self.error = error.localizedDescription }
     }
     func pause() {

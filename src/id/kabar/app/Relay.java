@@ -10,7 +10,7 @@ public final class Relay {
     public static HttpURLConnection open(String path) throws IOException {
         HttpURLConnection c=(HttpURLConnection)new URL(BASE+path).openConnection();
         c.setConnectTimeout(15000); c.setReadTimeout(75000);
-        c.setRequestProperty("User-Agent","Kabar-Android/0.2");
+        c.setRequestProperty("User-Agent","Kabar-Android/0.3");
         return c;
     }
     public static void publish(String topic,String payload) throws IOException {

@@ -51,6 +51,8 @@ jobs:
             adb logcat -d -s AndroidRuntime | tee crash-log.txt
             adb shell screencap -p /sdcard/kabar.png
             adb pull /sdcard/kabar.png screenshot.png
+            adb exec-out run-as id.kabar.app cat cache/ui-home.png > ui-home.png || true
+            adb exec-out run-as id.kabar.app cat cache/ui-confirm.png > ui-confirm.png || true
             grep -q 'PASS Device UI' result.txt
             if grep -q 'FAIL' result.txt; then exit 1; fi
             if [ ${{ matrix.api }} -eq 35 ]; then adb shell settings put system font_scale 1.5; adb shell am instrument -w -e mode ui id.kabar.qa/id.kabar.app.DeviceQA | tee large-font.txt; grep -q 'PASS Device UI' large-font.txt; fi
@@ -63,4 +65,6 @@ jobs:
             crash-log.txt
             screenshot.png
             large-font.txt
+            ui-home.png
+            ui-confirm.png
           if-no-files-found: ignore
