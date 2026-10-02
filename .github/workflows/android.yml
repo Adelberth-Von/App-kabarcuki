@@ -43,6 +43,7 @@ jobs:
           target: google_apis
           disable-animations: true
           script: |
+            adb shell am force-stop com.google.android.apps.nexuslauncher
             adb install -r apk/debug/android-debug.apk
             adb install -r apk/androidTest/debug/android-debug-androidTest.apk
             if [ ${{ matrix.api }} -ge 33 ]; then adb shell pm grant id.kabar.app android.permission.POST_NOTIFICATIONS; fi

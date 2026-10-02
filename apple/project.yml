@@ -93,6 +93,17 @@ targets:
       properties:
         com.apple.security.application-groups: [group.id.kabar.shared]
         keychain-access-groups: ['$(AppIdentifierPrefix)id.kabar.shared']
+  KabarUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Kabar
+    settings:
+      base:
+        TEST_TARGET_NAME: Kabar
+    info:
+      path: Config/UITests-Info.plist
 schemes:
   Kabar:
     build:
@@ -100,3 +111,5 @@ schemes:
         Kabar: all
     run:
       config: Debug
+    test:
+      targets: [KabarUITests]

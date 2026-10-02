@@ -19,6 +19,12 @@ public class SyncService extends Service {
         if(!Store.role(c).isEmpty()&&Store.prefs(c).getBoolean("enabled",true))
             c.startForegroundService(new Intent(c,SyncService.class));
     }
+    @Override public void onCreate() {
+        super.onCreate();channels(this);
+        // Promote before checking a pause: startForegroundService may still be in flight.
+        if(Build.VERSION.SDK_INT>=34)startForeground(1,persistent(),ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        else startForeground(1,persistent());
+    }
     @Override public IBinder onBind(Intent intent){return null;}
     @Override public int onStartCommand(Intent intent,int flags,int startId) {
         if(intent!=null&&"STOP".equals(intent.getAction())) {
