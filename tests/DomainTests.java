@@ -85,6 +85,11 @@ public class DomainTests {
         Pairing restored=receiver.withPrivate(Pairing.encode(sender.privateKey.getEncoded()));
         String secret="{\"name\":\"Aku\",\"status\":\"Di kost\"}";
         String message=restored.encrypt(secret);
+        String proof=restored.alertProof(message);
+        ok(receiver.verifyAlert(message,proof),"public alert hint authenticated");
+        ok(!receiver.verifyAlert(message+"x",proof),"alert hint bound to ciphertext");
+        ok(!receiver.verifyAlert(message,""),"silent snapshot has no alert proof");
+        rejects(()->receiver.alertProof(message),"receiver cannot forge push hint");
         eq(receiver.decrypt(message),secret,"encrypted signed roundtrip");
         ok(!message.contains("kost")&&!message.contains("Aku"),"plaintext hidden from relay");
         ok(!message.equals(restored.encrypt(secret)),"fresh nonce per encryption");

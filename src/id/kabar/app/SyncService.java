@@ -83,7 +83,7 @@ public class SyncService extends Service {
             }
             if(item!=null) {
                 status("Mengirim kabar…");
-                Relay.publish(p.topic(),item.getString("body"));
+                Relay.publish(p.topic(),item.getString("body"),item.optString("alertProof",""));
                 if(!current())return;
                 synchronized(Store.LOCK) {
                     JSONArray q=new JSONArray(Store.prefs(this).getString("queue","[]")),next=new JSONArray();

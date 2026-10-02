@@ -56,6 +56,19 @@ public final class Pairing {
         signature.initSign(privateKey); signature.update(signed.getBytes(StandardCharsets.UTF_8));
         return signed+"."+encode(signature.sign());
     }
+    /** Public signed hint lets an Apple push bridge distinguish clicks from silent snapshots. */
+    public String alertProof(String envelope) throws Exception {
+        if(privateKey==null)throw new SecurityException("Hanya pengirim dapat menandai notifikasi");
+        Signature s=Signature.getInstance("SHA256withECDSA");s.initSign(privateKey);
+        s.update(("kabar-alert-v1:"+envelope).getBytes(StandardCharsets.UTF_8));
+        return "KB1."+encode(s.sign());
+    }
+    public boolean verifyAlert(String envelope,String proof) throws Exception {
+        if(!proof.startsWith("KB1."))return false;
+        Signature s=Signature.getInstance("SHA256withECDSA");s.initVerify(publicKey);
+        s.update(("kabar-alert-v1:"+envelope).getBytes(StandardCharsets.UTF_8));
+        return s.verify(decode(proof.substring(4)));
+    }
     public String decrypt(String envelope) throws Exception {
         if(envelope.length()>8192) throw new SecurityException("Pesan terlalu besar");
         String[] p=envelope.split("\\.");

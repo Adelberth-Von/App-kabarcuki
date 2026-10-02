@@ -23,10 +23,10 @@ public final class Store {
             JSONArray queue=new JSONArray(prefs(c).getString("queue","[]"));
             if(queue.length()>=25)throw new IllegalStateException("25 kabar masih menunggu. Hubungkan internet sebelum menambah kabar.");
             String body=new JSONObject().put("state",s.json()).put("notify",notify).toString();
-            String encrypted=pairing(c).encrypt(body);
+            Pairing p=pairing(c);String encrypted=p.encrypt(body);
             // ntfy free relay's text body is capped at 4096 bytes.
             if(encrypted.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>4096)throw new IllegalStateException("Kabar terlalu panjang. Pendekkan nama tombol.");
-            queue.put(new JSONObject().put("revision",s.revision).put("body",encrypted));
+            queue.put(new JSONObject().put("revision",s.revision).put("body",encrypted).put("alertProof",notify?p.alertProof(encrypted):""));
             if(!prefs(c).edit().putString("state",s.json().toString()).putString("queue",queue.toString()).commit())throw new IllegalStateException("Penyimpanan penuh");
         }
         changed(c);

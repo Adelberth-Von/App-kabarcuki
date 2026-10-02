@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api: [29, 30, 33, 34, 35, 36]
+        api: [29, 30, 31, 32, 33, 34, 35, 36]
     steps:
       - uses: actions/download-artifact@v4
         with: { name: android-test-apks, path: apk }
@@ -44,8 +47,19 @@ jobs:
             adb install -r apk/androidTest/debug/android-debug-androidTest.apk
             if [ ${{ matrix.api }} -ge 33 ]; then adb shell pm grant id.kabar.app android.permission.POST_NOTIFICATIONS; fi
             adb shell am instrument -w -e mode ui id.kabar.qa/id.kabar.app.DeviceQA | tee result.txt
+            adb logcat -d -s AndroidRuntime | tee crash-log.txt
+            adb shell screencap -p /sdcard/kabar.png
+            adb pull /sdcard/kabar.png screenshot.png
             grep -q 'PASS Device UI' result.txt
             if grep -q 'FAIL' result.txt; then exit 1; fi
+            if [ ${{ matrix.api }} -eq 35 ]; then adb shell settings put system font_scale 1.5; adb shell am instrument -w -e mode ui id.kabar.qa/id.kabar.app.DeviceQA | tee large-font.txt; grep -q 'PASS Device UI' large-font.txt; fi
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: 'android-api-${{ matrix.api }}', path: result.txt, if-no-files-found: ignore }
+        with:
+          name: 'android-api-${{ matrix.api }}'
+          path: |
+            result.txt
+            crash-log.txt
+            screenshot.png
+            large-font.txt
+          if-no-files-found: ignore

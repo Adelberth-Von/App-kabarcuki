@@ -10,14 +10,18 @@ public final class Relay {
     public static HttpURLConnection open(String path) throws IOException {
         HttpURLConnection c=(HttpURLConnection)new URL(BASE+path).openConnection();
         c.setConnectTimeout(15000); c.setReadTimeout(75000);
-        c.setRequestProperty("User-Agent","Kabar-Android/0.1");
+        c.setRequestProperty("User-Agent","Kabar-Android/0.2");
         return c;
     }
     public static void publish(String topic,String payload) throws IOException {
+        publish(topic,payload,"");
+    }
+    public static void publish(String topic,String payload,String alertProof) throws IOException {
         HttpURLConnection c=open("/"+topic);
         try {
             c.setRequestMethod("POST");c.setDoOutput(true);
             c.setRequestProperty("Content-Type","text/plain; charset=utf-8");
+            if(!alertProof.isEmpty())c.setRequestProperty("Title",alertProof);
             byte[] b=payload.getBytes(StandardCharsets.UTF_8);
             c.setFixedLengthStreamingMode(b.length);
             try(OutputStream o=c.getOutputStream()){o.write(b);}
