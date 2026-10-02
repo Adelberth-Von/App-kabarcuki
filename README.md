@@ -1,10 +1,12 @@
-# Kabar 0.1.0 — APK uji dua HP
+# Kabar 0.2.0 — Android dan Apple
 
-Kabar adalah aplikasi Android native dengan tema sage, krem, peach, dan ilustrasi pixel art. Tidak ada layar login. Satu APK yang sama digunakan untuk pengirim dan penerima.
+Kabar memakai tema sage, krem, peach, dan ilustrasi pixel art. Tidak ada layar login. Satu APK yang sama digunakan untuk pengirim dan penerima Android. Sumber aplikasi native iPhone/iPad tersedia di [apple/](apple/README.md); pairing dan statusnya kompatibel dengan Android. Versi Apple belum memiliki installer bertanda tangan/TestFlight atau backend APNs yang dideploy.
+
+Repositori: [Adelberth-Von/App-kabarcuki](https://github.com/Adelberth-Von/App-kabarcuki). APK terbaru: [Kabar-0.2.0.apk](Kabar-0.2.0.apk). Versi 0.1.0 dipertahankan sebagai arsip pengujian.
 
 ## Pasang dan hubungkan
 
-1. Kirim **Kabar-0.1.0.apk** ke kedua HP Android. Minimal Android 8.0 (API 26). APK tidak dapat dipasang di iPhone.
+1. Kirim **Kabar-0.2.0.apk** ke kedua HP Android. Minimal **Android 10 (API 29)**. APK tidak dapat dipasang di iPhone.
 2. Buka file APK. Jika Android meminta, izinkan instalasi dari aplikasi yang dipakai membuka file, kemudian tekan **Install**. Jika aplikasi pemindai keamanan menampilkan hasil, ikuti informasi yang ditampilkan; jangan menonaktifkan perlindungan perangkat.
 3. Di HP pertama, buka Kabar dan pilih **Aku membagikan kabar**. Izinkan notifikasi bila diminta.
 4. Buka **Pengaturan → Salin kode pasangan**. Pindahkan kode lengkap ke HP kedua, misalnya melalui pesan pribadi. Kode bukan PIN pendek; salin/tempel agar tidak salah.
@@ -58,7 +60,9 @@ APK ini ditandatangani dengan kunci pengembangan lokal untuk sideload dan uji pr
 
 Kode Java, resources XML, manifest, skrip build, dan tes tersedia dalam folder ini. Tidak ada dependensi runtime eksternal di APK.
 
-Build memakai JDK 17, Android platform API 35, dan Build Tools 35.0.0. Skrip `build.ps1` memakai alat yang disiapkan di `work/tools` pada workspace asal. Ini bukan proyek Gradle; pipeline langsung: aapt2 → javac → D8 → zipalign → apksigner.
+Proyek Gradle dan wrapper tersedia untuk Android Studio/CI: buka folder ini di Android Studio, pasang Android SDK 35 dan JDK 17, lalu jalankan `./gradlew :android:assembleDebug` (Windows: `./gradlew.bat`). Gradle wrapper memakai 8.11.1 dan AGP 8.9.1. APK Gradle ada di `android/build/outputs/apk/debug/android-debug.apk`.
+
+APK yang dibagikan di root dibangun memakai pipeline langsung JDK 17, Android platform API 35, Build Tools 35.0.0, aapt2 → javac → D8 → zipalign → apksigner. Skrip `build.ps1` memakai alat di `work/tools` pada workspace asal atau parameter `ToolRoot`. Kunci lokal ini berbeda dari kunci debug Gradle; kedua jenis build tidak bisa dipakai saling menimpa instalasi tanpa kunci penandatanganan yang sama. APK 0.2.0 memakai kunci lokal yang sama dengan APK 0.1.0 sehingga dapat diperbarui tanpa menghapus pasangan.
 
 ```powershell
 ./build.ps1 -ToolRoot "C:\path\to\tools"
@@ -69,5 +73,13 @@ Build memakai JDK 17, Android platform API 35, dan Build Tools 35.0.0. Skrip `bu
 `ToolRoot` berisi direktori JDK (`bin/java.exe` dan `bin/javac.exe`), `android-35/android.jar`, Build Tools pada `android-15/` (nama direktori dalam ZIP resmi; revisinya 35.0.0), dan `json.jar` untuk tes JVM. Pustaka JSON hanya dipakai di tes desktop; aplikasi menggunakan JSON bawaan Android.
 
 Lihat **QA.md** untuk hasil pengujian dan daftar uji dua HP.
+
+## Kompatibilitas dan QA otomatis
+
+Workflow GitHub Actions membangun Android serta menjalankan tes UI pada API 29–36 (Android 10, 11, 12, 12L, 13, 14, 15, dan 16), termasuk font besar pada API 35. Layout Android menerapkan inset system bar/keyboard dan tombol menyesuaikan tinggi teks. Tidak ada native library sehingga tidak bergantung pada arsitektur CPU tertentu atau alignment library 16 KB.
+
+Workflow Apple menjalankan tes Swift, interoperability Java/CryptoKit dua arah, build aplikasi/widget/ekstensi notifikasi, serta tes UI simulator iPhone. Workflow server menguji verifikasi pesan dan payload APNs. Hasil serta batas pengujian dicatat di **QA.md**; dukungan OS minimum dan keberhasilan emulator tidak menjamin semua merek HP, kebijakan baterai, versi OS masa depan, atau perangkat Apple fisik.
+
+Notifikasi Android tetap memakai foreground service. Apple memerlukan APNs dan server HTTPS untuk notifikasi ketika aplikasi tertutup. Program server dan panduan tersedia di [server/](server/README.md); credential Apple serta deployment belum disiapkan. Apple Watch, Apple TV dan aplikasi macOS native belum tersedia.
 
 Referensi: [API ntfy](https://docs.ntfy.sh/subscribe/api/), [pengiriman dan cache ntfy](https://docs.ntfy.sh/publish/), [foreground service Android](https://developer.android.com/about/versions/14/changes/fgs-types-required).

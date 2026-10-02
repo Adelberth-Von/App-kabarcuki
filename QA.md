@@ -1,4 +1,58 @@
-# Laporan QA — Kabar 0.1.0
+# Laporan QA — Kabar 0.2.0
+
+Tanggal: **2 Oktober 2026**. Perubahan kompatibilitas Android, aplikasi Apple dan backend Apple diperiksa sebelum penyerahan. Riwayat QA 0.1.0 dipertahankan di bawah sebagai catatan versi sebelumnya.
+
+## APK final 0.2.0
+
+- Paket `id.kabar.app`, versionCode `2`, minimum API `29` (**Android 10**), compile/target API `35`.
+- `Kabar-0.2.0.apk`: **45.895 byte**; SHA-256 `38507107899cdd4c9e18565629a77b113ef171a701dc217cf814a7a2b358eaaa`.
+- APK final ditandatangani dengan kunci lokal yang sama dengan 0.1.0; verifikasi signature **v3 lulus**. Minimum Android 10 mendukung skema ini. Metadata paket, manifest, permissions, classes.dex dan tidak adanya kelas instrumentasi pada APK produksi diperiksa.
+- Tidak ada library native dalam APK. CPU ARM/x86 tidak memerlukan binary terpisah; perubahan alignment library 16 KB tidak berlaku untuk library aplikasi ini.
+- Proyek Gradle/Android Studio dibangun terpisah di CI. Sertifikat debug CI berbeda dari APK sideload yang dibagikan.
+
+## Matriks Android
+
+[Workflow Android yang lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37027034586), sumber commit `5f780e7` (perubahan sumber Android terakhir pada rangkaian ini):
+
+| OS | API | UI, edit tombol, persistensi, antrean offline dan widget |
+|---|---:|---|
+| Android 10 | 29 | Lulus · 33 assertions |
+| Android 11 | 30 | Lulus · 33 assertions |
+| Android 12 | 31 | Lulus · 33 assertions |
+| Android 12L | 32 | Lulus · 33 assertions |
+| Android 13 | 33 | Lulus · 33 assertions |
+| Android 14 | 34 | Lulus · 33 assertions |
+| Android 15 | 35 | Lulus · 33 assertions; diulang pada font scale 1.5 dan lulus |
+| Android 16 | 36 | Lulus · 33 assertions |
+
+Emulator x86_64 Google APIs dijalankan di GitHub Actions. Android 13+ diberikan permission POST_NOTIFICATIONS untuk tes; alur menolak permission secara manual dan kebijakan baterai berbagai produsen belum tercakup matriks ini. Tes UI menekan kontrol aplikasi melalui instrumentasi; tes edit field menggunakan UI Automation dan widget diuji sebagai RemoteViews. Angka assertions pada versi OS berbeda adalah pengulangan rangkaian yang sama, bukan kasus unik baru.
+
+QA menemukan race saat layanan dijeda ketika startForegroundService masih menunggu. Penanganan diperbaiki dengan promosi foreground pada callback startup dan pengantrean permintaan STOP yang terikat sesi. Rotasi pasangan memperbarui sesi worker tanpa langsung menghentikan layanan yang sedang mulai. Rangkaian akhir di atas lulus. Salah satu kegagalan tes sebelumnya juga disertai ANR Pixel Launcher emulator; log dan screenshot digunakan untuk membedakannya dari crash Kabar.
+
+## APK sideload dan jaringan nyata
+
+Pada emulator lokal **Android 11/API 30**, APK final yang dibagikan di root benar-benar diinstal dan diuji:
+
+- **81 assertions** aturan domain/crypto dan jaringan nyata: 62 aturan lokal (termasuk empat cek signed alert hint) serta 19 relay/cursor/live stream.
+- **33 assertions** UI, perubahan nama/tombol, antrean 25 item, persistensi, scroll dan widget.
+- **6 assertions** pengirim native: Kost → Makan → Keluar, antrean terkirim, revisi/waktu benar, server mengakui pengiriman.
+- **6 assertions** penerima native: menerima tiga kabar dari klien Java terpisah, mempertahankan waktu makan/tempat tinggal, widget penerima menyembunyikan tombol, serta NotificationManager benar-benar mem-post notification ID 2 saat Activity dipindahkan ke latar belakang.
+- Tambahan pemeriksaan independen memastikan ciphertext serta Title notifikasi dari APK diterima ntfy, public hint terikat ciphertext, dan kedua tanda tangan diverifikasi oleh kode Node push bridge. Backend tidak membutuhkan kunci AES untuk verifikasi.
+- Screenshot APK final diperiksa pada `screenshots/android-0.2.0.png`; screenshot hasil CI API 36 juga diperiksa. Screenshot CI yang kembali ke launcher setelah instrumentasi tidak dianggap bukti visual layar aplikasi.
+
+## Apple dan server
+
+Aplikasi iPhone/iPad menargetkan **iOS/iPadOS 16+**, dengan SwiftUI, WidgetKit, Keychain/App Group serta Notification Service Extension. Build simulator aplikasi dan dua ekstensi berhasil di Xcode 16.4/SDK iOS 18.5. Tes Swift memiliki empat test case (jam makan, riwayat/status, crypto, interoperability); Java → CryptoKit dan CryptoKit → Java memverifikasi AES-GCM, tanda tangan P-256 DER, topic dan state.
+
+[Tes server yang lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37027804548): enam test case validasi perangkat/capability, tanda tangan envelope, hint alert/silent, payload APNs 4096 byte, serta JWT ES256. Node menolak DER dengan byte tambahan; tes menemukan dan memverifikasi perbaikan tersebut.
+
+**Batas:** belum ada iPhone/iPad fisik, provisioning Apple, pengiriman APNs nyata, server HTTPS yang dideploy, IPA bertanda tangan, atau TestFlight. Simulator menggunakan Keychain default; akses grup Keychain/App Group antar ekstensi harus diuji pada perangkat fisik bertanda tangan. Widget iOS tidak menjanjikan refresh setiap klik. Mac, Watch dan Apple TV belum ditargetkan.
+
+Hasil simulator Android tidak menjamin semua merek HP atau versi Android masa depan. Doze/OEM, force-stop, reboot, layar terkunci, jaringan berganti, izin notifikasi ditolak dan penggunaan baterai lama tetap perlu pengujian dua HP pengguna. Referensi instalasi ada pada README utama dan `apple/README.md`.
+
+---
+
+# Arsip QA — Kabar 0.1.0
 
 Tanggal: **2 Oktober 2026** (Asia/Bangkok). Hasil: **127 assertions otomatis lulus**, ditambah pemeriksaan visual dan alur Android yang dijelaskan di bawah.
 
