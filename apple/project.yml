@@ -19,6 +19,9 @@ targets:
   Kabar:
     type: application
     platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: id.kabar.app
     sources: [App, Shared]
     dependencies:
       - package: KabarCore
@@ -51,6 +54,7 @@ targets:
       - package: KabarCore
     settings:
       base:
+        PRODUCT_BUNDLE_IDENTIFIER: id.kabar.app.widget
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
     info:
@@ -73,6 +77,7 @@ targets:
       - package: KabarCore
     settings:
       base:
+        PRODUCT_BUNDLE_IDENTIFIER: id.kabar.app.notification
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
     info:

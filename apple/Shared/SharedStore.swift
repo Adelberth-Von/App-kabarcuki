@@ -5,7 +5,14 @@ import KabarCore
 enum SharedStore {
     static let group = "group.id.kabar.shared"
     static let defaults = UserDefaults(suiteName: group)!
-    static var accessGroup: String { Bundle.main.object(forInfoDictionaryKey: "KabarKeychainGroup") as? String ?? "" }
+    static var accessGroup: String {
+        #if targetEnvironment(simulator)
+        // Simulator QA has no Apple provisioning profile; use the simulator's default keychain.
+        return ""
+        #else
+        return Bundle.main.object(forInfoDictionaryKey: "KabarKeychainGroup") as? String ?? ""
+        #endif
+    }
     static func key(_ name: String) -> [String: Any] {
         var q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "id.kabar.shared", kSecAttrAccount as String: name]
         if !accessGroup.isEmpty { q[kSecAttrAccessGroup as String] = accessGroup }

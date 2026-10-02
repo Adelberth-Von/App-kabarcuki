@@ -16,7 +16,12 @@ import KabarCore
     var code: String { SharedStore.pairing()?.code ?? "" }
     var queue: [String] { SharedStore.defaults.stringArray(forKey: "queue") ?? [] }
     var enabled: Bool { SharedStore.defaults.object(forKey: "enabled") as? Bool ?? true }
-    init() { pending = queue.count }
+    init() {
+        #if DEBUG
+        if CommandLine.arguments.contains("-KabarQAClean") { SharedStore.reset(); role = ""; state = KabarState() }
+        #endif
+        pending = queue.count
+    }
     func beginSender() {
         do {
             let pair = Pairing(); try install(pair, role: "sender"); try enqueue(state, notify: false); start()
@@ -27,6 +32,7 @@ import KabarCore
     }
     private func install(_ pair: Pairing, role: String) throws {
         stop(); SharedStore.reset()
+        self.role = ""; state = KabarState(); pending = 0
         do {
             try SharedStore.saveSecret(Data(pair.code.utf8), name: "code")
             if let key = pair.privateKey { try SharedStore.saveSecret(key.rawRepresentation, name: "private") }

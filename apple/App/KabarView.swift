@@ -5,7 +5,10 @@ private let cream = Color(red:0.97,green:0.96,blue:0.92)
 private let sage = Color(red:0.29,green:0.42,blue:0.32)
 struct KabarView: View {
     @EnvironmentObject var model: KabarModel
-    @State private var joinCode = "", tab = 0, editing = false, confirm = ""
+    @State private var joinCode = ""
+    @State private var tab = 0
+    @State private var editing = false
+    @State private var confirm = ""
     var body: some View {
         Group {
             if model.role.isEmpty { welcome }

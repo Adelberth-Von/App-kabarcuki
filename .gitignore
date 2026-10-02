@@ -18,3 +18,4 @@ DerivedData/
 **/xcuserstate
 apple/Fixtures/
 apple/*.xcodeproj/
+server/data/
