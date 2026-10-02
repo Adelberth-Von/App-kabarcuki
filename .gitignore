@@ -1,0 +1,16 @@
+*.apk.idsig
+*.p12
+*.jks
+*.keystore
+*.mobileprovision
+*.p8
+.env
+.env.*
+!.env.example
+.DS_Store
+build/
+work/
+.build/
+DerivedData/
+**/xcuserdata/
+**/xcuserstate

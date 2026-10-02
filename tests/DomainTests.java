@@ -1,0 +1,184 @@
+package id.kabar.app;
+
+import org.json.*;
+import java.util.*;
+import java.io.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+
+public class DomainTests {
+    private static int checks=0;
+    private static final TimeZone TZ=TimeZone.getTimeZone("Asia/Jakarta");
+    private static void ok(boolean b,String msg){checks++;if(!b)throw new AssertionError(msg);}
+    private static void eq(Object a,Object b,String msg){ok(Objects.equals(a,b),msg+" expected="+b+" actual="+a);}
+    private static long at(int day,int hour,int minute){Calendar c=Calendar.getInstance(TZ);c.clear();c.set(2026,Calendar.OCTOBER,day,hour,minute);return c.getTimeInMillis();}
+    private interface Checked {void run()throws Exception;}
+    private static void rejects(Checked f,String msg){boolean rejected=false;try{f.run();}catch(Exception e){rejected=true;}ok(rejected,msg);}
+    public static void main(String[] args)throws Exception{
+        if(args.length>0&&args[0].equals("device-publisher")){devicePublisher(args[1]);return;}
+        if(args.length>0&&args[0].equals("device-subscriber")){deviceSubscriber(args[1]);System.out.println("PASS device sender interoperability: "+checks+" assertions");return;}
+        mealRules();stateRules();cryptoRules();
+        if(args.length>0&&args[0].equals("live")){liveRelay();liveStream();}
+        System.out.println("PASS "+checks+" assertions");
+    }
+    private static void mealRules(){
+        int[] w=StatusLogic.DEFAULT_WINDOWS;
+        eq(StatusLogic.mealAt(at(2,4,59),w,TZ),"Makan","before breakfast");
+        eq(StatusLogic.mealAt(at(2,5,0),w,TZ),"Sarapan","breakfast start");
+        eq(StatusLogic.mealAt(at(2,9,59),w,TZ),"Sarapan","breakfast end exclusive");
+        eq(StatusLogic.mealAt(at(2,10,0),w,TZ),"Makan siang","lunch start boundary");
+        eq(StatusLogic.mealAt(at(2,14,59),w,TZ),"Makan siang","lunch last minute");
+        eq(StatusLogic.mealAt(at(2,15,0),w,TZ),"Makan","gap start");
+        eq(StatusLogic.mealAt(at(2,16,59),w,TZ),"Makan","gap end");
+        eq(StatusLogic.mealAt(at(2,17,0),w,TZ),"Makan malam","dinner start");
+        eq(StatusLogic.mealAt(at(2,21,59),w,TZ),"Makan malam","dinner last minute");
+        eq(StatusLogic.mealAt(at(2,22,0),w,TZ),"Makan","dinner end");
+        ok(StatusLogic.validWindows(w),"default windows valid");
+        ok(!StatusLogic.validWindows(new int[]{5,10,9,15,17,22}),"reject overlapping windows");
+        ok(!StatusLogic.validWindows(new int[]{5,5,10,15,17,22}),"reject empty window");
+        ok(!StatusLogic.validWindows(new int[]{-1,5,10,15,17,22}),"reject negative hour");
+        ok(!StatusLogic.validWindows(new int[]{5,10,10,15,17,25}),"reject over 24");
+        ok(StatusLogic.validWindows(new int[]{0,8,8,16,16,24}),"full day valid");
+        eq(StatusLogic.when(at(1,23,59),at(2,0,1),TZ),"Kemarin · 23.59","midnight formatting");
+        eq(StatusLogic.when(at(2,8,0),at(2,12,0),TZ),"Hari ini · 08.00","today formatting");
+        eq(StatusLogic.when(0,at(2,12,0),TZ),"Belum tercatat","missing status wording");
+        ok(StatusLogic.stale(at(2,6,0),at(2,12,0)),"6h old is stale");
+        ok(!StatusLogic.stale(at(2,6,1),at(2,12,0)),"under 6h fresh");
+        ok(!StatusLogic.stale(0,at(2,12,0)),"missing location not stale");
+        eq(StatusLogic.mealAt(at(2,5,0),new int[]{6,11,11,16,18,23},TZ),"Makan","custom schedule applied");
+    }
+    private static void stateRules()throws Exception{
+        KabarState s=new KabarState();s.zone=TZ.getID();
+        eq(s.locationText(),"Lokasi belum tercatat","empty state");
+        s.record("home",at(2,8,0));s.record("meal",at(2,8,30));
+        eq(s.location,"home","meal does not change location");
+        eq(s.homeAt,at(2,8,0),"meal does not change home timestamp");
+        eq(s.mealCategory,"Sarapan","meal automatically classified");
+        s.record("outside",at(2,9,0));
+        eq(s.location,"outside","outside changes current location");
+        eq(s.homeAt,at(2,8,0),"last home retained");
+        eq(s.mealAt,at(2,8,30),"last meal retained");
+        ok(s.hasMealToday("Sarapan",at(2,10,0)),"today breakfast registered");
+        ok(!s.hasMealToday("Sarapan",at(3,0,0)),"next day checklist resets");
+        eq(StatusLogic.when(s.mealAt,at(3,0,0),TZ),"Kemarin · 08.30","last meal persists overnight");
+        eq(s.revision,3L,"revision increments per action");
+        String raw=s.json().toString();KabarState copy=KabarState.parse(raw);
+        eq(copy.json().toString(),raw,"serialization roundtrip");
+        copy.home="Rumah";copy.outside="Pergi";copy.meal="Sudah makan";
+        copy.record("home",at(2,12,0));eq(copy.locationText(),"Di rumah","editable home label");
+        copy.record("outside",at(2,12,1));eq(copy.locationText(),"Pergi","editable outside label");
+        for(int i=0;i<50;i++)copy.record("meal",at(2,13,0)+i);
+        eq(copy.events.length(),12,"history bounded");
+        ok(copy.hasMealToday("Sarapan",at(2,14,0)),"breakfast survives history eviction");
+        eq(copy.events.getJSONObject(0).getLong("at"),at(2,13,0)+49,"newest history first");
+        rejects(()->copy.record("campus",at(2,12,0)),"reject unknown action");
+        rejects(()->copy.record("meal",0),"reject invalid timestamp");
+        JSONObject bad=s.json().put("windows",new JSONArray(new int[]{5,10,9,15,17,22}));
+        rejects(()->KabarState.parse(bad.toString()),"reject malicious schedule");
+        rejects(()->KabarState.parse(s.json().put("name","").toString()),"reject empty name");
+        rejects(()->KabarState.parse(s.json().put("location","gps").toString()),"reject unknown location");
+    }
+    private static void cryptoRules()throws Exception{
+        Pairing sender=Pairing.create(),receiver=Pairing.parse(sender.code());
+        eq(sender.topic(),receiver.topic(),"paired topic equality");
+        eq(receiver.privateKey,null,"receiver has no sender signing key");
+        Pairing restored=receiver.withPrivate(Pairing.encode(sender.privateKey.getEncoded()));
+        String secret="{\"name\":\"Aku\",\"status\":\"Di kost\"}";
+        String message=restored.encrypt(secret);
+        eq(receiver.decrypt(message),secret,"encrypted signed roundtrip");
+        ok(!message.contains("kost")&&!message.contains("Aku"),"plaintext hidden from relay");
+        ok(!message.equals(restored.encrypt(secret)),"fresh nonce per encryption");
+        rejects(()->receiver.encrypt(secret),"receiver cannot forge sender status");
+        rejects(()->Pairing.parse("KB1.bad.bad"),"invalid pairing code rejected");
+        rejects(()->Pairing.parse(sender.code()+".extra"),"extra pairing data rejected");
+        String[] parts=message.split("\\.");byte[] cipher=Pairing.decode(parts[2]);cipher[0]^=1;
+        String tampered=parts[0]+"."+parts[1]+"."+Pairing.encode(cipher)+"."+parts[3];
+        rejects(()->receiver.decrypt(tampered),"ciphertext tampering rejected");
+        Pairing stranger=Pairing.create();rejects(()->stranger.decrypt(message),"wrong family rejected");
+        eq(Pairing.parse("  "+sender.code()+"\n").topic(),sender.topic(),"pasted whitespace tolerated");
+        KabarState s=new KabarState();s.zone=TZ.getID();
+        s.name="Nama panjang keluarga";s.home="Tempat tinggal bersama";s.outside="Sedang berada di luar";
+        for(int i=0;i<12;i++)s.record(i%2==0?"home":"meal",at(2,18,i));
+        String payload=sender.encrypt(new JSONObject().put("state",s.json()).put("notify",true).toString());
+        ok(payload.getBytes(StandardCharsets.UTF_8).length<=4096,"snapshot within relay size limit");
+        KabarState received=KabarState.parse(new JSONObject(receiver.decrypt(payload)).getJSONObject("state").toString());
+        eq(received.revision,s.revision,"full state encryption roundtrip");
+    }
+    private static void liveRelay()throws Exception{
+        Pairing sender=Pairing.create(),receiver=Pairing.parse(sender.code());
+        KabarState state=new KabarState();state.zone=TZ.getID();
+        String cursor="";
+        for(String action:new String[]{"home","meal","outside"}) {
+            state.record(action,System.currentTimeMillis());
+            String payload=sender.encrypt(new JSONObject().put("state",state.json()).put("notify",true).toString());
+            Relay.publish(sender.topic(),payload);
+            String path="/"+receiver.topic()+"/json?poll=1&since="+(cursor.isEmpty()?"all":cursor);
+            int count=0;KabarState received=null;
+            for(int attempt=0;attempt<12&&count==0;attempt++) {
+                HttpURLConnection c=Relay.open(path);
+                try(BufferedReader reader=new BufferedReader(new InputStreamReader(c.getInputStream(),StandardCharsets.UTF_8))){
+                    String line;
+                    while((line=reader.readLine())!=null){JSONObject m=new JSONObject(line);if(!m.optString("event").equals("message"))continue;
+                        received=KabarState.parse(new JSONObject(receiver.decrypt(m.getString("message"))).getJSONObject("state").toString());cursor=m.getString("id");count++;
+                    }
+                }finally{c.disconnect();}
+                if(count==0)Thread.sleep(1000);
+            }
+            eq(count,1,"relay delivers new action once: "+action);ok(received!=null,"relay data received");
+            eq(received.revision,state.revision,"relay revision matches");eq(received.location,state.location,"relay location matches");eq(received.mealAt,state.mealAt,"relay meal matches");
+        }
+        System.out.println("PASS live encrypted relay: home, meal, outside; cursor prevents repeats");
+    }
+    private static void devicePublisher(String path)throws Exception{
+        Pairing sender=Pairing.create();
+        java.nio.file.Files.write(java.nio.file.Paths.get(path),sender.code().getBytes(StandardCharsets.UTF_8));
+        KabarState state=new KabarState();state.name="QA";
+        System.out.println("Device publisher prepared; waiting 20 seconds for receiver");
+        Thread.sleep(20000);
+        for(String action:new String[]{"home","meal","outside"}){
+            state.record(action,System.currentTimeMillis());
+            Relay.publish(sender.topic(),sender.encrypt(new JSONObject().put("state",state.json()).put("notify",true).toString()));
+            System.out.println("Published QA "+action+" revision "+state.revision);
+            Thread.sleep(1800);
+        }
+    }
+    private static void liveStream()throws Exception{
+        Pairing sender=Pairing.create(),receiver=Pairing.parse(sender.code());
+        java.util.concurrent.CountDownLatch opened=new java.util.concurrent.CountDownLatch(1),arrived=new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicReference<KabarState> received=new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<Throwable> failure=new java.util.concurrent.atomic.AtomicReference<>();
+        HttpURLConnection c=Relay.open("/"+receiver.topic()+"/json?since=latest");
+        Thread listener=new Thread(()->{
+            try(BufferedReader r=new BufferedReader(new InputStreamReader(c.getInputStream(),StandardCharsets.UTF_8))){
+                String line;while((line=r.readLine())!=null){JSONObject packet=new JSONObject(line);
+                    if(packet.optString("event").equals("open"))opened.countDown();
+                    if(packet.optString("event").equals("message")){received.set(KabarState.parse(new JSONObject(receiver.decrypt(packet.getString("message"))).getJSONObject("state").toString()));arrived.countDown();return;}
+                }
+            }catch(Throwable e){failure.set(e);opened.countDown();arrived.countDown();}
+        },"QA-Stream");listener.setDaemon(true);listener.start();
+        try{
+            ok(opened.await(20,java.util.concurrent.TimeUnit.SECONDS),"live stream opens");
+            if(failure.get()!=null)throw new RuntimeException(failure.get());
+            KabarState s=new KabarState();s.record("home",System.currentTimeMillis());
+            Relay.publish(sender.topic(),sender.encrypt(new JSONObject().put("state",s.json()).put("notify",true).toString()));
+            ok(arrived.await(20,java.util.concurrent.TimeUnit.SECONDS),"live stream delivers update");
+            if(failure.get()!=null)throw new RuntimeException(failure.get());
+            eq(received.get().location,"home","stream snapshot location");
+            eq(received.get().revision,s.revision,"stream snapshot revision");
+            System.out.println("PASS live stream subscription, same endpoint used by Android service");
+        }finally{c.disconnect();listener.interrupt();}
+    }
+    private static void deviceSubscriber(String path)throws Exception{
+        String code=new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(path)),StandardCharsets.UTF_8);
+        Pairing receiver=Pairing.parse(code);KabarState state=null;
+        for(int attempt=0;attempt<12&&state==null;attempt++){
+            HttpURLConnection c=Relay.open("/"+receiver.topic()+"/json?poll=1&since=latest");
+            try(BufferedReader r=new BufferedReader(new InputStreamReader(c.getInputStream(),StandardCharsets.UTF_8))){String line;
+                while((line=r.readLine())!=null){JSONObject m=new JSONObject(line);if(!m.optString("event").equals("message"))continue;state=KabarState.parse(new JSONObject(receiver.decrypt(m.getString("message"))).getJSONObject("state").toString());}
+            }finally{c.disconnect();}
+            if(state==null)Thread.sleep(1000);
+        }
+        ok(state!=null,"native sender message decrypts and signature verifies on independent receiver");
+        eq(state.revision,3L,"native sender latest revision");eq(state.location,"outside","native sender outside status");ok(state.homeAt>0,"native sender last home retained");ok(state.mealAt>0,"native sender last meal retained");
+    }
+}
