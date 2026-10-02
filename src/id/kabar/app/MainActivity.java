@@ -43,11 +43,11 @@ public class MainActivity extends Activity {
     private void wideButton(LinearLayout p,String label,int color,Runnable click){Button b=button(label,color,click);p.addView(b,new LinearLayout.LayoutParams(-1,-2));gap(p,10);}
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);if(state!=null)page=state.getInt("page",0);
+        if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
         root=column();root.setBackgroundColor(BG);setContentView(root);
         root.setOnApplyWindowInsetsListener((v,insets)->{
-            if(Build.VERSION.SDK_INT>=30) {android.graphics.Insets sys=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.ime());root.setPadding(sys.left,sys.top,sys.right,sys.bottom);}
-            else root.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());
-            return insets;
+            if(Build.VERSION.SDK_INT>=30) {android.graphics.Insets sys=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.ime());root.setPadding(sys.left,sys.top,sys.right,sys.bottom);return WindowInsets.CONSUMED;}
+            root.setPadding(0,0,0,0);return insets.consumeSystemWindowInsets();
         });
         render();quickAction(getIntent());
     }
@@ -88,7 +88,7 @@ public class MainActivity extends Activity {
         String[] tabs={"Beranda","Riwayat","Pengaturan"};
         for(int i=0;i<3;i++){
             final int tab=i;Button b=button(tabs[i],page==i?SAGE:BG,()->{page=tab;render();});b.setTextSize(12);
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(48),1);lp.setMargins(dp(3),0,dp(3),0);nav.addView(b,lp);
+            b.setMaxLines(2);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.setMargins(dp(3),0,dp(3),0);nav.addView(b,lp);
         }
         root.addView(nav);
     }
@@ -99,7 +99,7 @@ public class MainActivity extends Activity {
         para(body,"Pilih peran HP ini. Hubungkan dua HP dengan kode pasangan, tanpa email atau password.");gap(body,24);
         wideButton(body,busy?"Menyiapkan…":"Aku membagikan kabar",SAGE,()->{if(!busy)createSender();});
         wideButton(body,"Aku menerima kabar",PEACH,()->{if(!busy)join();});gap(body,12);
-        para(body,"Versi uji · Android 8 atau lebih baru\nMemerlukan internet. Status dienkripsi melalui ntfy.sh. Koneksi aktif menampilkan notifikasi tetap dan bisa dijeda kapan saja.");
+        para(body,"Versi uji · Android 10 atau lebih baru\nMemerlukan internet. Status dienkripsi melalui ntfy.sh. Koneksi aktif menampilkan notifikasi tetap dan bisa dijeda kapan saja.");
     }
     private void createSender() {
         busy=true;render();
@@ -143,7 +143,7 @@ public class MainActivity extends Activity {
             LinearLayout row=new LinearLayout(this);
             actionTile(row,s.outside,"outside",s.location.equals("outside")?SAGE:Color.WHITE);
             actionTile(row,s.home,"home",s.location.equals("home")?SAGE:Color.WHITE);
-            body.addView(row,new LinearLayout.LayoutParams(-1,dp(116)));gap(body,10);
+            body.addView(row,new LinearLayout.LayoutParams(-1,-2));gap(body,10);
             wideButton(body,s.meal,PEACH,()->record("meal"));
             para(body,"Sekali ketuk untuk mencatat. Makan tidak mengubah lokasi.");gap(body,20);
         }
@@ -172,7 +172,7 @@ public class MainActivity extends Activity {
         PixelArt art=new PixelArt(this,kind);tile.addView(art,new LinearLayout.LayoutParams(dp(68),dp(62)));
         TextView caption=text(label,15,INK,true);caption.setGravity(Gravity.CENTER);tile.addView(caption);
         tile.setContentDescription(label);tile.setFocusable(true);tile.setOnClickListener(v->record(kind));
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,1);lp.setMargins(0,0,row.getChildCount()==0?dp(10):0,0);row.addView(tile,lp);
+        tile.setMinimumHeight(dp(116));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.setMargins(0,0,row.getChildCount()==0?dp(10):0,0);row.addView(tile,lp);
     }
     private void record(String action) {
         if(!Store.role(this).equals("sender"))return;
@@ -219,7 +219,7 @@ public class MainActivity extends Activity {
         }
         wideButton(body,"Putuskan hubungan HP ini",PEACH,()->disconnect());
         wideButton(body,"Uninstall Kabar",Color.WHITE,()->new AlertDialog.Builder(this).setTitle("Uninstall Kabar?").setMessage("Android akan meminta konfirmasi. Menghapus aplikasi tidak menghapus salinan kabar di HP lain.").setPositiveButton("Lanjutkan",(d,w)->uninstall()).setNegativeButton("Batal",null).show());
-        gap(body,12);para(body,"Kabar 0.1.0 · versi uji\nTidak memakai GPS. Semua lokasi berasal dari tombol yang kamu tekan. Pesan dienkripsi dan ditandatangani di perangkat; relay ntfy.sh menerima ciphertext. Layanan publik memiliki batas dan cache sementara (umumnya 12 jam). Jika penerima lama offline, tekan status kembali pada pengirim. Riwayat lokal dibatasi 12 kabar.");
+        gap(body,12);para(body,"Kabar 0.2.0 · versi uji\nTidak memakai GPS. Semua lokasi berasal dari tombol yang kamu tekan. Pesan dienkripsi dan ditandatangani di perangkat; relay ntfy.sh menerima ciphertext. Layanan publik memiliki batas dan cache sementara (umumnya 12 jam). Jika penerima lama offline, tekan status kembali pada pengirim. Riwayat lokal dibatasi 12 kabar.");
     }
     private void editLabels() {
         KabarState s=Store.state(this);LinearLayout f=form();
@@ -264,3 +264,4 @@ public class MainActivity extends Activity {
     private void toast(String msg){Toast.makeText(this,msg,Toast.LENGTH_SHORT).show();}
     private void error(String heading,Exception e){new AlertDialog.Builder(this).setTitle(heading).setMessage(e.getMessage()==null?"Coba lagi.":e.getMessage()).setPositiveButton("Mengerti",null).show();}
 }
+

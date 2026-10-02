@@ -9,6 +9,8 @@
 !.env.example
 .DS_Store
 build/
+.gradle/
+local.properties
 work/
 .build/
 DerivedData/
