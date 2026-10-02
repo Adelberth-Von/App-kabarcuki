@@ -19,6 +19,9 @@ public class SyncService extends Service {
         if(!Store.role(c).isEmpty()&&Store.prefs(c).getBoolean("enabled",true))
             c.startForegroundService(new Intent(c,SyncService.class));
     }
+    public static void stop(Context c) {
+        c.startForegroundService(new Intent(c,SyncService.class).setAction("STOP").putExtra("stopSession",Store.prefs(c).getString("code","")));
+    }
     @Override public void onCreate() {
         super.onCreate();channels(this);
         // Promote before checking a pause: startForegroundService may still be in flight.
@@ -27,14 +30,13 @@ public class SyncService extends Service {
     }
     @Override public IBinder onBind(Intent intent){return null;}
     @Override public int onStartCommand(Intent intent,int flags,int startId) {
-        if(intent!=null&&"STOP".equals(intent.getAction())) {
+        // Every pending start must be promoted, including a stop queued during startup.
+        if(Build.VERSION.SDK_INT>=34)startForeground(1,persistent(),ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        else startForeground(1,persistent());
+        if(intent!=null&&"STOP".equals(intent.getAction())&&intent.getStringExtra("stopSession")!=null&&intent.getStringExtra("stopSession").equals(Store.prefs(this).getString("code",""))) {
             Store.prefs(this).edit().putBoolean("enabled",false).apply();stopSelf();return START_NOT_STICKY;
         }
         if(Store.role(this).isEmpty()||!Store.prefs(this).getBoolean("enabled",true)){stopSelf();return START_NOT_STICKY;}
-        channels(this);
-        Notification n=persistent();
-        if(Build.VERSION.SDK_INT>=34)startForeground(1,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
-        else startForeground(1,n);
         String nextSession=Store.prefs(this).getString("code","");
         if(running&&!nextSession.equals(session)) {
             running=false;if(connection!=null)connection.disconnect();if(worker!=null)worker.interrupt();
@@ -52,7 +54,7 @@ public class SyncService extends Service {
     }
     private Notification persistent() {
         PendingIntent open=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-        PendingIntent stop=PendingIntent.getService(this,1,new Intent(this,SyncService.class).setAction("STOP"),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent stop=PendingIntent.getService(this,1,new Intent(this,SyncService.class).setAction("STOP").putExtra("stopSession",Store.prefs(this).getString("code","")),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         return new Notification.Builder(this,"connection").setSmallIcon(R.drawable.notification_icon).setContentTitle("Kabar aktif")
             .setContentText(Store.role(this).equals("sender")?"Siap mengirim kabar keluarga":"Menunggu kabar keluarga")
             .setContentIntent(open).setOngoing(true).addAction(new Notification.Action.Builder(null,"Jeda",stop).build()).build();

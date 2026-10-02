@@ -41,7 +41,7 @@ public class DeviceQA extends Instrumentation {
                 ok(Store.role(c).equals("sender"),"sender setup");
                 Pairing p=Store.pairing(c);ok(p.privateKey!=null,"private key stored only for sender");
                 // Pause delivery before manipulating offline UI, preserving the queue for assertions.
-                main(()->{Store.prefs(c).edit().putBoolean("enabled",false).commit();c.stopService(new Intent(c,SyncService.class));});
+                main(()->{Store.prefs(c).edit().putBoolean("enabled",false).commit();SyncService.stop(c);});
                 Thread.sleep(500);
                 click("Kost");long home=Store.state(c).homeAt;
                 click("Makan");KabarState s=Store.state(c);ok(s.location.equals("home"),"meal preserves home location");ok(s.homeAt==home,"home time preserved");ok(s.mealAt>0,"meal timestamp recorded");
