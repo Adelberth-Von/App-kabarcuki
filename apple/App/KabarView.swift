@@ -10,6 +10,7 @@ struct KabarView: View {
     @State private var editing = false
     @State private var confirm = ""
     var body: some View {
+        TimelineView(.periodic(from:.now,by:60)) { _ in
         Group {
             if model.role.isEmpty { welcome }
             else {
@@ -19,6 +20,7 @@ struct KabarView: View {
                     settings.tabItem { Label("Pengaturan", systemImage:"slider.horizontal.3") }.tag(2)
                 }.tint(sage)
             }
+        }
         }
         .alert("Kabar", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("Mengerti") { model.error = nil } } message: { Text(model.error ?? "") }
         .confirmationDialog(confirm, isPresented: Binding(get: { !confirm.isEmpty }, set: { if !$0 { confirm = "" } }), titleVisibility: .visible) {
