@@ -13,7 +13,7 @@ android {
     }
     sourceSets {
         getByName("main") { manifest.srcFile("build/generated-manifest/AndroidManifest.xml"); java.srcDirs("../src"); res.srcDirs("../res") }
-        getByName("androidTest") { java.srcDirs("../tests"); java.exclude("DomainTests.java") }
+        getByName("androidTest") { java.srcDirs("build/generated-qa") }
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_1_8; targetCompatibility = JavaVersion.VERSION_1_8 }
 }
@@ -26,4 +26,8 @@ val prepareManifest by tasks.registering {
         target.get().asFile.apply { parentFile.mkdirs(); writeText(source.readText().replace(" package=\"id.kabar.app\"", "")) }
     }
 }
-tasks.named("preBuild") { dependsOn(prepareManifest) }
+val prepareQa by tasks.registering(Sync::class) {
+    from(rootProject.file("tests/DeviceQA.java"))
+    into(layout.buildDirectory.dir("generated-qa"))
+}
+tasks.named("preBuild") { dependsOn(prepareManifest, prepareQa) }
