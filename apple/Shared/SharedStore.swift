@@ -26,6 +26,9 @@ enum SharedStore {
         let q = key(name)
         let update: [String: Any] = [kSecValueData as String: data]
         let status = SecItemUpdate(q as CFDictionary, update as CFDictionary)
+        #if DEBUG
+        if status != errSecSuccess && status != errSecItemNotFound { print("Kabar Keychain update status: \(status)") }
+        #endif
         if status == errSecItemNotFound {
             var add = q; add[kSecValueData as String] = data; add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
             guard SecItemAdd(add as CFDictionary, nil) == errSecSuccess else { throw KabarError.invalid("Kunci pasangan tidak dapat disimpan. Periksa penandatanganan aplikasi.") }

@@ -20,14 +20,14 @@ jobs:
       - run: bash scripts/test-apple.sh
       - run: brew install xcodegen
       - run: cd apple && xcodegen generate
-      - run: xcodebuild -project apple/Kabar.xcodeproj -scheme Kabar -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath work/AppleBuild CODE_SIGNING_ALLOWED=NO build | tee work/apple-build.log
+      - run: xcodebuild -project apple/Kabar.xcodeproj -scheme Kabar -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath work/AppleBuild CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO build | tee work/apple-build.log
         shell: bash --noprofile --norc -eo pipefail {0}
       - name: UI test on iPhone simulator
         run: |
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for v in d["devices"].values() for x in v if x["name"].startswith("iPhone")))')
           xcrun simctl boot "$DEVICE" || true
           xcrun simctl bootstatus "$DEVICE" -b
-          xcodebuild -project apple/Kabar.xcodeproj -scheme Kabar -destination "platform=iOS Simulator,id=$DEVICE" -parallel-testing-enabled NO -derivedDataPath work/AppleBuild -resultBundlePath work/AppleUI.xcresult CODE_SIGNING_ALLOWED=NO test | tee work/apple-ui.log
+          xcodebuild -project apple/Kabar.xcodeproj -scheme Kabar -destination "platform=iOS Simulator,id=$DEVICE" -parallel-testing-enabled NO -derivedDataPath work/AppleBuild -resultBundlePath work/AppleUI.xcresult CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO test | tee work/apple-ui.log
         shell: bash --noprofile --norc -eo pipefail {0}
       - name: Export UI screenshots
         if: always()
