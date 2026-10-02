@@ -6,7 +6,8 @@ final class KabarUITests: XCTestCase {
         let opened=app.buttons["sender-setup"].waitForExistence(timeout:40)
         let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="Kabar initial screen";screenshot.lifetime = .keepAlways;add(screenshot)
         XCTAssertTrue(opened,app.debugDescription);app.buttons["sender-setup"].tap()
-        XCTAssertTrue(app.buttons["home"].waitForExistence(timeout:10))
+        // The status controls are below the fold on iPhone; verify navigation before scrolling.
+        XCTAssertTrue(app.tabBars.buttons["Beranda"].waitForExistence(timeout:15),app.debugDescription)
         // Pause delivery to verify the persistent offline queue through actual taps.
         app.tabBars.buttons["Pengaturan"].tap();app.buttons["Jeda koneksi"].tap();app.tabBars.buttons["Beranda"].tap()
         app.swipeUp();app.buttons["home"].tap();app.buttons["meal"].tap();app.buttons["outside"].tap()
