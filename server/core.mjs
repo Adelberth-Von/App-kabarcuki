@@ -2,7 +2,7 @@ import { createHash, createPublicKey, sign, timingSafeEqual, verify } from 'node
 export const hash = text => createHash('sha256').update(text).digest('hex');
 function strictSignature(text) {
   const data=Buffer.from(text,'base64url');
-  if(data.toString('base64url')!==text || data.length<68 || data.length>72 || data[0]!==0x30 || data[1]!==data.length-2)throw new Error('Invalid DER signature');
+  if(data.toString('base64url')!==text || data.length<8 || data.length>72 || data[0]!==0x30 || data[1]!==data.length-2)throw new Error('Invalid DER signature');
   return data;
 }
 export function authorized(capability, expectedHash) {
@@ -25,7 +25,7 @@ export function verifyEnvelope(envelope, publicDER) {
 }
 export function verifyAlert(envelope, proof, publicDER) {
   try {
-    if (!/^KB1\.[A-Za-z0-9_-]{80,120}$/.test(proof ?? '')) return false;
+    if (!/^KB1\.[A-Za-z0-9_-]{11,96}$/.test(proof ?? '')) return false;
     return verify('sha256',Buffer.from('kabar-alert-v1:'+envelope),createPublicKey({key:Buffer.from(publicDER,'base64url'),format:'der',type:'spki'}),strictSignature(proof.slice(4)));
   } catch { return false; }
 }
