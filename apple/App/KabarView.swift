@@ -35,7 +35,7 @@ struct KabarView: View {
             PixelScene().frame(height:180)
             Text("Kabar kecil.\nTenang untuk keluarga.").font(.largeTitle.bold())
             Text("Bagikan status makan dan tempat tinggal dengan satu ketukan. Hubungkan HP memakai kode pasangan.").foregroundStyle(.secondary)
-            Button("Aku membagikan kabar") { model.beginSender() }.buttonStyle(.borderedProminent).tint(sage).controlSize(.large)
+            Button("Aku membagikan kabar") { model.beginSender() }.buttonStyle(.borderedProminent).tint(sage).controlSize(.large).accessibilityIdentifier("sender-setup")
             Text("Menerima kabar").font(.headline)
             TextField("Tempel kode pasangan",text:$joinCode,axis:.vertical).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
             Button("Hubungkan HP ini") { model.join(joinCode) }.buttonStyle(.bordered).controlSize(.large)

@@ -11,7 +11,7 @@ final class NotificationService: UNNotificationServiceExtension {
         content.title = "Kabar keluarga"; content.body = "Ada kabar baru. Buka aplikasi untuk melihatnya."; fallback = content
         work = Task {
             do {
-                guard let pair = SharedStore.pairing(), request.content.userInfo["topic"] as? String == pair.topic else { finish(content); return }
+                guard SharedStore.defaults.object(forKey:"enabled") as? Bool ?? true, let pair = SharedStore.pairing(), request.content.userInfo["topic"] as? String == pair.topic else { finish(content); return }
                 var envelope = request.content.userInfo["envelope"] as? String
                 if envelope == nil, let id = request.content.userInfo["messageId"] as? String,
                    id.range(of:"^[a-f0-9]{32}$",options:.regularExpression) != nil,

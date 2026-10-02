@@ -48,7 +48,8 @@ async function push(device,payload,collapseId) {
 }
 async function consume(topic,group,message) {
   if (groups[topic]!==group || message.event!=='message' || typeof message.id!=='string' || !verifyEnvelope(message.message,group.publicKey)) return;
-  if (group.recent?.includes(message.id)) return;
+  const fingerprint=hash(message.message);
+  if (group.recent?.includes(fingerprint)) {group.cursor=message.id;await save();return;}
   const now=Date.now();
   for (const [device,registered] of Object.entries(group.devices)) { if(now-registered>14*24*3600*1000)delete group.devices[device]; }
   const alert=verifyAlert(message.message,message.title,group.publicKey);
@@ -67,7 +68,7 @@ async function consume(topic,group,message) {
     }
     delete delivered[message.id];
   }
-  group.cursor=message.id;group.recent=[...(group.recent ?? []),message.id].slice(-64);await save();
+  group.cursor=message.id;group.recent=[...(group.recent ?? []),fingerprint].slice(-256);await save();
 }
 function watch(topic,group) {
   if(workers.has(topic))return;

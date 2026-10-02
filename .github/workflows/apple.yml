@@ -25,8 +25,13 @@ jobs:
       - name: UI test on iPhone simulator
         run: |
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for v in d["devices"].values() for x in v if x["name"].startswith("iPhone")))')
-          xcodebuild -project apple/Kabar.xcodeproj -scheme Kabar -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath work/AppleBuild -resultBundlePath work/AppleUI.xcresult CODE_SIGNING_ALLOWED=NO test | tee work/apple-ui.log
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcodebuild -project apple/Kabar.xcodeproj -scheme Kabar -destination "platform=iOS Simulator,id=$DEVICE" -parallel-testing-enabled NO -derivedDataPath work/AppleBuild -resultBundlePath work/AppleUI.xcresult CODE_SIGNING_ALLOWED=NO test | tee work/apple-ui.log
         shell: bash --noprofile --norc -eo pipefail {0}
+      - name: Export UI screenshots
+        if: always()
+        run: if [ -d work/AppleUI.xcresult ]; then xcrun xcresulttool export attachments --path work/AppleUI.xcresult --output-path work/AppleScreenshots; fi
       - uses: actions/upload-artifact@v4
         with:
           name: Kabar-Apple-simulator
@@ -39,4 +44,5 @@ jobs:
             work/apple-build.log
             work/apple-ui.log
             work/AppleUI.xcresult
+            work/AppleScreenshots
           if-no-files-found: ignore

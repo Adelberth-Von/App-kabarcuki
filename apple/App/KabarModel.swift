@@ -63,7 +63,16 @@ import KabarCore
         next.mealCategory = ""; next.events = []; next.revision += 1
         do { try enqueue(next, notify: false) } catch { self.error = error.localizedDescription }
     }
-    func pause() { SharedStore.defaults.set(!enabled, forKey: "enabled"); if enabled { start() } else { stop(); connection = "Koneksi dijeda" } }
+    func pause() {
+        SharedStore.defaults.set(!enabled, forKey: "enabled")
+        if enabled { start() }
+        else {
+            stop(); connection = "Koneksi dijeda"
+            if role == "receiver", let pair = SharedStore.pairing(), let token = SharedStore.defaults.string(forKey:"deviceToken"), let endpoint = validPushURL() {
+                Task { try? await sendRegistration(endpoint:endpoint,pair:pair,token:token,remove:true) }
+            }
+        }
+    }
     func stop() { sync?.cancel(); sync = nil; registration?.cancel(); registration = nil }
     func disconnect() {
         if let pair = SharedStore.pairing(), let token = SharedStore.defaults.string(forKey: "deviceToken"), let endpoint = validPushURL() {
@@ -142,7 +151,7 @@ import KabarCore
     }
     func registerPush() {
         registration?.cancel()
-        guard role == "receiver", let pair = SharedStore.pairing(), let token = SharedStore.defaults.string(forKey: "deviceToken"), let endpoint = validPushURL() else { return }
+        guard enabled, role == "receiver", let pair = SharedStore.pairing(), let token = SharedStore.defaults.string(forKey: "deviceToken"), let endpoint = validPushURL() else { return }
         registration = Task {
             do { try await sendRegistration(endpoint: endpoint, pair: pair, token: token, remove: false) }
             catch { if !Task.isCancelled { self.error = "Server notifikasi Apple belum terhubung. Kabar tetap dapat dibaca saat aplikasi dibuka." } }

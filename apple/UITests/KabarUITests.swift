@@ -3,7 +3,9 @@ final class KabarUITests: XCTestCase {
     func testSenderFlowAndEditableButtons() throws {
         continueAfterFailure = false
         let app = XCUIApplication(); app.launchArguments = ["-KabarQAClean"]; app.launch()
-        XCTAssertTrue(app.buttons["Aku membagikan kabar"].waitForExistence(timeout:15)); app.buttons["Aku membagikan kabar"].tap()
+        let opened=app.buttons["sender-setup"].waitForExistence(timeout:40)
+        let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="Kabar initial screen";screenshot.lifetime = .keepAlways;add(screenshot)
+        XCTAssertTrue(opened,app.debugDescription);app.buttons["sender-setup"].tap()
         XCTAssertTrue(app.buttons["home"].waitForExistence(timeout:10))
         // Pause delivery to verify the persistent offline queue through actual taps.
         app.tabBars.buttons["Pengaturan"].tap();app.buttons["Jeda koneksi"].tap();app.tabBars.buttons["Beranda"].tap()
@@ -13,13 +15,12 @@ final class KabarUITests: XCTestCase {
         app.tabBars.buttons["Pengaturan"].tap();app.buttons["Edit nama, tombol & jam makan"].tap()
         let fields=app.textFields
         XCTAssertTrue(fields["Kost"].waitForExistence(timeout:5))
-        let home=fields["Kost"];home.tap();home.press(forDuration:1.2)
-        if app.menuItems["Select All"].waitForExistence(timeout:2) { app.menuItems["Select All"].tap();home.typeText("Rumah") }
-        else { home.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:4)+"Rumah") }
+        let home=fields["Kost"];home.tap();home.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:4)+"Rumah")
         app.navigationBars.buttons["Simpan"].tap();app.tabBars.buttons["Beranda"].tap();app.swipeUp()
         XCTAssertTrue(app.buttons["home"].waitForExistence(timeout:5));app.buttons["home"].tap()
         app.tabBars.buttons["Riwayat"].tap();XCTAssertTrue(app.staticTexts["Di rumah"].waitForExistence(timeout:5))
         app.terminate();app.launchArguments=[];app.launch();app.tabBars.buttons["Riwayat"].tap()
         XCTAssertTrue(app.staticTexts["Di rumah"].waitForExistence(timeout:5))
+        let final=XCTAttachment(screenshot:app.screenshot());final.name="Kabar edited history";final.lifetime = .keepAlways;add(final)
     }
 }
