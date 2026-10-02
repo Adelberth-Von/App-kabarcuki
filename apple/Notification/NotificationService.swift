@@ -1,0 +1,36 @@
+import UserNotifications
+import WidgetKit
+import KabarCore
+final class NotificationService: UNNotificationServiceExtension {
+    private var completion: ((UNNotificationContent) -> Void)?
+    private var fallback: UNMutableNotificationContent?
+    private var work: Task<Void,Never>?
+    override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
+        completion = contentHandler
+        guard let content = request.content.mutableCopy() as? UNMutableNotificationContent else { contentHandler(request.content); completion = nil; return }
+        content.title = "Kabar keluarga"; content.body = "Ada kabar baru. Buka aplikasi untuk melihatnya."; fallback = content
+        work = Task {
+            do {
+                guard let pair = SharedStore.pairing(), request.content.userInfo["topic"] as? String == pair.topic else { finish(content); return }
+                var envelope = request.content.userInfo["envelope"] as? String
+                if envelope == nil, let id = request.content.userInfo["messageId"] as? String,
+                   id.range(of:"^[a-f0-9]{32}$",options:.regularExpression) != nil,
+                   let base = SharedStore.defaults.string(forKey:"pushEndpoint"), let url = URL(string:base), url.scheme == "https", url.host != nil {
+                    var r = URLRequest(url:url.appendingPathComponent("messages").appendingPathComponent(id)); r.timeoutInterval = 12
+                    r.setValue("Bearer "+pair.pushCapability,forHTTPHeaderField:"Authorization")
+                    let (data,response) = try await URLSession.shared.data(for:r)
+                    guard (response as? HTTPURLResponse)?.statusCode == 200, data.count <= 8192 else { finish(content); return }
+                    envelope = String(data:data,encoding:.utf8)
+                }
+                guard let envelope, !Task.isCancelled else { finish(content); return }
+                let packet = try Packet.decode(envelope,pairing:pair)
+                guard SharedStore.pairing()?.topic == pair.topic else { finish(content); return }
+                _ = try SharedStore.receive(packet,topic:pair.topic)
+                content.title = "Kabar \(packet.state.name)"; content.body = packet.notificationBody
+                WidgetCenter.shared.reloadAllTimelines(); finish(content)
+            } catch { finish(content) }
+        }
+    }
+    private func finish(_ content: UNNotificationContent) { if let handler = completion { completion = nil; handler(content) } }
+    override func serviceExtensionTimeWillExpire() { work?.cancel(); if let content = fallback { finish(content) } }
+}

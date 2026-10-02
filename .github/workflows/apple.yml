@@ -1,0 +1,28 @@
+name: Apple build and interoperability
+on:
+  push:
+    paths: ['apple/**', 'src/id/kabar/app/Pairing.java', 'src/id/kabar/app/KabarState.java', 'src/id/kabar/app/StatusLogic.java', 'tests/Interop.java', 'scripts/test-apple.sh', '.github/workflows/apple.yml']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  apple:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - run: bash scripts/test-apple.sh
+      - run: brew install xcodegen
+      - run: cd apple && xcodegen generate
+      - run: xcodebuild -project apple/Kabar.xcodeproj -scheme Kabar -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath work/AppleBuild CODE_SIGNING_ALLOWED=NO build | tee work/apple-build.log
+        shell: bash --noprofile --norc -eo pipefail {0}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kabar-Apple-simulator
+          path: work/AppleBuild/Build/Products/Debug-iphonesimulator/Kabar.app
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: apple-build-log, path: work/apple-build.log, if-no-files-found: ignore }

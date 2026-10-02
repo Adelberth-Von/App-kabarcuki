@@ -16,3 +16,5 @@ work/
 DerivedData/
 **/xcuserdata/
 **/xcuserstate
+apple/Fixtures/
+apple/*.xcodeproj/

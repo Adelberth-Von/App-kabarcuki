@@ -1,0 +1,97 @@
+name: Kabar
+options:
+  bundleIdPrefix: id.kabar
+  deploymentTarget:
+    iOS: '16.0'
+packages:
+  KabarCore:
+    path: .
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    TARGETED_DEVICE_FAMILY: '1,2'
+    MARKETING_VERSION: '0.2.0'
+    CURRENT_PROJECT_VERSION: '2'
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ''
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targets:
+  Kabar:
+    type: application
+    platform: iOS
+    sources: [App, Shared]
+    dependencies:
+      - package: KabarCore
+      - target: KabarWidget
+        embed: true
+      - target: KabarNotification
+        embed: true
+    info:
+      path: Config/App-Info.plist
+      properties:
+        CFBundleDisplayName: Kabar
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        KabarKeychainGroup: $(AppIdentifierPrefix)id.kabar.shared
+        CFBundleURLTypes:
+          - CFBundleURLSchemes: [kabar]
+    entitlements:
+      path: Config/App.entitlements
+      properties:
+        com.apple.security.application-groups: [group.id.kabar.shared]
+        keychain-access-groups: ['$(AppIdentifierPrefix)id.kabar.shared']
+        aps-environment: development
+  KabarWidget:
+    type: app-extension
+    platform: iOS
+    sources: [Widget, Shared]
+    dependencies:
+      - package: KabarCore
+    settings:
+      base:
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+    info:
+      path: Config/Widget-Info.plist
+      properties:
+        CFBundleDisplayName: Kabar Widget
+        KabarKeychainGroup: $(AppIdentifierPrefix)id.kabar.shared
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Config/Widget.entitlements
+      properties:
+        com.apple.security.application-groups: [group.id.kabar.shared]
+        keychain-access-groups: ['$(AppIdentifierPrefix)id.kabar.shared']
+  KabarNotification:
+    type: app-extension
+    platform: iOS
+    sources: [Notification, Shared/SharedStore.swift]
+    dependencies:
+      - package: KabarCore
+    settings:
+      base:
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+    info:
+      path: Config/Notification-Info.plist
+      properties:
+        CFBundleDisplayName: Kabar Notifications
+        KabarKeychainGroup: $(AppIdentifierPrefix)id.kabar.shared
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
+    entitlements:
+      path: Config/Notification.entitlements
+      properties:
+        com.apple.security.application-groups: [group.id.kabar.shared]
+        keychain-access-groups: ['$(AppIdentifierPrefix)id.kabar.shared']
+schemes:
+  Kabar:
+    build:
+      targets:
+        Kabar: all
+    run:
+      config: Debug

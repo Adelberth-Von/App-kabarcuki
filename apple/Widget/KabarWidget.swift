@@ -1,0 +1,44 @@
+import SwiftUI
+import WidgetKit
+import KabarCore
+struct KabarEntry: TimelineEntry { let date: Date; let state: KabarState; let paired: Bool }
+struct KabarProvider: TimelineProvider {
+    func placeholder(in context: Context) -> KabarEntry { var s = KabarState(); s.location = "home"; return KabarEntry(date:Date(),state:s,paired:true) }
+    func getSnapshot(in context: Context, completion: @escaping (KabarEntry) -> Void) { completion(KabarEntry(date:Date(),state:SharedStore.state(),paired:SharedStore.pairing() != nil)) }
+    func getTimeline(in context: Context, completion: @escaping (Timeline<KabarEntry>) -> Void) {
+        Task {
+            if SharedStore.defaults.string(forKey:"role") == "receiver", (SharedStore.defaults.object(forKey:"enabled") as? Bool ?? true), let pair = SharedStore.pairing(), let packet = try? await RelayClient.latest(pair) {
+                _ = try? SharedStore.receive(packet, topic:pair.topic)
+            }
+            let entry = KabarEntry(date:Date(),state:SharedStore.state(),paired:SharedStore.pairing() != nil)
+            completion(Timeline(entries:[entry],policy:.after(Date().addingTimeInterval(15*60))))
+        }
+    }
+}
+struct KabarWidgetView: View {
+    var entry: KabarEntry
+    var content: some View {
+        HStack(spacing:12) {
+            VStack(alignment:.leading,spacing:6) {
+                Text("kabar. \(entry.state.name)").font(.headline).foregroundStyle(Color(red:0.29,green:0.42,blue:0.32))
+                if entry.paired {
+                    Text(entry.state.locationText).font(.subheadline.bold())
+                    Text(entry.state.when(entry.state.locationAt)).font(.caption2)
+                    Text("\(entry.state.meal): \(entry.state.when(entry.state.mealAt))").font(.caption2)
+                    Text("\(entry.state.home): \(entry.state.when(entry.state.homeAt))").font(.caption2)
+                } else { Text("Buka Kabar untuk menghubungkan HP").font(.caption) }
+            }.minimumScaleFactor(0.8)
+            PixelScene(outside:entry.state.location == "outside").frame(width:70,height:70)
+        }.padding(12).widgetURL(URL(string:"kabar://home"))
+    }
+    var body: some View {
+        if #available(iOSApplicationExtension 17.0, *) { content.containerBackground(Color(red:0.97,green:0.96,blue:0.92),for:.widget) }
+        else { content.background(Color(red:0.97,green:0.96,blue:0.92)) }
+    }
+}
+@main struct KabarWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind:"KabarWidget",provider:KabarProvider()) { KabarWidgetView(entry:$0) }
+            .configurationDisplayName("Kabar keluarga").description("Lihat status tempat tinggal dan makan terakhir.").supportedFamilies([.systemMedium])
+    }
+}
