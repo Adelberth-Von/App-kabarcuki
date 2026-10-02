@@ -28,7 +28,7 @@ import KabarCore
         } catch { self.error = error.localizedDescription }
     }
     func join(_ code: String) {
-        do { try install(Pairing(code: code), role: "receiver"); start() } catch { self.error = error.localizedDescription }
+        do { try install(Pairing(code: code), role: "receiver"); start(); requestNotifications() } catch { self.error = error.localizedDescription }
     }
     private func install(_ pair: Pairing, role: String) throws {
         stop(); SharedStore.reset()
@@ -68,6 +68,7 @@ import KabarCore
         if enabled { start() }
         else {
             stop(); connection = "Koneksi dijeda"
+            SharedStore.defaults.set(false,forKey:"pushRegistered")
             if role == "receiver", let pair = SharedStore.pairing(), let token = SharedStore.defaults.string(forKey:"deviceToken"), let endpoint = validPushURL() {
                 Task { try? await sendRegistration(endpoint:endpoint,pair:pair,token:token,remove:true) }
             }
@@ -103,6 +104,7 @@ import KabarCore
                         }
                     } else {
                         let cursor = SharedStore.defaults.string(forKey: "cursor") ?? "latest"
+                        let listenedAt = KabarState.now
                         var request = URLRequest(url: URL(string: "https://ntfy.sh/\(pair.topic)/json?since=\(cursor)")!); request.timeoutInterval = 100
                         let (bytes, response) = try await URLSession.shared.bytes(for: request)
                         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw KabarError.invalid("Relay belum terhubung") }
@@ -114,7 +116,7 @@ import KabarCore
                             let previous = SharedStore.state().revision
                             if try SharedStore.receive(packet, topic: pair.topic) {
                                 state = packet.state; WidgetCenter.shared.reloadAllTimelines()
-                                if packet.notify && previous > 0 { await notify(packet) }
+                                if packet.notify && (previous > 0 || (msg.time ?? 0)*1000 >= listenedAt-2000) && !SharedStore.defaults.bool(forKey:"pushRegistered") { await notify(packet) }
                             }
                             if let id = msg.id, id.range(of: "^[a-zA-Z0-9]+$", options: .regularExpression) != nil { SharedStore.defaults.set(id, forKey: "cursor") }
                         }
@@ -147,13 +149,16 @@ import KabarCore
     }
     func savePushEndpoint() {
         guard pushEndpoint.isEmpty || validPushURL() != nil else { error = "Alamat notifikasi harus berupa URL HTTPS"; return }
-        SharedStore.defaults.set(pushEndpoint, forKey: "pushEndpoint"); registerPush()
+        SharedStore.defaults.set(pushEndpoint, forKey: "pushEndpoint"); SharedStore.defaults.set(false,forKey:"pushRegistered"); registerPush()
     }
     func registerPush() {
         registration?.cancel()
         guard enabled, role == "receiver", let pair = SharedStore.pairing(), let token = SharedStore.defaults.string(forKey: "deviceToken"), let endpoint = validPushURL() else { return }
         registration = Task {
-            do { try await sendRegistration(endpoint: endpoint, pair: pair, token: token, remove: false) }
+            do {
+                try await sendRegistration(endpoint: endpoint, pair: pair, token: token, remove: false)
+                if !Task.isCancelled && SharedStore.pairing()?.topic == pair.topic { SharedStore.defaults.set(true,forKey:"pushRegistered") }
+            }
             catch { if !Task.isCancelled { self.error = "Server notifikasi Apple belum terhubung. Kabar tetap dapat dibaca saat aplikasi dibuka." } }
         }
     }

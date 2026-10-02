@@ -52,7 +52,7 @@ enum SharedStore {
         try save(packet.state); return true
     }
 }
-struct RelayMessage: Decodable { let id: String?; let event: String; let message: String? }
+struct RelayMessage: Decodable { let id: String?; let event: String; let message: String?; let time: Int64? }
 enum RelayClient {
     static func publish(topic: String, envelope: String, proof: String? = nil) async throws {
         var r = URLRequest(url: URL(string: "https://ntfy.sh/" + topic)!); r.httpMethod = "POST"; r.timeoutInterval = 25
