@@ -41,6 +41,7 @@ jobs:
           api-level: '${{ matrix.api }}'
           arch: x86_64
           target: google_apis
+          heap-size: 256M
           disable-animations: true
           script: |
             adb shell am force-stop com.google.android.apps.nexuslauncher

@@ -154,6 +154,6 @@ public class DeviceQA extends Instrumentation {
             JSONObject packet=new JSONObject(receiver.decrypt(queue.getJSONObject(queue.length()-1).getString("body")));ok(packet.getJSONObject("state").getJSONObject("gps").getDouble("lat")==point.lat,"location included in authenticated encrypted packet");
         }finally{main(()->manager.removeTestProvider("gps"));shell("appops set id.kabar.app android:mock_location deny");}
     }
-    private void saveScreenshot(Context c,String name)throws Exception {android.graphics.Bitmap bitmap=getUiAutomation().takeScreenshot();try(java.io.FileOutputStream out=new java.io.FileOutputStream(new java.io.File(c.getCacheDir(),name))){if(bitmap!=null)bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,out);}}
+    private void saveScreenshot(Context c,String name)throws Exception {Thread.sleep(400);android.graphics.Bitmap bitmap=getUiAutomation().takeScreenshot();try(java.io.FileOutputStream out=new java.io.FileOutputStream(new java.io.File(c.getCacheDir(),name))){if(bitmap!=null)bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,out);}}
     private ScrollView scrollView(){ViewGroup content=activity.findViewById(android.R.id.content);LinearLayout root=(LinearLayout)content.getChildAt(0);return (ScrollView)root.getChildAt(0);}
 }
