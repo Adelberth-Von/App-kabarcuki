@@ -114,5 +114,9 @@ schemes:
     build:
       targets:
         Runner: all
+      preActions:
+        - name: Prepare Flutter Framework
+          script: /bin/sh "$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh" prepare
+          settingsTarget: Runner
     run:
       config: Debug

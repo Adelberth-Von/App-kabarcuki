@@ -1,85 +1,73 @@
-# Kabar 0.2.0 — Android dan Apple
+# abc 0.5.0 — kabar kecil, bikin tenang
 
-Kabar memakai tema sage, krem, peach, dan ilustrasi pixel art. Tidak ada layar login. Satu APK yang sama digunakan untuk pengirim dan penerima Android. Sumber aplikasi native iPhone/iPad tersedia di [apple/](apple/README.md); pairing dan statusnya kompatibel dengan Android. Versi Apple belum memiliki installer bertanda tangan/TestFlight atau backend APNs yang dideploy.
+Antarmuka **Flutter** yang sama dipakai untuk Android dan iPhone. Desain baru memakai kartu yang ringkas, ikon pixel, tiga tombol status di bagian atas, serta tema Default dan In Relationship. Sinkronisasi, enkripsi, lokasi, notifikasi, dan widget menggunakan kemampuan native masing-masing perangkat.
 
-Repositori: [Adelberth-Von/App-kabarcuki](https://github.com/Adelberth-Von/App-kabarcuki). APK terbaru: [Kabar-0.2.0.apk](Kabar-0.2.0.apk). Versi 0.1.0 dipertahankan sebagai arsip pengujian.
+**Unduh Android:** [abc.apk](https://raw.githubusercontent.com/Adelberth-Von/App-kabarcuki/refs/heads/main/abc.apk). Minimal Android 10. APK lama Kabar disimpan sebagai arsip. **APK tidak dapat dipasang di iPhone**; proyek iOS tersedia, tetapi instalasi pada iPhone fisik memerlukan penandatanganan Apple/TestFlight. Lihat [QA](QA.md) dan [pratinjau](TAMPILAN.md).
 
-## Pasang dan hubungkan
+## Cara mencoba di dua HP Android
 
-1. Kirim **Kabar-0.2.0.apk** ke kedua HP Android. Minimal **Android 10 (API 29)**. APK tidak dapat dipasang di iPhone.
-2. Buka file APK. Jika Android meminta, izinkan instalasi dari aplikasi yang dipakai membuka file, kemudian tekan **Install**. Jika aplikasi pemindai keamanan menampilkan hasil, ikuti informasi yang ditampilkan; jangan menonaktifkan perlindungan perangkat.
-3. Di HP pertama, buka Kabar dan pilih **Aku membagikan kabar**. Izinkan notifikasi bila diminta.
-4. Buka **Pengaturan → Salin kode pasangan**. Pindahkan kode lengkap ke HP kedua, misalnya melalui pesan pribadi. Kode bukan PIN pendek; salin/tempel agar tidak salah.
-5. Di HP kedua pilih **Aku menerima kabar**, tempel kode, lalu tekan **Hubungkan**. Izinkan notifikasi.
-6. Tekan **Kost** di HP pertama. Status di HP kedua akan berubah. Coba **Makan**, lalu **Keluar**. Kedua HP dapat memakai jaringan internet yang berbeda.
-7. Di setiap HP buka **Pengaturan → Tambahkan widget**, lalu konfirmasi melalui launcher. Jika launcher tidak mendukung penambahan otomatis, tekan lama area kosong layar utama → Widget → Kabar.
+1. Buka tautan **abc.apk** di atas melalui browser HP dan unduh file tersebut.
+2. Buka folder Download, ketuk **abc.apk**, lalu pilih **Install/Update**. Jika diminta, izinkan pemasangan dari browser atau pengelola file yang digunakan. Pertahankan Play Protect aktif; peringatan pengembang belum dikenal tidak berarti aplikasi sudah dinyatakan aman oleh Google.
+3. Buka **abc** dan masukkan panggilan, misalnya **Cuki**. Sapaan pada HP itu akan menjadi **Hai, Cuki**. Pada pembaruan dari Kabar, pasangan dan riwayat tetap dipertahankan.
+4. Pada HP pengirim baru, pilih **Aku membagikan kabar**. Buka **Pengaturan → Kode pasangan**, salin seluruh kode, lalu kirim secara pribadi ke HP kedua.
+5. Pada HP kedua, masukkan panggilan pemilik HP itu dan pilih **Aku menerima kabar**. Tempel kode lengkap lalu tekan **Hubungkan**.
+6. Pada pengirim, ketuk **Kost**, periksa konfirmasi, lalu **Kirim kabar**. Coba juga **Keluar** dan **Makan**. Kedua HP memerlukan internet, tetapi boleh menggunakan jaringan berbeda.
+7. Buka **Pengaturan → Pengaturan notifikasi** pada masing-masing HP. Aktifkan notifikasi abc. Untuk mencoba latar belakang, cek pengaturan baterai aplikasi sesuai merek HP.
+8. Buka **Pengaturan → Tambahkan widget** atau tahan area kosong layar utama → Widget → abc. Tombol pada widget pengirim membuka aplikasi untuk meminta konfirmasi.
 
-Kode pasangan bersifat rahasia. Siapa pun yang memiliki kode dapat membaca status. Hanya HP pengirim memiliki kunci untuk menandatangani status baru. Versi ini memakai undangan berupa kode bersama; belum ada persetujuan per perangkat atau daftar penerima individual. Untuk mencabut akses, gunakan **Ganti kode pasangan**, lalu hubungkan kembali penerima yang diinginkan.
+APK ini memakai identitas `id.kabar.app` dan kunci pengembangan yang sama dengan Kabar 0.1–0.4. Pembaruan tidak perlu uninstall. Build sendiri dengan kunci debug berbeda tidak dapat menggantikan APK ini. Kunci pribadi build tidak disertakan dalam repositori/paket sumber.
 
-## Tombol dan catatan waktu
+## Panggilan, bahasa, jam dan appearance
 
-- **Keluar:** memperbarui lokasi di luar, mempertahankan waktu terakhir di tempat tinggal dan makan.
-- **Kost:** memperbarui lokasi tempat tinggal dan waktu terakhir berada di sana.
-- **Makan:** mencatat waktu serta kategori makan; lokasi tidak berubah.
-- **Edit nama & tombol:** mengganti nama pengirim dan label ketiga tombol. Fungsi lokasi/makan tetap mengikuti jenis tombolnya. Contoh: Keluar → Pergi, Kost → Rumah, Makan → Sudah makan.
-- **Atur jam makan:** mengubah tiga rentang jam. Batas awal termasuk, batas akhir tidak termasuk. Rentang harus berurutan tanpa tumpang tindih.
-- Jadwal awal: sarapan 05.00–10.00; siang 10.00–15.00; malam 17.00–22.00. Di luar rentang dicatat sebagai **Makan**.
-- Status memakai zona waktu HP pengirim. Catatan melewati tengah malam tetap tersimpan dengan label **Kemarin**, sementara daftar makan hari ini mengikuti tanggal baru.
-- **Belum tercatat** berarti belum ada tombol ditekan; aplikasi tidak menyimpulkan bahwa pengguna belum makan.
-- Lokasi yang berumur minimal 6 jam diberi keterangan sudah lama. Tidak ada GPS atau pelacakan lokasi otomatis.
-- Riwayat menampilkan 12 kabar terbaru. Catatan sarapan/siang/malam disimpan terpisah agar tidak hilang hanya karena riwayat bergeser.
+Di **Pengaturan**, setiap HP dapat memilih **Indonesia, English, atau Deutsch**. Panggilan, bahasa, format jam, tema, dan mode warna adalah pengaturan lokal; tidak dikirim ke HP keluarga. Label buatan pengguna tetap ditampilkan sesuai tulisan aslinya.
 
-## Internet, notifikasi, dan baterai
+**Format waktu** menyediakan **24 jam** (`12.00 WIB - Indonesia`) dan **12 jam AM/PM** (`12.00 PM WIB - Indonesia`). Jam pada beranda/riwayat mengikuti zona waktu sistem HP pembaca. Detail juga menunjukkan waktu di zona pengirim, identifier zona, serta waktu kejadian UTC. Jam musim panas dihitung untuk tanggal masing-masing kejadian. Nama negara menjelaskan zona waktu, bukan bukti lokasi GPS. Aktifkan zona waktu otomatis di pengaturan HP ketika bepergian.
 
-Versi uji memakai relay publik **https://ntfy.sh**, sehingga tidak perlu membuat akun Firebase atau menyiapkan server sendiri. Status dienkripsi AES-256-GCM dan ditandatangani ECDSA P-256 sebelum dikirim melalui HTTPS. Relay menerima ciphertext, waktu pengiriman, dan metadata jaringan. Tidak ada nama atau lokasi dalam teks pesan relay.
+Pilih tema **Default** (krem/periwinkle, satu karakter) atau **In Relationship** (rose/lilac, dua karakter dengan hati), lalu **Terang** atau **Gelap**. Ilustrasi dan sapaan mengikuti pagi 05.00–10.59, siang 11.00–14.59, sore 15.00–17.59, dan malam 18.00–04.59. Suasana diperbarui setiap menit saat aplikasi aktif. Mode warna tetap mengikuti pilihan Anda; mode terang pada malam hari menampilkan langit malam dengan kartu terang.
 
-Layanan koneksi aktif menampilkan notifikasi tetap **Kabar aktif**. Ini memakai foreground service Android, bukan Firebase push. Menutup layar aplikasi dengan tombol Home tetap memungkinkan layanan berjalan, tetapi penghematan baterai, Doze, jaringan, pengaturan notifikasi, dan kebijakan produsen HP dapat menunda atau menghentikannya. Untuk uji latar belakang, izinkan aktivitas latar belakang Kabar pada pengaturan baterai. Setelah restart, Paksa berhenti, atau penghentian layanan oleh Android, buka Kabar kembali. Jangan mengharapkan aplikasi berjalan diam-diam atau notifikasi instan yang dijamin.
+## Tombol, makan hari ini dan riwayat
 
-Status **Kabar terkirim ke relay** berarti server menerima pesan, bukan tanda HP penerima sudah membacanya. **Terhubung ke relay** menunjukkan koneksi penerima ke layanan, bukan keberadaan pengirim secara langsung.
+- **Keluar:** memperbarui status di luar. Waktu terakhir di kost dan makan tetap tersimpan.
+- **Kost:** memperbarui status tempat tinggal dan waktu terakhir berada di sana.
+- **Makan:** mencatat waktu makan tanpa mengubah status tempat tinggal. Kategori dapat otomatis atau dipilih manual.
+- **Sarapan / Makan siang / Makan malam** di kartu Makan hari ini dapat diketuk. Pengirim mendapat konfirmasi sebelum catatan dikirim; penerima dapat membuka detail catatan yang masih tersedia.
+- **Edit nama & tombol** serta **Jadwal makan** meminta konfirmasi sebelum mengirim perubahan ke penerima. Label awal Keluar/Kost/Makan dapat diganti, misalnya Pergi/Rumah/Sudah makan.
 
-Saat offline, pengirim menyimpan antrean maksimal 25 kabar dan mencoba kembali dengan jeda yang bertambah sampai 60 detik. Setelah penuh, aplikasi menolak kabar tambahan dengan penjelasan; kabar tersimpan sebelumnya tetap ada. Penerima memulihkan kabar yang masih tersedia di cache menggunakan cursor. Revisi yang sama atau lebih lama tidak mengubah status dan tidak menghasilkan notifikasi ulang.
+Jadwal awal: sarapan 05.00–10.00, siang 10.00–15.00, malam 17.00–22.00; di luar rentang dicatat sebagai Makan. Batas awal termasuk dan batas akhir tidak termasuk. Rentang harus berurutan tanpa tumpang tindih. Makan hari ini mengikuti tanggal/zona pengirim agar tidak bergeser ketika keluarga berada di negara berbeda. **Belum tercatat** berarti belum ada catatan, bukan kesimpulan bahwa orang itu belum makan.
 
-Relay memiliki batas penggunaan, tanpa jaminan layanan. Cache sementara umumnya 12 jam; jangan mengandalkannya sebagai arsip permanen. Jika pengirim tetap aktif, snapshot diperbarui setiap 4 jam tanpa notifikasi. Jika kedua aplikasi lama tidak aktif atau penerima belum pernah menerima status, buka pengirim dan tekan status lagi. Notifikasi kabar lama saat pemasangan pertama disenyapkan; pembaruan baru dan kabar yang tertunda setelah pernah terhubung dapat menghasilkan notifikasi.
+**Riwayat → Detail** menampilkan status, waktu lokal pembaca, waktu pengirim, zona, serta koordinat, akurasi, waktu pengambilan dan tombol peta jika lokasi disertakan pada kejadian itu. Catatan tanpa GPS tidak meminjam koordinat dari kejadian lain. Terdapat 12 kejadian terbaru; waktu sarapan/siang/malam tetap tersimpan terpisah.
 
-## Hapus dan putuskan
+## Lokasi opsional dan privasi
 
-- **Jeda koneksi:** menghentikan layanan. Lanjutkan dengan Aktifkan koneksi.
-- **Hapus riwayat:** pengirim mengosongkan status serta catatan makan/lokasi, lalu mengirim snapshot kosong ke penerima. Cache relay terenkripsi lama mengikuti masa simpan layanan dan tidak dihapus oleh tombol ini.
-- **Ganti kode pasangan:** mencabut penerimaan kabar baru melalui kode lama. Catatan yang sudah disimpan di HP lama tetap ada.
-- **Putuskan hubungan HP ini:** menghapus data dan kode pasangan lokal. Tidak menghapus data di HP lain.
-- **Uninstall Kabar:** membuka konfirmasi uninstall Android. Menghapus APK di Download hanya menghapus file installer, bukan aplikasi terpasang.
-- Tidak ada skrip terpisah yang dipasang di HP. Aplikasi dan data lokal dikelola Android.
+Aktifkan **Sertakan lokasi HP** pada konfirmasi status atau pilih **Perbarui lokasi**. Lokasi diambil sekali saat aplikasi terbuka. Tidak ada pelacakan latar belakang, izin Always, maupun geofence. Jika izin ditolak, GPS mati, atau sampel belum tersedia, status yang dikonfirmasi tetap disimpan tanpa titik baru. Refresh lokasi saja tidak membuat koordinat palsu.
 
-## Batas versi uji
+Titik menyertakan waktu dan perkiraan akurasi. Titik berumur 15 menit diberi penjelasan lama. Snapshot menyimpan titik terakhir serta GPS pada maksimal tiga posisi riwayat terbaru agar muat dalam relay. Detail menjelaskan jika koordinat suatu kejadian sudah tidak disimpan. Tautan peta membagikan koordinat ke layanan peta hanya setelah dipilih.
 
-Belum tersedia notifikasi push FCM yang hemat baterai, persetujuan penerima per perangkat, pengingat makan otomatis, GPS, pemulihan kunci pengirim, atau distribusi Play Store. Menghapus data atau memasang ulang HP pengirim dapat menghilangkan kunci pengirim; kode penerima tidak dapat memulihkannya. Buat pasangan baru jika ini terjadi. Menambah penerima dapat dilakukan dengan kode yang sama.
+Kode pasangan adalah rahasia: semua pemilik kode dapat membaca status/lokasi. Hanya pengirim memiliki kunci penandatanganan. Belum ada daftar penerima individual atau persetujuan per perangkat. **Ganti kode pasangan** mencabut akses menerima kabar baru melalui kode lama; hubungkan ulang penerima yang diinginkan. Salinan lama di HP lain/cache relay tidak dapat ditarik kembali.
 
-APK ini ditandatangani dengan kunci pengembangan lokal untuk sideload dan uji pribadi. Kunci build disimpan di folder kerja komputer, tidak dimasukkan ke APK atau paket sumber. Aplikasi tidak memiliki akses khusus, root, Accessibility Service, kontak, SMS, mikrofon, atau GPS.
+## Internet, notifikasi dan batas versi uji
 
-## Sumber dan build
+Relay uji adalah [ntfy.sh](https://ntfy.sh). Status dan lokasi dienkripsi AES-256-GCM dan ditandatangani ECDSA P-256 sebelum dikirim melalui HTTPS. Relay menerima ciphertext dan metadata jaringan/waktu pengiriman. Kunci dan data lokal tetap harus dilindungi melalui keamanan HP.
 
-Kode Java, resources XML, manifest, skrip build, dan tes tersedia dalam folder ini. Tidak ada dependensi runtime eksternal di APK.
+Android menggunakan foreground service dengan notifikasi **abc aktif**. Baterai, Doze, jaringan dan pengaturan merek HP dapat menunda kabar. Setelah restart atau Paksa berhenti, buka abc lagi. Status **Kabar terkirim** berarti diterima relay, bukan sudah dibaca penerima. Tidak ada jaminan notifikasi seketika.
 
-Proyek Gradle dan wrapper tersedia untuk Android Studio/CI: buka folder ini di Android Studio, pasang Android SDK 35 dan JDK 17, lalu jalankan `./gradlew :android:assembleDebug` (Windows: `./gradlew.bat`). Gradle wrapper memakai 8.11.1 dan AGP 8.9.1. APK Gradle ada di `android/build/outputs/apk/debug/android-debug.apk`.
+Saat offline, pengirim menyimpan maksimal 25 kabar dan mencoba ulang. Antrean penuh menolak kabar tambahan dengan penjelasan. Revisi duplikat/lama tidak memperbarui status atau memberi notifikasi ulang. Relay publik memiliki batas layanan dan cache sementara; ini bukan arsip permanen. Pengirim aktif memperbarui snapshot setiap empat jam tanpa notifikasi. Jika lama tidak aktif, buka pengirim dan kirim status lagi.
 
-APK yang dibagikan di root dibangun memakai pipeline langsung JDK 17, Android platform API 35, Build Tools 35.0.0, aapt2 → javac → D8 → zipalign → apksigner. Skrip `build.ps1` memakai alat di `work/tools` pada workspace asal atau parameter `ToolRoot`. Kunci lokal ini berbeda dari kunci debug Gradle; kedua jenis build tidak bisa dipakai saling menimpa instalasi tanpa kunci penandatanganan yang sama. APK 0.2.0 memakai kunci lokal yang sama dengan APK 0.1.0 sehingga dapat diperbarui tanpa menghapus pasangan.
+iPhone menggunakan APNs untuk notifikasi saat aplikasi tertutup dan WidgetKit untuk widget. [Server notifikasi](server/README.md) tersedia sebagai sumber; akun Apple, sertifikat, penandatanganan dan deployment APNs belum disiapkan. Tanpa itu, jangan mengharapkan notifikasi iPhone saat tertutup. Apple Watch/TV/macOS belum menjadi target aplikasi ini.
 
-```powershell
-./build.ps1 -ToolRoot "C:\path\to\tools"
-./tests/run-tests.ps1 -ToolRoot "C:\path\to\tools"
-./tests/run-tests.ps1 -ToolRoot "C:\path\to\tools" -Live
-```
+## Hapus data dan aplikasi
 
-`ToolRoot` berisi direktori JDK (`bin/java.exe` dan `bin/javac.exe`), `android-35/android.jar`, Build Tools pada `android-15/` (nama direktori dalam ZIP resmi; revisinya 35.0.0), dan `json.jar` untuk tes JVM. Pustaka JSON hanya dipakai di tes desktop; aplikasi menggunakan JSON bawaan Android.
+- **Hapus lokasi yang dibagikan:** menghapus koordinat snapshot terbaru dan mematikan pilihan lokasi berikutnya.
+- **Hapus riwayat:** mengosongkan status/catatan dan mengirim snapshot kosong kepada penerima.
+- **Putuskan HP ini:** menghapus kode dan data keluarga lokal. Preferensi tampilan/panggilan tetap ada.
+- **Uninstall abc:** membuka konfirmasi Android; iPhone mendapat petunjuk penghapusan melalui layar utama.
 
-Lihat **QA.md** untuk hasil pengujian dan daftar uji dua HP.
+Menghapus file APK di Download hanya menghapus installer. Tidak ada skrip terpisah yang dipasang di HP. Menghapus data pengirim dapat menghilangkan kunci; kode penerima tidak bisa memulihkannya. Tidak ada akses kontak, SMS, mikrofon, root, atau Accessibility Service. Versi uji belum memiliki distribusi Play Store/App Store, FCM, pemulihan kunci, atau audit keamanan independen.
 
-## Kompatibilitas dan QA otomatis
+## Sumber, build dan QA
 
-Workflow GitHub Actions membangun Android serta menjalankan tes UI pada API 29–36 (Android 10, 11, 12, 12L, 13, 14, 15, dan 16), termasuk font besar pada API 35. Layout Android menerapkan inset system bar/keyboard dan tombol menyesuaikan tinggi teks. Tidak ada native library sehingga tidak bergantung pada arsitektur CPU tertentu atau alignment library 16 KB.
+Antarmuka aktif ada di [crossplatform](crossplatform/README.md), memakai Flutter stable **3.47.6**, Dart **3.13.5**, JDK 17, Android SDK 36/NDK 28.2 dan minimum Android API 29. APK universal berisi ARM32, ARM64 dan x86_64 serta engine Flutter. Proyek iOS menargetkan iOS 16 ke atas dan menggunakan native App Groups/Keychain, widget serta ekstensi notifikasi.
 
-Workflow Apple menjalankan tes Swift, interoperability Java/CryptoKit dua arah, build aplikasi/widget/ekstensi notifikasi, serta tes UI simulator iPhone. Workflow server menguji verifikasi pesan dan payload APNs. Hasil serta batas pengujian dicatat di **QA.md**; dukungan OS minimum dan keberhasilan emulator tidak menjamin semua merek HP, kebijakan baterai, versi OS masa depan, atau perangkat Apple fisik.
+Folder `src`, `apple/Sources/KabarCore`, dan `apple/Shared` berisi enkripsi, aturan status, penyimpanan serta integrasi native. UI native Kabar lama dan skrip `build.ps1` tetap ada sebagai arsip pengembangan; skrip itu membangun Kabar 0.4, bukan abc. Untuk abc, gunakan panduan crossplatform.
 
-Notifikasi Android tetap memakai foreground service. Apple memerlukan APNs dan server HTTPS untuk notifikasi ketika aplikasi tertutup. Program server dan panduan tersedia di [server/](server/README.md); credential Apple serta deployment belum disiapkan. Apple Watch, Apple TV dan aplikasi macOS native belum tersedia.
-
-Referensi: [API ntfy](https://docs.ntfy.sh/subscribe/api/), [pengiriman dan cache ntfy](https://docs.ntfy.sh/publish/), [foreground service Android](https://developer.android.com/about/versions/14/changes/fgs-types-required).
+QA membedakan pemeriksaan kode, tes UI Flutter, integrasi pada emulator/simulator, interoperabilitas enkripsi dan pengujian perangkat fisik. Hasil aktual serta keterbatasannya dicatat pada [QA.md](QA.md). Lulus emulator tidak menjamin setiap merek HP atau seluruh OS masa depan.

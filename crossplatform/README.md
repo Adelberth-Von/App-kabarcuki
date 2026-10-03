@@ -1,17 +1,41 @@
-# abc
+# abc: shared Flutter app
 
-A new Flutter project.
+UI Android/iPhone ada pada `lib/`. Native capabilities dihubungkan melalui `abc/native` (Java pada Android, Swift pada iOS). Preferensi per HP tidak masuk paket keluarga terenkripsi.
 
-## Getting Started
+## Android
 
-This project is a starting point for a Flutter application.
+Pasang Flutter stable 3.47.6, JDK 17 dan Android SDK 36/NDK 28.2.13676358, lalu dari direktori ini:
 
-A few resources to get you started if this is your first Flutter project:
+```sh
+flutter pub get
+flutter analyze
+flutter test
+flutter build apk --release
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Hasil ada di `build/app/outputs/flutter-apk/app-release.apk`. Build pengembangan menggunakan kunci debug. Untuk tanda tangan Anda sendiri, isi lingkungan `ABC_KEYSTORE` (path absolut), `ABC_KEYSTORE_PASSWORD`, dan `ABC_KEY_ALIAS`. Jangan menyimpan kunci/password dalam repositori. Paket Android tetap `id.kabar.app`.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## iPhone/iPad (Mac + Xcode)
+
+Pasang Flutter 3.47.6 dan XcodeGen, lalu:
+
+```sh
+flutter pub get
+flutter build ios --simulator --debug --config-only --no-codesign
+cd ios
+xcodegen generate
+cd ..
+flutter build ios --simulator --debug --no-codesign
+```
+
+XcodeGen menggabungkan host Flutter, KabarCore, widget dan ekstensi notifikasi. Buka `ios/Runner.xcworkspace` untuk penandatanganan. Isi Apple Team; aktifkan App Groups `group.id.kabar.shared`, shared Keychain `id.kabar.shared`, serta Push Notifications pada profil yang sesuai. iPhone fisik memerlukan signing Apple/TestFlight. Backend APNs belum dideploy.
+
+## QA integrasi
+
+Hanya gunakan emulator/simulator khusus uji. Tes membuat pasangan jika belum ada dan menambah dua catatan status; tidak menghapus pasangan yang sudah ada. Gunakan emulator baru jika antrean lama penuh.
+
+```sh
+flutter drive --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d DEVICE_ID
+```
+
+Gambar hasil tes disimpan pada `qa-screenshots/`. UI tests memeriksa bahasa, panggilan, konfirmasi, riwayat, GPS per kejadian, mode warna, dan teks besar 200%. Folder SDK, build, cache, dan rahasia tidak disertakan dalam paket sumber.

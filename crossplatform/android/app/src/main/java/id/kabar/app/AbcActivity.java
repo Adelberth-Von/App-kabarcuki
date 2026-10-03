@@ -76,7 +76,7 @@ public final class AbcActivity extends FlutterActivity {
             });return;
             case "setupReceiver":{
                 Pairing p;try{p=Pairing.parse((String)args.get("code"));}catch(Exception e){result.error("invalid_code","Invalid pairing code",null);return;}
-                if(!Store.role(this).isEmpty())throw new IllegalStateException();Store.prefs(this).edit().clear().putString("role","receiver").putString("code",p.code()).putBoolean("enabled",true).commit();SyncService.start(this);Store.changed(this);requestAlerts();result.success(answer(null).toString());return;
+                if(!Store.role(this).isEmpty())throw new IllegalStateException();Store.prefs(this).edit().clear().putString("role","receiver").putString("code",p.code()).putBoolean("enabled",true).commit();SyncService.start(this);Store.changed(this);if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},45);result.success(answer(null).toString());return;
             }
             case "record":{
                 requireSender();if(Store.pending(this)>=25){result.error("queue_full","Queue full",null);return;}

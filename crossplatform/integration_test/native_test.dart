@@ -14,6 +14,7 @@ void main() {
     final originalCode = (before['role'] == 'sender')
         ? (await backend.invoke('pairCode'))['code']
         : null;
+    if (originalCode != null) expect((await backend.invoke('pairCode'))['code'], originalCode);
     await backend.invoke('preferences', {
       'nickname': 'Cuki',
       'language': 'id',
@@ -21,16 +22,14 @@ void main() {
       'dark': false,
       'relationship': false
     });
-    if (before['role'] == '') {
-      await backend.invoke('setupSender');
-    }
+    // This test never deletes an existing pairing. Use a fresh simulator for a full queue.
+    expect(number(before['pending']),lessThan(23),reason:'Use a fresh disposable simulator when the existing queue is full.');
+    if (before['role']=='') await backend.invoke('setupSender');
+    else expect(before['role'],'sender');
     final model = AppModel(backend);
     await tester.pumpWidget(AbcApp(model: model));
     await tester.pumpAndSettle();
     expect(find.text('Hai, Cuki'), findsOneWidget);
-    if (originalCode != null) {
-      expect((await backend.invoke('pairCode'))['code'], originalCode);
-    }
     if (model.snapshot['platform'] == 'android') {
       await binding.convertFlutterSurfaceToImage();
       await tester.pump();
@@ -40,6 +39,9 @@ void main() {
       await tester.ensureVisible(f);
       await tester.pumpAndSettle();
       await tester.tap(f);
+      await tester.pumpAndSettle();
+      for (var i=0;model.busy && i<300;i++) {await tester.pump(const Duration(milliseconds:100));}
+      expect(model.error,isNull);
       await tester.pumpAndSettle();
     }
 
@@ -62,10 +64,7 @@ void main() {
     await binding.takeScreenshot('abc-history');
     await tap(find.byKey(const ValueKey('detail-0')));
     await binding.takeScreenshot('abc-detail');
-    expect(
-        find.text('Asia/Jakarta').evaluate().length +
-            find.text('Waktu pengirim').evaluate().length,
-        greaterThan(0));
+    expect(find.text(model.copy['senderTime']),findsOneWidget);
     await tap(find.byTooltip('Tutup'));
     await tap(find.text('Pengaturan').last);
     await tap(find.byKey(const ValueKey('time-format')));

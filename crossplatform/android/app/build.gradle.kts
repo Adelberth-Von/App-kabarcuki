@@ -38,6 +38,9 @@ android {
         }
     }
     buildTypes {
+        debug {
+            if (System.getenv("ABC_KEYSTORE") != null) signingConfig = signingConfigs.getByName("abc")
+        }
         release {
             signingConfig = if (System.getenv("ABC_KEYSTORE") != null) signingConfigs.getByName("abc") else signingConfigs.getByName("debug")
         }
