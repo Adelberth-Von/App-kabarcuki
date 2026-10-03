@@ -30,6 +30,8 @@ targets:
       - ../../apple/App/LocationSampler.swift
       - ../../apple/Shared/SharedStore.swift
       - ../../apple/Shared/PhoneText.swift
+      - path: ../../res/raw/abc_chime.wav
+        buildPhase: resources
     configFiles:
       Debug: Flutter/Debug.xcconfig
       Release: Flutter/Release.xcconfig

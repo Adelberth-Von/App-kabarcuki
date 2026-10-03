@@ -22,6 +22,7 @@ public final class Store {
         synchronized(LOCK) {
             JSONArray queue=new JSONArray(prefs(c).getString("queue","[]"));
             if(queue.length()>=25)throw new IllegalStateException("25 kabar masih menunggu. Hubungkan internet sebelum menambah kabar.");
+            s.fitRelay();
             String body=new JSONObject().put("state",s.json()).put("notify",notify).toString();
             Pairing p=pairing(c);String encrypted=p.encrypt(body);
             // ntfy free relay's text body is capped at 4096 bytes.

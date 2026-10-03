@@ -17,7 +17,7 @@ public class DomainTests {
     public static void main(String[] args)throws Exception{
         if(args.length>0&&args[0].equals("device-publisher")){devicePublisher(args[1]);return;}
         if(args.length>0&&args[0].equals("device-subscriber")){deviceSubscriber(args[1]);System.out.println("PASS device sender interoperability: "+checks+" assertions");return;}
-        mealRules();clockRules();stateRules();locationAndManualMealRules();cryptoRules();cleanupScopeRules();
+        mealRules();clockRules();stateRules();locationAndManualMealRules();namedLocationBudget();cryptoRules();cleanupScopeRules();
         if(args.length>0&&args[0].equals("live")){liveRelay();liveStream();}
         System.out.println("PASS "+checks+" assertions");
     }
@@ -40,6 +40,12 @@ public class DomainTests {
             ok(sandbox.isAbsolute()&&sandbox.getFileName().toString().startsWith("abc-cleanup-qa-"),"QA cleanup remains in its own temporary sandbox");
             ScopedFiles.clear(sandbox.toFile());java.nio.file.Files.delete(sandbox);
         }
+    }
+    private static void namedLocationBudget()throws Exception {
+        KabarState s=new KabarState();s.zone=TZ.getID();String label=String.join("",Collections.nCopies(24,"界"));String area=String.join("",Collections.nCopies(32,"界"));s.name=label;s.home=label;s.outside=label;s.meal=label;
+        for(int i=0;i<12;i++)s.record("home",at(2,18,0)+i,null,new GpsPoint(-7.7956,110.3695,12,at(2,18,0)+i,s.zone,area,area));
+        s.fitRelay();Pairing sender=Pairing.create();String body=new JSONObject().put("state",s.json()).put("notify",true).toString();String encrypted=sender.encrypt(body);
+        ok(encrypted.getBytes(StandardCharsets.UTF_8).length<=4096,"named multibyte places fit encrypted relay budget");eq(s.gps.city,area,"latest city retained under payload pressure");eq(s.events.getJSONObject(0).getJSONObject("gps").getDouble("lat"),-7.7956,"latest precise map point retained");eq(KabarState.parse(s.json().toString()).revision,s.revision,"compacted history remains compatible");
     }
     private static void clockRules(){
         eq(StatusLogic.clock(at(2,12,0),TZ),"12.00 WIB - Indonesia","local WIB clock");

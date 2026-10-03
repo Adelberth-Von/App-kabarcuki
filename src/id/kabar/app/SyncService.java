@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 
 public class SyncService extends Service {
+    public static final String UPDATES_CHANNEL="updates_pixel_v1";
     private volatile boolean running=false;
     private Thread worker;
     private volatile HttpURLConnection connection;
@@ -53,7 +54,17 @@ public class SyncService extends Service {
     public static void channels(Context c) {
         NotificationManager nm=c.getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel("connection","Koneksi Kabar",NotificationManager.IMPORTANCE_LOW));
-        nm.createNotificationChannel(new NotificationChannel("updates","Kabar keluarga",NotificationManager.IMPORTANCE_HIGH));
+        NotificationChannel previous=nm.getNotificationChannel("updates");
+        NotificationChannel updates=new NotificationChannel(UPDATES_CHANNEL,LocalProfile.text(c,"Kabar · nada pixel","Updates · pixel chime","Updates · Pixelton"),previous==null?NotificationManager.IMPORTANCE_HIGH:previous.getImportance());
+        updates.setDescription(LocalProfile.text(c,"Suara singkat untuk kabar baru dari pasangan perangkat.","A short chime for new updates from your paired device.","Ein kurzer Ton für neue Updates vom verbundenen Gerät."));
+        android.media.AudioAttributes audio=new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION).setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+        // Use the stable resource name, not its generated integer ID, across upgrades.
+        android.net.Uri sound=android.net.Uri.parse("android.resource://"+c.getPackageName()+"/raw/abc_chime");
+        if(previous!=null&&(previous.getSound()==null||(Build.VERSION.SDK_INT>=30&&previous.hasUserSetSound())))sound=previous.getSound();
+        updates.setSound(sound,audio);
+        if(previous!=null){updates.enableVibration(previous.shouldVibrate());updates.setVibrationPattern(previous.getVibrationPattern());}
+        updates.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+        nm.createNotificationChannel(updates);
     }
     private Notification persistent() {
         PendingIntent open=PendingIntent.getActivity(this,0,AppEntry.open(this),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
@@ -172,7 +183,7 @@ public class SyncService extends Service {
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)return;
         JSONObject last=s.events.optJSONObject(0);if(last==null)return;
         PendingIntent open=PendingIntent.getActivity(this,2,AppEntry.open(this),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification n=new Notification.Builder(this,"updates").setSmallIcon(R.drawable.notification_icon)
+        Notification n=new Notification.Builder(this,UPDATES_CHANNEL).setSmallIcon(R.drawable.notification_icon)
             .setContentTitle(s.name+" · "+LocalProfile.label(this,last.optString("label")))
             .setContentText(LocalProfile.stamp(this,last.optLong("at")))
             .setContentIntent(open).setAutoCancel(true)

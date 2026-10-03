@@ -1,6 +1,12 @@
 import XCTest
 @testable import KabarCore
 final class KabarCoreTests: XCTestCase {
+    func testNamedLocationFitsRelayWithMultibyteLabels() throws {
+        var s=KabarState();s.zone="Asia/Jakarta";let label=String(repeating:"界",count:24),area=String(repeating:"界",count:32);s.name=label;s.home=label;s.outside=label;s.meal=label
+        for i in 0..<12 {var point=try GpsPoint(lat:-7.7956,lon:110.3695,accuracy:12,at:at(2,18)+Int64(i),zone:s.zone);point.city=area;point.place=area;try s.record("home",at:point.at,point:point)}
+        try s.fitRelay();let sender=Pairing();XCTAssertLessThanOrEqual(try Packet(state:s,notify:true).envelope(pairing:sender).utf8.count,4096)
+        XCTAssertEqual(s.gps?.city,area);XCTAssertEqual(s.events.first?.gps?.lat,-7.7956);XCTAssertEqual(try JSONDecoder().decode(KabarState.self,from:JSONEncoder().encode(s)),s)
+    }
     func at(_ day: Int, _ hour: Int, _ minute: Int = 0) -> Int64 {
         var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Jakarta")!
         return Int64(c.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour, minute: minute))!.timeIntervalSince1970*1000)

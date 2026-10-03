@@ -379,6 +379,11 @@ const messages = <String, List<String>>{
     'Notification settings',
     'Benachrichtigungen'
   ],
+  'chimeNote': [
+    'Nada pixel abc · mengikuti volume dan mode senyap HP.',
+    'abc pixel chime · follows your phone’s volume and silent mode.',
+    'abc Pixelton · folgt Lautstärke und Lautlosmodus des Handys.'
+  ],
   'widget': ['Tambahkan widget', 'Add widget', 'Widget hinzufügen'],
   'battery': [
     'Pengaturan baterai aplikasi',

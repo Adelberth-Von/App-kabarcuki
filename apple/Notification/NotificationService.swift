@@ -8,7 +8,7 @@ final class NotificationService: UNNotificationServiceExtension {
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         completion = contentHandler
         guard let content = request.content.mutableCopy() as? UNMutableNotificationContent else { contentHandler(request.content); completion = nil; return }
-        content.title = "abc"; content.body = PhoneText.text("Ada kabar baru. Buka aplikasi untuk melihatnya.","There is a new update. Open the app to see it.","Es gibt ein neues Update. Öffne die App, um es zu sehen."); fallback = content
+        content.title = "abc"; content.body = PhoneText.text("Ada kabar baru. Buka aplikasi untuk melihatnya.","There is a new update. Open the app to see it.","Es gibt ein neues Update. Öffne die App, um es zu sehen."); content.sound=UNNotificationSound(named:UNNotificationSoundName("abc_chime.wav")); fallback = content
         work = Task {
             do {
                 guard SharedStore.defaults.object(forKey:"enabled") as? Bool ?? true, let pair = SharedStore.pairing(), request.content.userInfo["topic"] as? String == pair.topic else { finish(content); return }

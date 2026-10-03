@@ -23,7 +23,7 @@ test('alert proof excludes silent snapshots and is bound to envelope',()=>{
   assert.ok(verifyAlert(envelope,proof,publicKey));assert.equal(verifyAlert(envelope+'x',proof,publicKey),false);assert.equal(verifyAlert(envelope,'',publicKey),false);
 });
 test('APNs payload fits 4096 bytes and uses reference for large ciphertext',()=>{
-  const a=notification(topic,envelope,'b'.repeat(32));assert.equal(a.envelope,envelope);assert.equal(a.aps['mutable-content'],1);
+  const a=notification(topic,envelope,'b'.repeat(32));assert.equal(a.envelope,envelope);assert.equal(a.aps['mutable-content'],1);assert.equal(a.aps.sound,'abc_chime.wav');
   const b=notification(topic,'x'.repeat(4096),'b'.repeat(32));assert.equal(b.envelope,undefined);assert.equal(b.messageId,'b'.repeat(32));assert.ok(Buffer.byteLength(JSON.stringify(b))<=4096);
 });
 test('APNs JWT uses ES256 raw 64-byte signature and correct claims',()=>{

@@ -30,7 +30,7 @@ export function verifyAlert(envelope, proof, publicDER) {
   } catch { return false; }
 }
 export function notification(topic,envelope,messageId) {
-  const base = {aps:{alert:{title:'Kabar keluarga',body:'Ada kabar baru.'},sound:'default','mutable-content':1},topic};
+  const base = {aps:{alert:{title:'Kabar keluarga',body:'Ada kabar baru.'},sound:'abc_chime.wav','mutable-content':1},topic};
   const inline = {...base,envelope};
   if (Buffer.byteLength(JSON.stringify(inline))<=4096) return inline;
   return {...base,messageId};

@@ -91,7 +91,7 @@ public class DeviceQA extends Instrumentation {
                 ok(Store.state(c).home.equals("Kost"),"edit labels await explicit confirmation");main(()->activity.confirmationDialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick());
                 ok(Store.state(c).home.equals("Rumah"),"edited label saved");
                 click("Beranda");await("Pergi",3000);status("Rumah");ok(Store.state(c).locationText().equals("Di rumah"),"edited button functional");
-                status("Makan malam");ok(Store.state(c).dinnerAt>0,"today dinner row functional");
+                long mealRevision=Store.state(c).revision;status("Makan malam");ok(Store.state(c).revision==mealRevision+1&&Store.state(c).mealAt>0,"today dinner row functional");ok(Store.state(c).mealCategory.equals(StatusLogic.mealAt(System.currentTimeMillis(),Store.state(c).windows,java.util.TimeZone.getTimeZone(Store.state(c).zone))),"dinner row routes to current local window");
                 main(()->{
                     android.location.Location fresh=new android.location.Location("gps");fresh.setLatitude(-6.2);fresh.setLongitude(106.816666);fresh.setAccuracy(20);fresh.setTime(System.currentTimeMillis());fresh.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
                     ok(LocationCapture.fresh(fresh),"fresh device location accepted");fresh.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos()-180000000000L);ok(!LocationCapture.fresh(fresh),"stale cached device location rejected");

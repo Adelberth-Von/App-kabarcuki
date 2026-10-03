@@ -5,8 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-void main() {
+Future<void> main() async {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // Initialize the engine accessibility client before the test records its
+  // handle baseline. Keep our own handle scoped to this integration suite.
+  final semantics = binding.ensureSemantics();
+  await Future<void>.delayed(const Duration(seconds: 1));
+  tearDownAll(semantics.dispose);
   testWidgets(
       'native pairing, confirmations, local preferences and history survive restart',
       (tester) async {
@@ -121,6 +126,9 @@ void main() {
         expect(texts.length,greaterThanOrEqualTo(3));
         for(final text in texts)expect(RegExp(r'\b(AM|PM)\b').hasMatch(text.value as String),twelve,reason:text.key);
         if(surfaces.containsKey('notification'))expect(surfaces['onlyAlertOnce'],true);
+        expect(number(surfaces['chimeDurationMs']),inInclusiveRange(900,1200),reason:'The packaged chime must decode on this Android version.');
+        expect(surfaces['notificationChannel'],'updates_pixel_v1');
+        if(cleanup)expect(surfaces['chimeSound'],endsWith('/raw/abc_chime'));
       }
     }
     await tap(find.byKey(const ValueKey('theme-relationship')));

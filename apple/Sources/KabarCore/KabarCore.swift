@@ -155,6 +155,12 @@ public struct KabarState: Codable, Equatable {
         revision += 1; events.insert(KabarEvent(kind: kind, at: at, label: label, zone: zone, gps: point, gpsCaptured: point == nil ? nil : true), at: 0); events = Array(events.prefix(12))
         for i in events.indices where i>=3 { events[i].gps = nil }
     }
+    public mutating func fitRelay() throws {
+        while try JSONEncoder().encode(self).count > 2800 && events.count > 1 {
+            if let i=events.indices.reversed().first(where:{$0>0 && events[$0].gps != nil}) {events[i].gps=nil}
+            else {events.removeLast()}
+        }
+    }
     public func validate() throws {
         guard v == 1, revision >= 0, ["", "home", "outside"].contains(location), zone.utf16.count <= 80,
               Self.validWindows(windows), events.count <= 12, mealCategory.utf16.count <= 24,

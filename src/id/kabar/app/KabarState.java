@@ -44,6 +44,15 @@ public final class KabarState {
         long at=category.equals("Sarapan")?breakfastAt:category.equals("Makan siang")?lunchAt:category.equals("Makan malam")?dinnerAt:0;
         return at>0&&StatusLogic.dayKey(at,tz).equals(StatusLogic.dayKey(now,tz));
     }
+    public void fitRelay() throws JSONException {
+        // Reserve room for AES-GCM, the signature and base64 expansion. Names
+        // can contain multibyte characters; a fixed event count is insufficient.
+        while(json().toString().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>2800&&events.length()>1) {
+            boolean removed=false;
+            for(int i=events.length()-1;i>0;i--)if(events.getJSONObject(i).has("gps")){events.getJSONObject(i).remove("gps");removed=true;break;}
+            if(!removed)events.remove(events.length()-1);
+        }
+    }
     public JSONObject json() throws JSONException {
         JSONArray schedule=new JSONArray(); for(int w:windows) schedule.put(w);
         return new JSONObject().put("v",1).put("revision",revision).put("name",name)

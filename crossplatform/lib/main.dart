@@ -938,7 +938,7 @@ class _ShellState extends State<Shell> {
                   : Icons.play_circle_outline,
               () => m.command('toggleConnection')),
           rowSetting(t['notifications'], Icons.notifications_outlined,
-              () => m.command('notifications')),
+              () => m.command('notifications'), subtitle: t['chimeNote']),
           rowSetting(t['widget'], Icons.widgets_outlined, () {
             if (m.snapshot['platform'] == 'ios')
               simpleInfo(t['widget'], t['iosWidget']);

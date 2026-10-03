@@ -78,7 +78,8 @@ import KabarCore
             try enqueue(next,notify:false); SharedStore.defaults.set(false,forKey:"shareLocation"); locationNote = "Lokasi dihapus dari kabar terbaru"
         } catch { self.error = error.localizedDescription }
     }
-    func enqueue(_ next: KabarState, notify: Bool) throws {
+    func enqueue(_ incoming: KabarState, notify: Bool) throws {
+        var next=incoming;try next.fitRelay()
         guard role == "sender", let pair = SharedStore.pairing() else { throw KabarError.invalid("Pasangan pengirim belum tersedia") }
         var q = queue; guard q.count < 25 else { throw KabarError.invalid("Antrean 25 kabar penuh. Hubungkan internet sebelum menambah kabar.") }
         q.append(try Packet(state: next, notify: notify).envelope(pairing: pair))
@@ -218,7 +219,7 @@ import KabarCore
     }
     func notify(_ packet: Packet) async {
         guard !Task.isCancelled, !role.isEmpty, let topic=SharedStore.pairing()?.topic else {return}
-        let content = UNMutableNotificationContent(); content.title = "abc · \(packet.state.name)"; content.body = PhoneText.notification(packet); content.sound = .default
+        let content = UNMutableNotificationContent(); content.title = "abc · \(packet.state.name)"; content.body = PhoneText.notification(packet); content.sound = UNNotificationSound(named:UNNotificationSoundName("abc_chime.wav"))
         content.subtitle=SharedStore.defaults.bool(forKey:"appearanceRelationship") ? "Seirama":PhoneText.text("Kabar baru","New update","Neues Update");content.threadIdentifier="abc-updates"
         content.userInfo=PhoneText.notificationData(packet)
         let identifier="kabar-\(topic)-\(packet.state.revision)",center=UNUserNotificationCenter.current()
