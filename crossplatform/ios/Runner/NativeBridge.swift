@@ -2,15 +2,36 @@ import Flutter
 import UIKit
 import WidgetKit
 import KabarCore
+import Combine
 
-@MainActor final class NativeBridge {
+@MainActor final class NativeBridge: NSObject, FlutterStreamHandler {
     let model = KabarModel()
     private var channel: FlutterMethodChannel?
+    private var updates:FlutterEventSink?
+    private var observation:AnyCancellable?
+    private var notifications:[NSObjectProtocol]=[]
     var profile: [String:Any] { SharedStore.defaults.dictionary(forKey:"abcProfile") ?? [:] }
     func attach(_ messenger: FlutterBinaryMessenger) {
         channel=FlutterMethodChannel(name:"abc/native",binaryMessenger:messenger)
         channel?.setMethodCallHandler { [weak self] call,result in self?.handle(call,result) }
+        FlutterEventChannel(name:"abc/updates",binaryMessenger:messenger).setStreamHandler(self)
         model.start()
+    }
+    func onListen(withArguments arguments:Any?,eventSink events:@escaping FlutterEventSink)->FlutterError? {
+        _=onCancel(withArguments:nil);updates=events
+        observation=model.objectWillChange.sink { [weak self] _ in DispatchQueue.main.async {self?.updates?(nil)} }
+        for name in [UserDefaults.didChangeNotification, NSNotification.Name.NSSystemTimeZoneDidChange,
+                     UIApplication.significantTimeChangeNotification, NSNotification.Name.NSProcessInfoPowerStateDidChange] {
+            notifications.append(NotificationCenter.default.addObserver(forName:name,object:nil,queue:.main) { [weak self] _ in
+                DispatchQueue.main.async {self?.updates?(nil)}
+            })
+        }
+        events(nil);return nil
+    }
+    func onCancel(withArguments arguments:Any?)->FlutterError? {
+        observation?.cancel();observation=nil
+        for item in notifications {NotificationCenter.default.removeObserver(item)}
+        notifications=[];updates=nil;return nil
     }
     func validName(_ raw:String)->Bool {let s=raw.trimmingCharacters(in:.whitespacesAndNewlines);return !s.isEmpty && s.utf16.count<=24 && !s.unicodeScalars.contains(where:{$0.value<32 || $0.value==127})}
     func zone(_ z:TimeZone,_ at:Int64,offset:Bool)->[String:Any] {
@@ -32,7 +53,7 @@ import KabarCore
         var p=profile;p["dark"]=SharedStore.defaults.bool(forKey:"appearanceDark");p["relationship"]=SharedStore.defaults.bool(forKey:"appearanceRelationship")
         let old=model.connection
         let connection = !model.enabled ? "paused" : old.hasPrefix("Terhubung") ? "online" : old.hasPrefix("Kabar terkirim") ? "sent" : old.hasPrefix("Menunggu") ? "offline" : "connecting"
-        return ["state":s,"profile":p,"role":model.role,"enabled":model.enabled,"pending":model.queue.count,"connection":connection,"shareLocation":SharedStore.defaults.bool(forKey:"shareLocation"),"zone":zone(.current,KabarState.now,offset:false),"localTimes":local,"platform":"ios","pushEndpoint":model.pushEndpoint,"mealsToday":["Sarapan","Makan siang","Makan malam"].map{model.state.hasMealToday($0)}]
+        return ["state":s,"profile":p,"role":model.role,"enabled":model.enabled,"pending":model.queue.count,"connection":connection,"shareLocation":SharedStore.defaults.bool(forKey:"shareLocation"),"zone":zone(.current,KabarState.now,offset:false),"localTimes":local,"platform":"ios","energySaver":ProcessInfo.processInfo.isLowPowerModeEnabled,"pushEndpoint":model.pushEndpoint,"mealsToday":["Sarapan","Makan siang","Makan malam"].map{model.state.hasMealToday($0)}]
     }
     func encoded(_ value:[String:Any]) throws->String {String(decoding:try JSONSerialization.data(withJSONObject:value),as:UTF8.self)}
     func answer(_ result:FlutterResult,note:String?=nil){do {var v:[String:Any]=["snapshot":try snapshot()];if let note {v["note"]=note};result(try encoded(v))}catch{result(FlutterError(code:"error",message:"Unable to complete action",details:nil))}}
@@ -42,15 +63,19 @@ import KabarCore
         do {
             model.error=nil
             switch call.method {
+            #if DEBUG
+            case "qaCleanupProbe":result(try encoded(CleanupProbe.inspect(seed:a["seed"] as? Bool ?? false)));return
+            #endif
             case "snapshot": result(try encoded(snapshot()));return
             case "preferences":
                 var p=profile
                 if let name=a["nickname"] as? String {guard validName(name) else {result(FlutterError(code:"invalid_name",message:"Invalid nickname",details:nil));return};p["nickname"]=name.trimmingCharacters(in:.whitespacesAndNewlines)}
                 if let language=a["language"] as? String {guard ["id","en","de"].contains(language) else {throw KabarError.invalid("Language")};p["language"]=language}
                 if let v=a["clock12"] as? Bool {p["clock12"]=v}
+                if let v=a["animations"] as? Bool {p["animations"]=v}
                 if let v=a["dark"] as? Bool {SharedStore.defaults.set(v,forKey:"appearanceDark")}
                 if let v=a["relationship"] as? Bool {SharedStore.defaults.set(v,forKey:"appearanceRelationship")}
-                SharedStore.defaults.set(p,forKey:"abcProfile");WidgetCenter.shared.reloadAllTimelines()
+                SharedStore.defaults.set(p,forKey:"abcProfile");WidgetCenter.shared.reloadAllTimelines();model.refreshNotifications()
             case "setupSender":guard model.role.isEmpty else {throw KabarError.invalid("Already paired")};model.beginSender()
             case "setupReceiver":
                 guard model.role.isEmpty else {throw KabarError.invalid("Already paired")}
@@ -82,6 +107,7 @@ import KabarCore
             case "clearHistory":try requireSender();model.clearHistory()
             case "rotate":try model.rotate()
             case "disconnect":model.disconnect()
+            case "prepareUninstall":try model.prepareRemoval()
             case "pushServer":model.pushEndpoint=a["url"] as? String ?? "";model.savePushEndpoint()
             default:result(FlutterMethodNotImplemented);return
             }

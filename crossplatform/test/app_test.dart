@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:abc/main.dart';
 import 'package:abc/model.dart';
 import 'package:abc/pixels.dart';
@@ -5,7 +6,10 @@ import 'package:abc/strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class FakeBackend implements Backend {
+class FakeBackend extends Backend {
+  final updates = StreamController<void>.broadcast();
+  @override
+  Stream<void> get changes => updates.stream;
   final Map<String, dynamic> data;
   final List<String> calls = [];
   FakeBackend(
@@ -91,6 +95,11 @@ class FakeBackend implements Backend {
       }
     }
     if (name == 'setupSender') data['role'] = 'sender';
+    if (name == 'prepareUninstall') {
+      data['profile'] = <String, dynamic>{};
+      data['role'] = '';
+      data['state'] = <String, dynamic>{'events': <dynamic>[]};
+    }
     if (name == 'record') {
       final s = data['state'] as Map;
       s['events'] = [
@@ -135,6 +144,132 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  testWidgets('native updates coalesce, idle has no polling and disposal stops listening', (tester) async {
+    final b = FakeBackend();
+    final m = AppModel(b);
+    await m.init();
+    await tester.pump(const Duration(minutes: 1));
+    expect(b.calls, ['snapshot']);
+    b.data['state']['location'] = 'outside';
+    for (var i = 0; i < 10; i++) {b.updates.add(null);}
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 81));
+    expect(b.calls.where((c) => c == 'snapshot').length, 2);
+    expect(m.state['location'], 'outside');
+    m.stopObserving();
+    b.updates.add(null);
+    await tester.pump(const Duration(seconds: 6));
+    expect(b.calls.length, 2);
+    m.startObserving();
+    b.updates.add(null);
+    await tester.pump();
+    m.dispose();
+    await tester.pump(const Duration(seconds: 6));
+    expect(b.calls.length, 2);
+    await b.updates.close();
+  });
+  testWidgets('pixel motion repaints at four fps and pauses for preferences, reduced motion and lifecycle', (tester) async {
+    final key=GlobalKey<PixelSkyState>();
+    Widget scene({bool animate=true,bool reduce=false,bool enabled=true}) => MaterialApp(home:MediaQuery(data:MediaQueryData(size:const Size(800,600),disableAnimations:reduce),child:TickerMode(enabled:enabled,child:Center(child:PixelSky(key:key,animate:animate)))));
+    await tester.pumpWidget(scene());
+    final initial=key.currentState!.frame;
+    await tester.pump(const Duration(seconds: 1));
+    expect(key.currentState!.frame,(initial+4)%16);
+    for (final w in [scene(animate:false),scene(reduce:true),scene(enabled:false)]) {
+      await tester.pumpWidget(w);
+      final at=key.currentState!.frame;
+      await tester.pump(const Duration(seconds: 1));
+      expect(key.currentState!.frame,at);
+    }
+    await tester.pumpWidget(scene());
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    final paused=key.currentState!.frame;
+    await tester.pump(const Duration(seconds: 1));
+    expect(key.currentState!.frame,paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(key.currentState!.frame,(paused+1)%16);
+    await close(tester);
+  });
+  testWidgets('pixel motion stops outside the viewport and under a dialog', (tester) async {
+    final key=GlobalKey<PixelSkyState>();
+    final scroll=ScrollController();
+    await tester.pumpWidget(MaterialApp(home:Scaffold(body:Builder(builder:(context)=>SingleChildScrollView(controller:scroll,child:Column(children:[PixelSky(key:key,animate:true),TextButton(onPressed:()=>showDialog<void>(context:context,builder:(_)=>const AlertDialog(content:Text('Covered'))),child:const Text('Open')),const SizedBox(height:2000)]))))));
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    final covered=key.currentState!.frame;
+    await tester.pump(const Duration(seconds:1));
+    expect(key.currentState!.frame,covered);
+    await tester.tapAt(const Offset(5,5));
+    await tester.pumpAndSettle();
+    scroll.jumpTo(1000);
+    await tester.pump();
+    final hidden=key.currentState!.frame;
+    await tester.pump(const Duration(seconds:1));
+    expect(key.currentState!.frame,hidden);
+    scroll.jumpTo(0);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds:250));
+    expect(key.currentState!.frame,(hidden+1)%16);
+    await close(tester);scroll.dispose();
+  });
+  testWidgets('system battery saver freezes the home scene and its preference persists', (tester) async {
+    final b=FakeBackend();
+    final m=await show(tester,b);
+    final sky=tester.state<PixelSkyState>(find.byType(PixelSky).first);
+    b.data['energySaver']=true;b.updates.add(null);
+    await tester.pump();await tester.pump(const Duration(milliseconds:100));
+    final at=sky.frame;
+    await tester.pump(const Duration(seconds:1));expect(sky.frame,at);
+    b.data['energySaver']=false;b.updates.add(null);
+    await tester.pump();await tester.pump(const Duration(milliseconds:100));
+    await tester.pump(const Duration(milliseconds:250));expect(sky.frame,(at+1)%16);
+    await tapVisible(tester,find.text(m.copy['settings']).last);
+    await tapVisible(tester,find.byKey(const ValueKey('pixel-animations')));
+    expect(m.animations,false);expect(b.data['profile']['animations'],false);
+    await close(tester);await b.updates.close();
+  });
+  testWidgets('all status, meal windows and open detail timestamps switch both ways', (tester) async {
+    final b=FakeBackend();
+    final at=1704103200000;
+    b.data['state']=Map<String,dynamic>.from(b.data['state'] as Map);
+    b.data['state'].addAll({'mealAt':at,'breakfastAt':at,'lunchAt':at,'dinnerAt':at,'gps':b.data['state']['events'][0]['gps']});
+    b.data['mealsToday']=[true,true,true];
+    final m=await show(tester,b);
+    expect(find.textContaining('05.00 – 10.00'),findsNothing);
+    await m.prefs({'clock12':true});await tester.pumpAndSettle();
+    expect(find.textContaining('AM'),findsWidgets);
+    // Empty meals use schedule ranges rather than saved timestamps.
+    b.data['state']['breakfastAt']=0;
+    b.data['mealsToday']=[false,true,true];
+    await m.refresh();await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('meal-0')));await tester.pumpAndSettle();
+    expect(find.textContaining('5.00 AM – 10.00 AM'),findsOneWidget);
+    await tapVisible(tester,find.text(m.copy['history']).last);
+    await tapVisible(tester,find.byKey(const ValueKey('detail-0')));
+    final utc24=m.stamp(at,inZone:const {'offsetMinutes':0,'short':'UTC'});
+    expect(find.text(utc24),findsOneWidget);
+    await m.prefs({'clock12':false});await tester.pumpAndSettle();
+    expect(find.textContaining(' AM'),findsNothing);expect(find.textContaining(' PM'),findsNothing);
+    expect(find.text(m.stamp(at,inZone:const {'offsetMinutes':0,'short':'UTC'})),findsOneWidget);
+    await m.prefs({'clock12':true});await tester.pumpAndSettle();
+    expect(find.textContaining(' AM'),findsWidgets);
+    expect(find.text(utc24),findsOneWidget);
+    await close(tester);await b.updates.close();
+  });
+  testWidgets('cancel removal preserves data; confirm cleans before the system uninstall request', (tester) async {
+    final b=FakeBackend();await show(tester,b);
+    await tapVisible(tester,find.text(Copy('id')['settings']).last);
+    await tapVisible(tester,find.byKey(const ValueKey('remove-application')));
+    await tapVisible(tester,find.text(Copy('id')['cancel']));
+    expect(b.calls.contains('prepareUninstall'),false);expect(b.data['profile']['nickname'],'Cuki');
+    await tapVisible(tester,find.byKey(const ValueKey('remove-application')));
+    await tapVisible(tester,find.text(Copy('id')['continue']));
+    expect(b.calls.indexOf('prepareUninstall'),lessThan(b.calls.indexOf('uninstall')));
+    expect(b.data['role'],'');expect(b.data['state']['events'],isEmpty);expect(b.data['profile'],isEmpty);
+    expect(find.byKey(const ValueKey('nickname-input')),findsOneWidget);
+    await close(tester);await b.updates.close();
+  });
   test('24-hour and AM/PM boundaries, minutes and origin offsets', () {
     for (final pair in {
       0: '12.05 AM',

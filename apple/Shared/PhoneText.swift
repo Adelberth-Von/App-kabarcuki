@@ -14,4 +14,8 @@ enum PhoneText {
         return f.string(from:Date(timeIntervalSince1970:Double(at)/1000))+" "+LocalClock.shortZone(.current,at:at)
     }
     static func notification(_ packet:Packet)->String {label(packet.state.events.first?.label ?? packet.state.locationText)+" · "+stamp(packet.state.events.first?.at ?? packet.state.locationAt)}
+    static func notificationData(_ packet:Packet)->[String:Any] {
+        ["abcAt":packet.state.events.first?.at ?? packet.state.locationAt,
+         "abcLabel":packet.state.events.first?.label ?? packet.state.locationText]
+    }
 }

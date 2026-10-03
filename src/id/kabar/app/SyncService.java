@@ -61,10 +61,14 @@ public class SyncService extends Service {
     }
     private boolean current() {return running&&Thread.currentThread()==worker&&Store.prefs(this).getBoolean("enabled",true)&&session.equals(Store.prefs(this).getString("code",""));}
     private void status(String text) {
+        synchronized(Store.LOCK) {
         if(!current())return;
         String previous=Store.prefs(this).getString("connection","");
-        Store.prefs(this).edit().putString("connection",text).putLong("checkedAt",System.currentTimeMillis()).apply();
-        if(!text.equals(previous))Store.changed(this);
+        if(!text.equals(previous)) {
+            Store.prefs(this).edit().putString("connection",text).putLong("checkedAt",System.currentTimeMillis()).apply();
+            Store.changed(this);
+        }
+        }
     }
     private void runSync() {
         int failures=0;
@@ -94,6 +98,7 @@ public class SyncService extends Service {
                 Relay.publish(p.topic(),item.getString("body"),item.optString("alertProof",""));
                 if(!current())return;
                 synchronized(Store.LOCK) {
+                    if(!current())return;
                     JSONArray q=new JSONArray(Store.prefs(this).getString("queue","[]")),next=new JSONArray();
                     if(q.length()>0&&q.getJSONObject(0).getLong("revision")==item.getLong("revision"))
                         for(int i=1;i<q.length();i++)next.put(q.getJSONObject(i));
@@ -105,11 +110,16 @@ public class SyncService extends Service {
             }else if(System.currentTimeMillis()-heartbeat>4L*60*60*1000) {
                 String body=new JSONObject().put("state",Store.state(this).json()).put("notify",false).toString();
                 Relay.publish(p.topic(),p.encrypt(body));
+                synchronized(Store.LOCK) {
+                if(!current())return;
                 heartbeat=System.currentTimeMillis();
                 Store.prefs(this).edit().putLong("publishedAt",heartbeat).apply();
                 status("Kabar terkirim ke relay");
+                }
             }
-            Thread.sleep(1500);
+            // Sleep until a new queued update, stop/session change, or the 4-hour refresh.
+            Store.awaitOutgoing(this,Math.min(4L*60*60*1000,
+                Math.max(1000,4L*60*60*1000-(System.currentTimeMillis()-heartbeat))));
         }
     }
     private void receive(Pairing p) throws Exception {
@@ -154,18 +164,48 @@ public class SyncService extends Service {
         }finally{active.disconnect();if(connection==active)connection=null;}
     }
     private void alert(KabarState s) {
+        synchronized(Store.LOCK) {
+        if(!current())return;
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)return;
         JSONObject last=s.events.optJSONObject(0);if(last==null)return;
         PendingIntent open=PendingIntent.getActivity(this,2,AppEntry.open(this),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         Notification n=new Notification.Builder(this,"updates").setSmallIcon(R.drawable.notification_icon)
             .setContentTitle(s.name+" · "+LocalProfile.label(this,last.optString("label")))
             .setContentText(LocalProfile.stamp(this,last.optLong("at")))
-            .setContentIntent(open).setAutoCancel(true).build();
+            .setContentIntent(open).setAutoCancel(true)
+            .addExtras(alertData(s.name,last.optString("label"),last.optLong("at"))).build();
         getSystemService(NotificationManager.class).notify(2,n);
+        }
+    }
+    private static Bundle alertData(String name,String label,long at){
+        Bundle b=new Bundle();b.putString("abcName",name);b.putString("abcLabel",label);b.putLong("abcAt",at);return b;
+    }
+    public static void refreshNotifications(Context c) {
+        java.util.TimeZone.setDefault(null);
+        NotificationManager nm=c.getSystemService(NotificationManager.class);
+        for(android.service.notification.StatusBarNotification delivered:nm.getActiveNotifications()) {
+            Notification old=delivered.getNotification();
+            Notification.Builder b=Notification.Builder.recoverBuilder(c,old)
+                .setOnlyAlertOnce(true).setSound(null).setVibrate(null).setDefaults(0);
+            if(delivered.getId()==2) {
+                Bundle data=old.extras;
+                if(!data.containsKey("abcAt")){
+                    KabarState s=Store.state(c);JSONObject last=s.events.optJSONObject(0);
+                    if(last==null)continue;data=alertData(s.name,last.optString("label"),last.optLong("at"));
+                }
+                b.setContentTitle(data.getString("abcName","")+" · "+LocalProfile.label(c,data.getString("abcLabel","")))
+                    .setContentText(LocalProfile.stamp(c,data.getLong("abcAt"))).addExtras(data);
+            } else if(delivered.getId()==1) {
+                b.setContentTitle(LocalProfile.text(c,"abc aktif","abc is active","abc ist aktiv"))
+                    .setContentText(Store.role(c).equals("sender")?LocalProfile.text(c,"Siap mengirim kabar","Ready to send updates","Bereit für Updates"):LocalProfile.text(c,"Menunggu kabar","Waiting for updates","Warten auf Updates"));
+            } else continue;
+            nm.notify(delivered.getTag(),delivered.getId(),b.build());
+        }
     }
     @Override public void onDestroy() {
         running=false;if(connection!=null)connection.disconnect();if(worker!=null)worker.interrupt();
-        Store.prefs(this).edit().putString("connection","Koneksi dijeda · buka aplikasi untuk melanjutkan").apply();
+        Store.wakeSync();
+        if(!Store.role(this).isEmpty())Store.prefs(this).edit().putString("connection","Koneksi dijeda · buka aplikasi untuk melanjutkan").apply();
         Store.changed(this);super.onDestroy();
     }
 }

@@ -21,15 +21,36 @@ public final class AbcActivity extends FlutterActivity {
     private LocationCapture capture;
     private Runnable permitted;
     private String quickAction="";
+    private EventChannel.EventSink updates;
+    private boolean watching=false;
+    private final BroadcastReceiver changed=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){
+        if(Intent.ACTION_TIMEZONE_CHANGED.equals(i.getAction())||Intent.ACTION_TIME_CHANGED.equals(i.getAction())) {
+            TimeZone.setDefault(null);KabarWidget.updateAll(c);SyncService.refreshNotifications(c);
+        }
+        emitUpdate();
+    }};
+    private void emitUpdate(){if(updates!=null)updates.success(null);}
+    private void stopWatching(){if(watching){unregisterReceiver(changed);watching=false;}updates=null;}
     @Override public void configureFlutterEngine(FlutterEngine engine){
         super.configureFlutterEngine(engine);
         new MethodChannel(engine.getDartExecutor().getBinaryMessenger(),"abc/native").setMethodCallHandler(this::handle);
+        new EventChannel(engine.getDartExecutor().getBinaryMessenger(),"abc/updates").setStreamHandler(new EventChannel.StreamHandler(){
+            @Override public void onListen(Object args,EventChannel.EventSink sink){
+                stopWatching();updates=sink;
+                IntentFilter filter=new IntentFilter("id.kabar.app.CHANGED");
+                filter.addAction(Intent.ACTION_TIME_CHANGED);filter.addAction(Intent.ACTION_TIMEZONE_CHANGED);
+                filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
+                if(Build.VERSION.SDK_INT>=33)registerReceiver(changed,filter,Context.RECEIVER_NOT_EXPORTED);else registerReceiver(changed,filter);
+                watching=true;emitUpdate();
+            }
+            @Override public void onCancel(Object args){stopWatching();}
+        });
         quickAction=getIntent().getStringExtra("quickAction");
         SyncService.start(this);
     }
-    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);quickAction=intent.getStringExtra("quickAction");}
+    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);quickAction=intent.getStringExtra("quickAction");emitUpdate();}
     @Override protected void onPause(){super.onPause();if(capture!=null)capture.cancel();}
-    @Override protected void onDestroy(){if(capture!=null)capture.cancel();io.shutdown();super.onDestroy();}
+    @Override protected void onDestroy(){stopWatching();if(capture!=null)capture.cancel();io.shutdown();super.onDestroy();}
     private interface Job{JSONObject run()throws Exception;}
     private void background(MethodChannel.Result result,Job job){io.execute(()->{try{String value=job.run().toString();main.post(()->result.success(value));}catch(Exception e){main.post(()->fail(result,e));}});}
     private void fail(MethodChannel.Result result,Exception e){String code=e.getMessage()!=null&&e.getMessage().contains("25 kabar")?"queue_full":"error";result.error(code,"Action could not be completed",null);}
@@ -50,24 +71,29 @@ public final class AbcActivity extends FlutterActivity {
         }
         if(s.gps!=null)localTimes.put(Long.toString(s.gps.at),LocalProfile.zone(this,z,s.gps.at,false));
         SharedPreferences pref=LocalProfile.prefs(this);
-        JSONObject profile=new JSONObject().put("nickname",pref.getString("nickname","")).put("language",LocalProfile.language(this)).put("dark",pref.getBoolean("dark",false)).put("relationship",pref.getBoolean("relationship",false)).put("clock12",pref.getBoolean("clock12",false));
+        JSONObject profile=new JSONObject().put("nickname",pref.getString("nickname","")).put("language",LocalProfile.language(this)).put("dark",pref.getBoolean("dark",false)).put("relationship",pref.getBoolean("relationship",false)).put("clock12",pref.getBoolean("clock12",false)).put("animations",pref.getBoolean("animations",true));
         String old=Store.prefs(this).getString("connection","");boolean enabled=Store.prefs(this).getBoolean("enabled",true);
         String connection=!enabled?"paused":old.startsWith("Terhubung")?"online":old.startsWith("Kabar terkirim")?"sent":old.startsWith("Mengirim")?"sending":old.contains("terputus")?"offline":"connecting";
         JSONObject j=new JSONObject().put("state",state).put("profile",profile).put("role",Store.role(this)).put("enabled",enabled).put("pending",Store.pending(this)).put("connection",connection).put("shareLocation",Store.prefs(this).getBoolean("shareLocation",false)).put("zone",LocalProfile.zone(this,z,now,false)).put("localTimes",localTimes).put("platform","android").put("mealsToday",new JSONArray(Arrays.asList(s.hasMealToday("Sarapan",now),s.hasMealToday("Makan siang",now),s.hasMealToday("Makan malam",now))));
         if(quickAction!=null&&!quickAction.isEmpty()){j.put("quickAction",quickAction);quickAction="";}
+        j.put("energySaver",getSystemService(PowerManager.class).isPowerSaveMode());
         return j;
     }
     @SuppressWarnings("unchecked") private void handle(MethodCall call,MethodChannel.Result result){
         try {
             Map<String,Object> args=call.arguments instanceof Map?(Map<String,Object>)call.arguments:Collections.emptyMap();
             switch(call.method){
+            case "qaCleanupProbe":case "qaSurfaceProbe":
+                if((getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)==0){result.notImplemented();return;}
+                Object probe=Class.forName("id.kabar.app.QaProbe").getMethod(call.method.equals("qaCleanupProbe")?"cleanup":"surfaces",Context.class,boolean.class).invoke(null,this,Boolean.TRUE.equals(args.get("seed")));
+                result.success(probe.toString());return;
             case "snapshot":result.success(snapshot().toString());return;
             case "preferences":{
                 SharedPreferences.Editor e=LocalProfile.prefs(this).edit();
                 if(args.containsKey("nickname")){String v=(String)args.get("nickname");if(!LocalProfile.validName(v)){result.error("invalid_name","Invalid nickname",null);return;}e.putString("nickname",v.trim());}
                 if(args.containsKey("language")){String v=(String)args.get("language");if(!Arrays.asList("id","en","de").contains(v))throw new IllegalArgumentException();e.putString("language",v);}
-                for(String k:new String[]{"dark","relationship","clock12"})if(args.containsKey(k))e.putBoolean(k,Boolean.TRUE.equals(args.get(k)));
-                if(!e.commit())throw new IllegalStateException();KabarWidget.updateAll(this);result.success(answer(null).toString());return;
+                for(String k:new String[]{"dark","relationship","clock12","animations"})if(args.containsKey(k))e.putBoolean(k,Boolean.TRUE.equals(args.get(k)));
+                if(!e.commit())throw new IllegalStateException();Store.changed(this);SyncService.refreshNotifications(this);result.success(answer(null).toString());return;
             }
             case "setupSender":background(result,()->{
                 if(!Store.role(this).isEmpty())throw new IllegalStateException();Pairing p=Pairing.create();KabarState s=new KabarState();s.name=LocalProfile.prefs(this).getString("nickname","Aku");s.revision=1;
@@ -109,6 +135,9 @@ public final class AbcActivity extends FlutterActivity {
             case "clearGps":case "clearHistory":background(result,()->{requireSender();synchronized(Store.LOCK){KabarState s=Store.state(this);s.gps=null;for(int i=0;i<s.events.length();i++)s.events.getJSONObject(i).remove("gps");if(call.method.equals("clearHistory")){s.events=new JSONArray();s.location="";s.locationAt=s.homeAt=s.mealAt=s.breakfastAt=s.lunchAt=s.dinnerAt=0;s.mealCategory="";}s.revision++;Store.saveAndQueue(this,s,false);Store.prefs(this).edit().putBoolean("shareLocation",false).apply();}return answer(null);});return;
             case "rotate":background(result,()->{requireSender();Pairing p=Pairing.create();synchronized(Store.LOCK){KabarState s=Store.state(this);s.revision++;Store.prefs(this).edit().putString("code",p.code()).putString("private",Pairing.encode(p.privateKey.getEncoded())).putString("queue","[]").remove("cursor").remove("publishedAt").commit();Store.saveAndQueue(this,s,false);}main.post(()->SyncService.start(this));return answer(null);});return;
             case "disconnect":stopService(new Intent(this,SyncService.class));Store.prefs(this).edit().clear().commit();Store.changed(this);break;
+            case "prepareUninstall":
+                if(capture!=null)capture.cancel();permitted=null;
+                background(result,()->{AppDataCleaner.clear(this);return answer(null);});return;
             case "uninstall":startActivity(new Intent(Intent.ACTION_DELETE,Uri.parse("package:"+getPackageName())));break;
             default:result.notImplemented();return;
             }

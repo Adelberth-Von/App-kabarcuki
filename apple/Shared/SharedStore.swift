@@ -51,6 +51,31 @@ enum SharedStore {
         defaults.set(dark,forKey:"appearanceDark");defaults.set(together,forKey:"appearanceRelationship")
         if let profile { defaults.set(profile,forKey:"abcProfile") }
     }
+    static func eraseAll() throws {
+        // Two abc accounts in one service; never erase other Keychain items.
+        for name in ["code","private"] {
+            let status=SecItemDelete(key(name) as CFDictionary)
+            guard status==errSecSuccess || status==errSecItemNotFound else {throw KabarError.invalid("Kunci abc belum dapat dihapus")}
+        }
+        defaults.removePersistentDomain(forName:group)
+        if let identifier=Bundle.main.bundleIdentifier {UserDefaults.standard.removePersistentDomain(forName:identifier)}
+        let manager=FileManager.default
+        var roots:[URL]=[]
+        for directory:FileManager.SearchPathDirectory in [.documentDirectory,.applicationSupportDirectory,.cachesDirectory] {
+            roots += manager.urls(for:directory,in:.userDomainMask)
+        }
+        roots.append(manager.temporaryDirectory)
+        if let groupURL=manager.containerURL(forSecurityApplicationGroupIdentifier:group) {
+            for path in ["Documents","Library/Application Support","Library/Caches","tmp"] {roots.append(groupURL.appendingPathComponent(path))}
+        }
+        for root in roots where manager.fileExists(atPath:root.path) {
+            for child in try manager.contentsOfDirectory(at:root,includingPropertiesForKeys:[.isSymbolicLinkKey]) {
+                // removeItem removes a link itself, without following its destination.
+                try manager.removeItem(at:child)
+            }
+        }
+        URLCache.shared.removeAllCachedResponses()
+    }
     static func receive(_ packet: Packet, topic: String) throws -> Bool {
         guard pairing()?.topic == topic, packet.state.revision > state().revision else { return false }
         try save(packet.state); return true

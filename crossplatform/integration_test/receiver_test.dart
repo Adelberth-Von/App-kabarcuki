@@ -29,7 +29,6 @@ void main() {
     await tester.pumpAndSettle();
     for (var i = 0; number(model.state['revision']) == 0 && i < 90; i++) {
       await Future<void>.delayed(const Duration(seconds: 1));
-      await model.refresh();
       await tester.pumpAndSettle();
     }
     expect(model.role, 'receiver');
@@ -57,6 +56,6 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
     expect(initial, greaterThan(0));
-    model.stopPolling();
+    // AbcApp owns and disposes the model.
   });
 }

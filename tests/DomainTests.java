@@ -17,9 +17,29 @@ public class DomainTests {
     public static void main(String[] args)throws Exception{
         if(args.length>0&&args[0].equals("device-publisher")){devicePublisher(args[1]);return;}
         if(args.length>0&&args[0].equals("device-subscriber")){deviceSubscriber(args[1]);System.out.println("PASS device sender interoperability: "+checks+" assertions");return;}
-        mealRules();clockRules();stateRules();locationAndManualMealRules();cryptoRules();
+        mealRules();clockRules();stateRules();locationAndManualMealRules();cryptoRules();cleanupScopeRules();
         if(args.length>0&&args[0].equals("live")){liveRelay();liveStream();}
         System.out.println("PASS "+checks+" assertions");
+    }
+    private static void cleanupScopeRules()throws Exception {
+        java.nio.file.Path sandbox=java.nio.file.Files.createTempDirectory("abc-cleanup-qa-").toRealPath();
+        java.nio.file.Path app=sandbox.resolve("abc"),other=sandbox.resolve("other-app");
+        java.nio.file.Files.createDirectories(app.resolve("cache/nested"));java.nio.file.Files.createDirectories(other);
+        java.nio.file.Files.write(app.resolve("cache/nested/private.txt"),new byte[]{1,2,3});
+        java.nio.file.Path sentinel=other.resolve("keep.txt");java.nio.file.Files.write(sentinel,new byte[]{9,8,7});
+        boolean linked=false;
+        try {
+            try{java.nio.file.Files.createSymbolicLink(app.resolve("external-link"),other);linked=true;}catch(UnsupportedOperationException|IOException denied){}
+            ScopedFiles.clear(app.toFile());
+            ok(app.toFile().isDirectory(),"cleanup retains the named app directory");
+            eq(app.toFile().list().length,0,"cleanup erases only app contents");
+            ok(java.util.Arrays.equals(java.nio.file.Files.readAllBytes(sentinel),new byte[]{9,8,7}),"unrelated application file untouched");
+            if(linked)ok(java.nio.file.Files.isDirectory(other),"cleanup does not follow a directory link outside app scope");
+        } finally {
+            // This directory is created by this test, with a checked absolute temp root.
+            ok(sandbox.isAbsolute()&&sandbox.getFileName().toString().startsWith("abc-cleanup-qa-"),"QA cleanup remains in its own temporary sandbox");
+            ScopedFiles.clear(sandbox.toFile());java.nio.file.Files.delete(sandbox);
+        }
     }
     private static void clockRules(){
         eq(StatusLogic.clock(at(2,12,0),TZ),"12.00 WIB - Indonesia","local WIB clock");

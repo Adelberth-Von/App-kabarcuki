@@ -5,12 +5,18 @@ import 'package:flutter/services.dart';
 import 'strings.dart';
 
 abstract class Backend {
+  Stream<void> get changes => const Stream.empty();
   Future<Map<String, dynamic>> invoke(String method,
       [Map<String, dynamic> arguments = const {}]);
 }
 
-class NativeBackend implements Backend {
+class NativeBackend extends Backend {
   static const channel = MethodChannel('abc/native');
+  static final _changes = const EventChannel('abc/updates')
+      .receiveBroadcastStream()
+      .map<void>((_) {});
+  @override
+  Stream<void> get changes => _changes;
   @override
   Future<Map<String, dynamic>> invoke(String method,
       [Map<String, dynamic> arguments = const {}]) async {
@@ -32,7 +38,9 @@ class AppModel extends ChangeNotifier {
   bool loading = true, busy = false;
   String? error, note;
   String progress = 'saving';
-  Timer? _poll;
+  StreamSubscription<void>? _updates;
+  Timer? _debounce;
+  bool _dirty = false, _disposed = false;
   AppModel(this.backend);
   Map<String, dynamic> get state =>
       Map<String, dynamic>.from(snapshot['state'] as Map? ?? {});
@@ -47,42 +55,56 @@ class AppModel extends ChangeNotifier {
   bool get dark => profile['dark'] == true;
   bool get together => profile['relationship'] == true;
   bool get clock12 => profile['clock12'] == true;
+  bool get animations => profile['animations'] != false;
+  bool get energySaver => snapshot['energySaver'] == true;
   bool get sender => role == 'sender';
   bool get enabled => snapshot['enabled'] != false;
   List<Map<String, dynamic>> get events => (state['events'] as List? ?? [])
       .map((e) => Map<String, dynamic>.from(e as Map))
       .toList();
   Future<void> init() async {
+    startObserving();
     await refresh();
-    startPolling();
   }
 
-  void startPolling() {
-    _poll?.cancel();
-    _poll = Timer.periodic(
-        const Duration(seconds: 5), (_) => refresh(silent: true));
+  void startObserving() {
+    if (_updates != null || _disposed) return;
+    _updates = backend.changes.listen((_) {
+      _dirty = true;
+      _debounce?.cancel();
+      _debounce = Timer(const Duration(milliseconds: 80), () {
+        if (!busy) {
+          _dirty = false;
+          refresh(silent: true);
+        }
+      });
+    }, onError: (_) {});
   }
 
-  void stopPolling() {
-    _poll?.cancel();
-    _poll = null;
+  void stopObserving() {
+    _updates?.cancel();
+    _updates = null;
+    _debounce?.cancel();
+    _debounce = null;
   }
 
   Future<void> refresh({bool silent = false}) async {
-    if (busy && silent) return;
+    if (_disposed || (busy && silent)) return;
     try {
       snapshot = await backend.invoke('snapshot');
       if (!silent) error = null;
     } catch (_) {
       if (!silent) error = 'error';
     }
-    loading = false;
-    notifyListeners();
+    if (!_disposed) {
+      loading = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> command(String name,
       [Map<String, dynamic> arguments = const {}]) async {
-    if (busy) return false;
+    if (busy || _disposed) return false;
     busy = true;
     progress = name == 'record' && arguments['shareLocation'] == true
         ? 'locating'
@@ -110,7 +132,13 @@ class AppModel extends ChangeNotifier {
       return false;
     } finally {
       busy = false;
-      notifyListeners();
+      if (!_disposed) {
+        notifyListeners();
+        if (_dirty) {
+          _dirty = false;
+          refresh(silent: true);
+        }
+      }
     }
   }
 
@@ -145,7 +173,8 @@ class AppModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    stopPolling();
+    _disposed = true;
+    stopObserving();
     super.dispose();
   }
 }

@@ -27,6 +27,7 @@ final class NotificationService: UNNotificationServiceExtension {
                 guard SharedStore.pairing()?.topic == pair.topic else { finish(content); return }
                 _ = try SharedStore.receive(packet,topic:pair.topic)
                 content.title = "abc · \(packet.state.name)"; content.body = PhoneText.notification(packet)
+                for (key,value) in PhoneText.notificationData(packet) {content.userInfo[key]=value}
                 WidgetCenter.shared.reloadAllTimelines(); finish(content)
             } catch { finish(content) }
         }

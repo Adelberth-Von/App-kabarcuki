@@ -20,25 +20,25 @@ class AbcApp extends StatefulWidget {
 
 class _AbcAppState extends State<AbcApp> with WidgetsBindingObserver {
   Timer? _clock;
-  int _minute = -1;
   AppModel get model => widget.model;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     model.init();
+    model.addListener(_startClock);
     _startClock();
   }
 
   void _startClock() {
     _clock?.cancel();
-    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-      final now = DateTime.now();
-      final value = now.millisecondsSinceEpoch ~/ 60000;
-      if (value != _minute) {
-        _minute = value;
-        if (mounted) setState(() {});
-      }
+    if (WidgetsBinding.instance.lifecycleState != null &&
+        WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    _clock = Timer(Duration(milliseconds: 60000 - now % 60000), () {
+      if (!mounted) return;
+      model.refresh(silent: true);
+      _startClock();
     });
   }
 
@@ -46,10 +46,10 @@ class _AbcAppState extends State<AbcApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       model.refresh();
-      model.startPolling();
+      model.startObserving();
       _startClock();
-    } else if (state == AppLifecycleState.paused) {
-      model.stopPolling();
+    } else {
+      model.stopObserving();
       _clock?.cancel();
     }
   }
@@ -58,6 +58,7 @@ class _AbcAppState extends State<AbcApp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _clock?.cancel();
+    model.removeListener(_startClock);
     model.dispose();
     super.dispose();
   }
@@ -443,7 +444,9 @@ class _ShellState extends State<Shell> {
           borderRadius: BorderRadius.circular(22),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            SizedBox(height: 104, child: PixelSky(together: m.together)),
+            SizedBox(height: 104, child: PixelSky(
+                together: m.together,
+                animate: m.animations && !m.energySaver)),
             Container(
                 color: p.card,
                 padding:
@@ -528,7 +531,7 @@ class _ShellState extends State<Shell> {
                   style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: small(done[i]
                   ? m.stamp(times[i])
-                  : '${t['unrecorded']} · ${windows[i * 2]}–${windows[i * 2 + 1]}'),
+                  : '${t['unrecorded']} · ${mealWindow(windows[i * 2] as num, windows[i * 2 + 1] as num)}'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: m.busy
                   ? null
@@ -597,6 +600,8 @@ class _ShellState extends State<Shell> {
           small(value)
         ]))
       ]);
+  String mealWindow(num start, num end) =>
+      '${clockDigits(DateTime(2000, 1, 1, start.toInt()), m.clock12)} – ${clockDigits(DateTime(2000, 1, 1, end.toInt()), m.clock12)}';
   Future<void> confirmStatus(String kind, {String? category}) async {
     String selected = category ?? 'auto';
     bool share = m.snapshot['shareLocation'] == true;
@@ -766,12 +771,13 @@ class _ShellState extends State<Shell> {
               ])));
         }),
       ], storage: 'history');
-  Future<void> sheet(String title, List<Widget> contents) =>
+  Future<void> sheet(String titleKey, List<Widget> Function() contents) =>
       showModalBottomSheet<void>(
           context: context,
           isScrollControlled: true,
           useSafeArea: true,
-          builder: (context) => SizedBox(
+          builder: (context) => AnimatedBuilder(animation: m,
+              builder: (context, _) => SizedBox(
               height: MediaQuery.sizeOf(context).height * .82,
               child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -780,7 +786,7 @@ class _ShellState extends State<Shell> {
                       children: [
                         Row(children: [
                           Expanded(
-                              child: Text(title,
+                              child: Text(t[titleKey],
                                   style: const TextStyle(
                                       fontSize: 25,
                                       fontWeight: FontWeight.w800))),
@@ -795,13 +801,13 @@ class _ShellState extends State<Shell> {
                                 child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
-                                    children: contents
+                                    children: contents()
                                         .map((w) => Padding(
                                             padding: const EdgeInsets.only(
                                                 bottom: 16),
                                             child: w))
                                         .toList())))
-                      ]))));
+                      ])))));
   Widget detailRow(String name, String value) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         small(name),
@@ -814,7 +820,7 @@ class _ShellState extends State<Shell> {
     final at = number(event['at']),
         origin = Map<String, dynamic>.from(event['originInfo'] as Map? ?? {});
     final point = event['gps'] as Map?;
-    return sheet(t['detailTitle'], [
+    return sheet('detailTitle', () => [
       Row(children: [
         PixelIcon(event['kind'] as String, size: 42),
         const SizedBox(width: 14),
@@ -833,8 +839,7 @@ class _ShellState extends State<Shell> {
         const SizedBox(height: 16),
         detailRow(
             t['recorded'],
-            DateTime.fromMillisecondsSinceEpoch(at, isUtc: true)
-                .toIso8601String())
+            m.stamp(at, inZone: const {'offsetMinutes': 0, 'short': 'UTC'}))
       ])),
       if (point != null)
         ...gpsContent(Map<String, dynamic>.from(point))
@@ -870,7 +875,7 @@ class _ShellState extends State<Shell> {
             key: 'open-map'),
       ];
   Future<void> gpsDetails(Map<String, dynamic> point) =>
-      sheet(t['locationTitle'], gpsContent(point));
+      sheet('locationTitle', () => gpsContent(point));
   Widget settings() => page([
         header(t['settings'], t['appearanceNote']),
         section(t['profile'], [
@@ -906,6 +911,13 @@ class _ShellState extends State<Shell> {
                   m.busy ? null : (value) => m.prefs({'dark': value.first})),
           const SizedBox(height: 12),
           small(t['daySceneNote']),
+          SwitchListTile(
+              key: const ValueKey('pixel-animations'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(t['pixelAnimations']),
+              subtitle: Text(t[m.energySaver ? 'motionPowerSave' : 'motionNote']),
+              value: m.animations,
+              onChanged: m.busy ? null : (value) => m.prefs({'animations': value})),
           const SizedBox(height: 8),
           small(t['zoneNote']),
         ]),
@@ -962,12 +974,8 @@ class _ShellState extends State<Shell> {
           rowSetting(t['disconnect'], Icons.link_off_rounded,
               () => dangerAction('disconnect', 'disconnectBody', 'disconnect'),
               danger: true),
-          rowSetting(t['uninstall'], Icons.remove_circle_outline_rounded, () {
-            if (m.snapshot['platform'] == 'ios')
-              simpleInfo(t['uninstall'], t['iosUninstall']);
-            else
-              dangerAction('uninstall', 'uninstallBody', 'uninstall');
-          }, danger: true),
+          rowSetting(t['uninstall'], Icons.remove_circle_outline_rounded,
+              removeApplication, danger: true, key: 'remove-application'),
         ]),
         small(t['version']),
       ], storage: 'settings');
@@ -1105,7 +1113,7 @@ class _ShellState extends State<Shell> {
       final result = await m.backend.invoke('pairCode');
       if (!mounted) return;
       final value = result['code'] as String;
-      await sheet(t['shareCode'], [
+    await sheet('shareCode', () => [
         small(t['secretCode']),
         card(SelectableText(value,
             style: const TextStyle(fontFamily: 'monospace', fontSize: 12))),
@@ -1151,6 +1159,18 @@ class _ShellState extends State<Shell> {
               ]));
   Future<void> dangerAction(String title, String body, String command) async {
     if (await confirm(t[title], t[body])) await m.command(command);
+  }
+  Future<void> removeApplication() async {
+    final ios = m.snapshot['platform'] == 'ios';
+    final title = t['uninstall'], body = t['iosUninstall'];
+    if (!await confirm(title, t['uninstallBody'])) return;
+    if (!await m.command('prepareUninstall')) return;
+    if (!mounted) return;
+    if (ios) {
+      await simpleInfo(title, body);
+    } else {
+      await m.command('uninstall');
+    }
   }
 
   Future<void> editLabels() async {

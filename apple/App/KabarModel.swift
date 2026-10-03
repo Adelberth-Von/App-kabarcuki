@@ -16,6 +16,11 @@ import KabarCore
     @Published var pushEndpoint = SharedStore.defaults.string(forKey: "pushEndpoint") ?? ""
     private var sync: Task<Void, Never>?
     private var registration: Task<Void, Never>?
+    private var notificationRefresh: Task<Void,Never>?
+    private var notificationGeneration = UUID()
+    private var waiting: CheckedContinuation<Void,Never>?
+    private var waitToken: UUID?
+    private var idleWake: Task<Void,Never>?
     var code: String { SharedStore.pairing()?.code ?? "" }
     var queue: [String] { SharedStore.defaults.stringArray(forKey: "queue") ?? [] }
     var enabled: Bool { SharedStore.defaults.object(forKey: "enabled") as? Bool ?? true }
@@ -78,6 +83,7 @@ import KabarCore
         var q = queue; guard q.count < 25 else { throw KabarError.invalid("Antrean 25 kabar penuh. Hubungkan internet sebelum menambah kabar.") }
         q.append(try Packet(state: next, notify: notify).envelope(pairing: pair))
         try SharedStore.save(next); SharedStore.defaults.set(q, forKey: "queue"); pending = q.count; state = next
+        wakeSender()
         WidgetCenter.shared.reloadAllTimelines()
     }
     func edit(name: String, outside: String, home: String, meal: String, windows: [Int]) -> Bool {
@@ -111,7 +117,39 @@ import KabarCore
             }
         }
     }
-    func stop() { sync?.cancel(); sync = nil; registration?.cancel(); registration = nil }
+    private func wakeSender() {
+        idleWake?.cancel();idleWake=nil;waitToken=nil
+        let continuation=waiting;waiting=nil;continuation?.resume()
+    }
+    private func waitForOutgoing(milliseconds:Int64) async throws {
+        let token=UUID()
+        await withTaskCancellationHandler(operation:{
+            await withCheckedContinuation { (continuation:CheckedContinuation<Void,Never>) in
+                if Task.isCancelled || !queue.isEmpty {continuation.resume();return}
+                waiting=continuation;waitToken=token
+                idleWake=Task {
+                    do {try await Task.sleep(nanoseconds:UInt64(max(1000,min(milliseconds,14_400_000)))*1_000_000)}catch{return}
+                    if waitToken==token {wakeSender()}
+                }
+            }
+        },onCancel:{[weak self] in Task { @MainActor in if self?.waitToken==token {self?.wakeSender()} }})
+        try Task.checkCancellation()
+    }
+    func stop() {
+        sync?.cancel(); sync = nil; wakeSender(); registration?.cancel(); registration = nil
+        notificationRefresh?.cancel();notificationRefresh=nil;notificationGeneration=UUID()
+    }
+    func prepareRemoval() throws {
+        let pair=SharedStore.pairing(), token=SharedStore.defaults.string(forKey:"deviceToken"), endpoint=validPushURL()
+        cancelLocation();stop()
+        try SharedStore.eraseAll()
+        role="";state=KabarState();pending=0;pushEndpoint="";connection="Belum terhubung";error=nil;locationNote="";locating=false;sampler=nil
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        UIApplication.shared.unregisterForRemoteNotifications()
+        WidgetCenter.shared.reloadAllTimelines()
+        if let pair,let token,let endpoint {Task {try? await sendRegistration(endpoint:endpoint,pair:pair,token:token,remove:true)}}
+    }
     func disconnect() {
         if let pair = SharedStore.pairing(), let token = SharedStore.defaults.string(forKey: "deviceToken"), let endpoint = validPushURL() {
             Task { try? await sendRegistration(endpoint: endpoint, pair: pair, token: token, remove: true) }
@@ -137,7 +175,7 @@ import KabarCore
                         } else {
                             let last = SharedStore.defaults.object(forKey: "publishedAt") as? Int64 ?? 0
                             if KabarState.now-last >= 4*60*60*1000 { try enqueue(state, notify: false) }
-                            try await Task.sleep(nanoseconds: 1_000_000_000)
+                            try await waitForOutgoing(milliseconds:4*60*60*1000-(KabarState.now-last))
                         }
                     } else {
                         let cursor = SharedStore.defaults.string(forKey: "cursor") ?? "latest"
@@ -155,6 +193,8 @@ import KabarCore
                                 state = packet.state; WidgetCenter.shared.reloadAllTimelines()
                                 if packet.notify && (previous > 0 || (msg.time ?? 0)*1000 >= listenedAt-2000) && !SharedStore.defaults.bool(forKey:"pushRegistered") { await notify(packet) }
                             }
+                            let stored=SharedStore.state()
+                            if stored.revision != state.revision {state=stored}
                             if let id = msg.id, id.range(of: "^[a-zA-Z0-9]+$", options: .regularExpression) != nil { SharedStore.defaults.set(id, forKey: "cursor") }
                         }
                     }
@@ -177,8 +217,36 @@ import KabarCore
         }
     }
     func notify(_ packet: Packet) async {
+        guard !Task.isCancelled, !role.isEmpty, let topic=SharedStore.pairing()?.topic else {return}
         let content = UNMutableNotificationContent(); content.title = "abc · \(packet.state.name)"; content.body = PhoneText.notification(packet); content.sound = .default
-        try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "kabar-\(packet.state.revision)", content: content, trigger: nil))
+        content.userInfo=PhoneText.notificationData(packet)
+        let identifier="kabar-\(topic)-\(packet.state.revision)",center=UNUserNotificationCenter.current()
+        try? await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil))
+        if role.isEmpty || SharedStore.pairing()?.topic != topic {
+            center.removePendingNotificationRequests(withIdentifiers:[identifier])
+            center.removeDeliveredNotifications(withIdentifiers:[identifier])
+        }
+    }
+    func refreshNotifications() {
+        notificationRefresh?.cancel();notificationGeneration=UUID()
+        guard !role.isEmpty,let topic=SharedStore.pairing()?.topic else {return}
+        let generation=notificationGeneration
+        notificationRefresh=Task {
+            let center=UNUserNotificationCenter.current()
+            for delivered in await center.deliveredNotifications() {
+                guard !Task.isCancelled,notificationGeneration==generation,!role.isEmpty,SharedStore.pairing()?.topic==topic else {return}
+                guard let at=(delivered.request.content.userInfo["abcAt"] as? NSNumber)?.int64Value,
+                      let label=delivered.request.content.userInfo["abcLabel"] as? String,
+                      let content=delivered.request.content.mutableCopy() as? UNMutableNotificationContent else {continue}
+                content.body=PhoneText.label(label)+" · "+PhoneText.stamp(at)
+                content.sound=nil;content.interruptionLevel = .passive
+                try? await center.add(UNNotificationRequest(identifier:delivered.request.identifier,content:content,trigger:nil))
+                if role.isEmpty || SharedStore.pairing()?.topic != topic {
+                    center.removePendingNotificationRequests(withIdentifiers:[delivered.request.identifier])
+                    center.removeDeliveredNotifications(withIdentifiers:[delivered.request.identifier])
+                }
+            }
+        }
     }
     private func validPushURL() -> URL? {
         guard let url = URL(string: pushEndpoint), url.scheme == "https", url.host != nil, url.user == nil, url.password == nil, url.query == nil, url.fragment == nil else { return nil }

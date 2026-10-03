@@ -1,6 +1,7 @@
 import 'package:abc/main.dart';
 import 'package:abc/model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -11,6 +12,8 @@ void main() {
       (tester) async {
     final backend = NativeBackend();
     final before = await backend.invoke('snapshot');
+    const cleanup=bool.fromEnvironment('QA_CLEANUP');
+    if(cleanup)expect(before['role'],'',reason:'Cleanup tests require a fresh disposable simulator.');
     final originalCode = (before['role'] == 'sender')
         ? (await backend.invoke('pairCode'))['code']
         : null;
@@ -90,6 +93,18 @@ void main() {
     await tap(find.byKey(const ValueKey('time-format')));
     await tap(find.byKey(const ValueKey('clock-12')));
     expect(model.clock12, true);
+    if (model.snapshot['platform']=='android') {
+      await model.command('record',{'kind':'home','shareLocation':false});
+      await backend.invoke('qaSurfaceProbe',{'seed':true});
+      for(final twelve in [false,true,false,true]) {
+        await model.prefs({'clock12':twelve});
+        final surfaces=await backend.invoke('qaSurfaceProbe');
+        final texts=surfaces.entries.where((e)=>e.key.startsWith('widget')||e.key=='notification');
+        expect(texts.length,greaterThanOrEqualTo(3));
+        for(final text in texts)expect(RegExp(r'\b(AM|PM)\b').hasMatch(text.value as String),twelve,reason:text.key);
+        if(surfaces.containsKey('notification'))expect(surfaces['onlyAlertOnce'],true);
+      }
+    }
     await tap(find.byKey(const ValueKey('theme-relationship')));
     await backend.invoke('preferences', {'dark': true});
     await model.refresh();
@@ -136,5 +151,20 @@ void main() {
       'dark': false,
       'relationship': false
     });
+    if(cleanup) {
+      final seeded=await backend.invoke('qaCleanupProbe',{'seed':true});
+      expect(seeded['secretsClear'],false);expect(seeded['filesClear'],false);
+      await backend.invoke('prepareUninstall');
+      await Future<void>.delayed(const Duration(milliseconds:500));
+      final cleaned=await backend.invoke('qaCleanupProbe');
+      for(final check in cleaned.entries)expect(check.value,true,reason:check.key);
+      final empty=await backend.invoke('snapshot');
+      expect(empty['role'],'');expect(empty['pending'],0);
+      expect((empty['state'] as Map)['events'],isEmpty);
+      expect((empty['profile'] as Map)['nickname']??'','');
+      expect((empty['profile'] as Map)['clock12']??false,false);
+      await expectLater(backend.invoke('pairCode'),throwsA(isA<PlatformException>()));
+      debugPrint('QA PASS: app files, preferences, queue, history, pairing secrets and notifications cleared.');
+    }
   });
 }

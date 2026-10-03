@@ -201,7 +201,18 @@ const messages = <String, List<String>>{
     'Zeit auf dem sendenden Handy'
   ],
   'timeZone': ['Zona waktu', 'Time zone', 'Zeitzone'],
-  'recorded': ['Waktu kejadian', 'Event time', 'Zeitpunkt'],
+  'recorded': ['Waktu kejadian · UTC', 'Event time · UTC', 'Zeitpunkt · UTC'],
+  'pixelAnimations': ['Animasi pixel', 'Pixel animations', 'Pixel-Animationen'],
+  'motionNote': [
+    'Animasi ringan hanya saat ilustrasi terlihat. Berhenti saat app tidak aktif atau mode hemat daya menyala.',
+    'Light animation while the scene is visible. Pauses when inactive or in Low Power Mode.',
+    'Sparsame Animation bei sichtbarer Szene. Pausiert bei inaktiver App oder im Stromsparmodus.'
+  ],
+  'motionPowerSave': [
+    'Animasi sedang dijeda oleh mode hemat daya HP.',
+    'Animation is paused by your phone’s Low Power Mode.',
+    'Die Animation pausiert im Stromsparmodus deines Handys.'
+  ],
   'gpsTime': [
     'Waktu pengambilan lokasi',
     'Location sampled at',
@@ -410,9 +421,9 @@ const messages = <String, List<String>>{
   ],
   'uninstall': ['Uninstall abc', 'Uninstall abc', 'abc deinstallieren'],
   'uninstallBody': [
-    'Sistem akan meminta konfirmasi penghapusan aplikasi.',
-    'The system will ask you to confirm removing the app.',
-    'Das System fragt nach einer Bestätigung zum Entfernen der App.'
+    'Hapus panggilan, kode pasangan, riwayat, pengaturan, dan cache abc di HP ini, lalu lanjut ke penghapusan aplikasi. File dan data aplikasi lain tidak disentuh. Jika penghapusan aplikasi dibatalkan, data abc tetap sudah dihapus. Salinan kabar di HP lain tetap ada.',
+    'Erase abc’s nickname, pairing keys, history, settings and cache on this phone, then continue to app removal. Other files and apps are untouched. If app removal is cancelled, abc’s data stays erased. Copies on other phones remain.',
+    'Rufname, Kopplungsschlüssel, Verlauf, Einstellungen und Cache von abc auf diesem Handy löschen und danach die App entfernen. Andere Dateien und Apps bleiben unberührt. Bei Abbruch bleiben die abc-Daten gelöscht. Kopien auf anderen Handys bleiben bestehen.'
   ],
   'queueFull': [
     'Antrean 25 kabar penuh. Hubungkan internet sebelum menambah kabar.',
@@ -442,9 +453,9 @@ const messages = <String, List<String>>{
   ],
   'saved': ['Perubahan disimpan', 'Changes saved', 'Änderungen gespeichert'],
   'version': [
-    'abc 0.5.0 · versi uji',
-    'abc 0.5.0 · test version',
-    'abc 0.5.0 · Testversion'
+    'abc 0.6.0 · versi uji',
+    'abc 0.6.0 · test version',
+    'abc 0.6.0 · Testversion'
   ],
   'iosWidget': [
     'Tahan layar utama → Tambah Widget → abc. Pembaruan mengikuti iOS.',
@@ -452,9 +463,9 @@ const messages = <String, List<String>>{
     'Startbildschirm gedrückt halten → Widget hinzufügen → abc. iOS steuert die Aktualisierung.'
   ],
   'iosUninstall': [
-    'Tahan ikon abc di layar utama → Hapus App → Hapus App.',
-    'Hold the abc icon on the Home Screen → Remove App → Delete App.',
-    'Halte das abc-Symbol auf dem Startbildschirm gedrückt → App entfernen → App löschen.'
+    'Data abc di HP ini sudah dihapus. Sekarang tahan ikon abc di layar utama → Hapus App → Hapus App. Pilih Hapus App untuk menghapus aplikasi sepenuhnya.',
+    'abc’s data on this phone is erased. Now hold the abc icon on the Home Screen → Remove App → Delete App. Choose Delete App to remove it completely.',
+    'Die abc-Daten auf diesem Handy sind gelöscht. Halte jetzt das abc-Symbol gedrückt → App entfernen → App löschen. Wähle App löschen für die vollständige Entfernung.'
   ],
   'pushServer': [
     'Notifikasi iPhone saat tertutup',

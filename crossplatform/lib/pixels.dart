@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'model.dart';
 
@@ -23,24 +24,109 @@ class Palette {
   Color get green => hex(dark ? 0xBDDCC0 : 0x397254);
 }
 
-class PixelSky extends StatelessWidget {
+class PixelSky extends StatefulWidget {
   final bool together;
   final DateTime? at;
-  const PixelSky({super.key, this.together = false, this.at});
+  final bool animate;
+  const PixelSky({super.key, this.together = false, this.at, this.animate = false});
   @override
-  Widget build(BuildContext context) => CustomPaint(
-      painter: _SkyPainter(together, dayPhase(at ?? DateTime.now())),
-      size: const Size(420, 112));
+  State<PixelSky> createState() => PixelSkyState();
+}
+
+class PixelSkyState extends State<PixelSky> with WidgetsBindingObserver {
+  final _frames = ValueNotifier<int>(0);
+  int get frame => _frames.value;
+  Timer? _timer;
+  ScrollPosition? _scroll;
+  bool _visible = true, _checkScheduled = false, _allowed = false;
+  bool _foreground = true;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _foreground = WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+  }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final scroll = Scrollable.maybeOf(context)?.position;
+    if (_scroll != scroll) {
+      _scroll?.removeListener(_checkVisible);
+      _scroll = scroll;
+      _scroll?.addListener(_checkVisible);
+    }
+    _allowed = TickerMode.valuesOf(context).enabled && !MediaQuery.disableAnimationsOf(context)
+        && (ModalRoute.isCurrentOf(context) ?? true);
+    _checkVisible();
+    _sync();
+  }
+  @override
+  void didUpdateWidget(PixelSky oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+  void _checkVisible() {
+    if (_checkScheduled) return;
+    _checkScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkScheduled = false;
+      if (!mounted) return;
+      final box = context.findRenderObject();
+      final viewport = Scrollable.maybeOf(context)?.context.findRenderObject();
+      if (box is RenderBox && box.hasSize) {
+        final bounds = box.localToGlobal(Offset.zero) & box.size;
+        final view = viewport is RenderBox && viewport.hasSize
+            ? viewport.localToGlobal(Offset.zero) & viewport.size
+            : Offset.zero & MediaQuery.sizeOf(context);
+        _visible = bounds.overlaps(view);
+      }
+      _sync();
+    });
+  }
+  void _sync() {
+    final run = widget.animate && _foreground && _allowed && _visible;
+    if (!run) {
+      _timer?.cancel();
+      _timer = null;
+    } else {
+      // Four small canvas repaints/second. No ticker or whole-page rebuild.
+      _timer ??= Timer.periodic(const Duration(milliseconds: 250), (_) {
+        _frames.value = (_frames.value + 1) % 16;
+      });
+    }
+  }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    _sync();
+  }
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _scroll?.removeListener(_checkVisible);
+    WidgetsBinding.instance.removeObserver(this);
+    _frames.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) => RepaintBoundary(child: CustomPaint(
+      painter: _SkyPainter(widget.together,
+          dayPhase(widget.at ?? DateTime.now()), _frames),
+      size: const Size(420, 112)));
 }
 
 class _SkyPainter extends CustomPainter {
   final bool together;
   final int phase;
-  _SkyPainter(this.together, this.phase);
+  final ValueNotifier<int> frames;
+  _SkyPainter(this.together, this.phase, this.frames) : super(repaint: frames);
   @override
   void paint(Canvas c, Size size) {
     final sky = [0xDEEAE7, 0xDCECF7, 0xF8D4C1, 0x293451][phase];
     final paint = Paint()..isAntiAlias = false;
+    final frame = frames.value;
+    final sway = frame ~/ 4 % 2;
     c.drawColor(Color(0xFF000000 | sky), BlendMode.src);
     final u = (size.width / 112).clamp(0.0, size.height / 38);
     c.save();
@@ -57,15 +143,16 @@ class _SkyPainter extends CustomPainter {
       r(84, 5, 7, 7, 0xFFE5AA);
       r(87, 4, 5, 6, sky);
       for (final x in [9, 25, 47, 67, 102]) {
-        r(x, 4 + x % 9, 1, 3, 0xE2D7BB);
-        r(x - 1, 5 + x % 9, 3, 1, 0xE2D7BB);
+        final color = (frame ~/ 4 + x) % 3 == 0 ? 0xA5AEC0 : 0xE2D7BB;
+        r(x, 4 + x % 9, 1, 3, color);
+        r(x - 1, 5 + x % 9, 3, 1, color);
       }
     } else {
       r(83, phase == 2 ? 16 : 6, 8, 8, 0xEBA669);
       r(85, phase == 2 ? 14 : 4, 4, 12, 0xF6C97E);
-      r(13, 9, 16, 2, 0xFFFAE9);
-      r(16, 7, 8, 2, 0xFFFAE9);
-      r(61, 12, 12, 2, 0xFFFAE9);
+      r(13 + sway, 9, 16, 2, 0xFFFAE9);
+      r(16 + sway, 7, 8, 2, 0xFFFAE9);
+      r(61 - sway, 12, 12, 2, 0xFFFAE9);
     }
     r(
         0,
@@ -91,7 +178,15 @@ class _SkyPainter extends CustomPainter {
     void person(int x, int shirt) {
       r(x, 21, 5, 2, 0x4E4550);
       r(x, 23, 5, 4, 0xEDC8AE);
+      if (frame != 12) {
+        r(x + 1, 25, 1, 1, 0x4E4550);
+        r(x + 3, 25, 1, 1, 0x4E4550);
+      }
       r(x - 1, 27, 7, 4, shirt);
+      if (frame >= 6 && frame <= 9) {
+        r(x - 3, 25, 2, 4, shirt);
+        r(x - 3, 23, 2, 2, 0xEDC8AE);
+      }
       r(x, 31, 2, 3, 0x4E4550);
       r(x + 3, 31, 2, 3, 0x4E4550);
     }
@@ -99,17 +194,17 @@ class _SkyPainter extends CustomPainter {
     person(53, together ? 0xA76B8B : 0x7980A5);
     if (together) {
       person(67, 0x9683AD);
-      r(61, 14, 2, 2, 0xCA779A);
-      r(64, 14, 2, 2, 0xCA779A);
-      r(61, 16, 5, 1, 0xCA779A);
-      r(62, 17, 3, 1, 0xCA779A);
-      r(63, 18, 1, 1, 0xCA779A);
+      r(61, 14 - sway, 2, 2, 0xCA779A);
+      r(64, 14 - sway, 2, 2, 0xCA779A);
+      r(61, 16 - sway, 5, 1, 0xCA779A);
+      r(62, 17 - sway, 3, 1, 0xCA779A);
+      r(63, 18 - sway, 1, 1, 0xCA779A);
       r(60, 28, 7, 2, 0xEDC8AE);
     }
     r(45, 34, 32, 1, phase == 3 ? 0x68756B : 0xDADEC2);
     for (final x in [7, 42, 81, 103]) {
       r(x, 30, 1, 3, 0x698E71);
-      r(x - 1, 28, 3, 2, together ? 0xECAAC0 : 0xF5DC96);
+      r(x - 1 + sway, 28, 3, 2, together ? 0xECAAC0 : 0xF5DC96);
     }
     c.restore();
   }

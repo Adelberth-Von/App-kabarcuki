@@ -32,7 +32,12 @@ public final class Store {
         changed(c);
     }
     public static void changed(Context c) {
+        wakeSync();
         Intent i=new Intent("id.kabar.app.CHANGED");i.setPackage(c.getPackageName());c.sendBroadcast(i);
         KabarWidget.updateAll(c);
+    }
+    public static void wakeSync(){synchronized(LOCK){LOCK.notifyAll();}}
+    public static void awaitOutgoing(Context c,long millis)throws InterruptedException {
+        synchronized(LOCK){if(pending(c)==0)LOCK.wait(Math.max(1000,millis));}
     }
 }
