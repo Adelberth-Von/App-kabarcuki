@@ -22,10 +22,15 @@ public class DeviceQA extends Instrumentation {
         return null;
     }
     private void click(String label) {
-        main(()->{View v=find(activity.getWindow().getDecorView(),label);ok(v!=null,"UI control exists: "+label);v.performClick();});
+        android.util.Log.i("KabarQA","Click: "+label);
+        main(()->{View v=findAction(activity.getWindow().getDecorView(),label);ok(v!=null,"UI control exists: "+label);v.performClick();});
+    }
+    private View findAction(View v,String label){
+        if(v.isClickable()&&(label.equals(v.getContentDescription())||(v instanceof TextView&&label.equals(((TextView)v).getText().toString()))))return v;
+        if(v instanceof ViewGroup){ViewGroup g=(ViewGroup)v;for(int i=0;i<g.getChildCount();i++){View found=findAction(g.getChildAt(i),label);if(found!=null)return found;}}return null;
     }
     private void acceptStatus(){main(()->{ok(activity.confirmationDialog!=null&&activity.confirmationDialog.isShowing(),"confirmation shown before status save");activity.confirmationDialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();});}
-    private void status(String label){click(label);acceptStatus();}
+    private void status(String label){click(label);SystemClock.sleep(300);acceptStatus();}
     private void await(String label,long millis) throws Exception {
         long end=System.currentTimeMillis()+millis;
         while(System.currentTimeMillis()<end){if(find(activity.getWindow().getDecorView(),label)!=null)return;Thread.sleep(200);}
