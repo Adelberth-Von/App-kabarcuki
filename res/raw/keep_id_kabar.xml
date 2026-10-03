@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NotificationManager resolves this stable resource name at runtime. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/abc_chime" />
