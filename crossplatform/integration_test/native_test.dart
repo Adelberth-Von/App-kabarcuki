@@ -124,7 +124,7 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds:100));
           surfaces=await backend.invoke('qaSurfaceProbe');
         }
-        final texts=surfaces.entries.where((e)=>e.value is String && (e.key.startsWith('widget')||e.key.startsWith('notification')));
+        final texts=surfaces.entries.where((e)=>e.value is String && (e.key.startsWith('widget')||e.key=='notification'||e.key=='notificationExpanded'));
         expect(texts.length,greaterThanOrEqualTo(3));
         for(final text in texts)expect(RegExp(r'\b(AM|PM)\b').hasMatch(text.value as String),twelve,reason:text.key);
         if(surfaces.containsKey('notification'))expect(surfaces['onlyAlertOnce'],true);

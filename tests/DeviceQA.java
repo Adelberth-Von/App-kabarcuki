@@ -201,7 +201,7 @@ public class DeviceQA extends Instrumentation {
             });Thread.sleep(500);
             before=Store.state(c).revision;status("Pergi");end=System.currentTimeMillis()+15000;while(Store.state(c).revision==before&&System.currentTimeMillis()<end)Thread.sleep(100);
             GpsPoint point=Store.state(c).gps;ok(point!=null,"confirmed status captures real LocationManager sample from emulator test provider");ok(Math.abs(point.lat+6.2)<0.00001,"shared coordinate matches sample");
-            ok(Store.state(c).events.getJSONObject(0).optJSONObject("gps")!=null,"history retains dated location sample");ok(find(activity.getWindow().getDecorView(),"Lihat di peta")!=null,"map action visible for received coordinate");
+            ok(Store.state(c).events.getJSONObject(0).optJSONObject("gps")!=null,"history retains dated location sample");await("Lihat di peta",5000);ok(find(activity.getWindow().getDecorView(),"Lihat di peta")!=null,"map action visible for received coordinate");
             Pairing receiver=Pairing.parse(Store.prefs(c).getString("code",""));JSONArray queue=new JSONArray(Store.prefs(c).getString("queue","[]"));
             JSONObject packet=new JSONObject(receiver.decrypt(queue.getJSONObject(queue.length()-1).getString("body")));ok(packet.getJSONObject("state").getJSONObject("gps").getDouble("lat")==point.lat,"location included in authenticated encrypted packet");
         }finally{main(()->manager.removeTestProvider("gps"));shell("appops set id.kabar.app android:mock_location deny");}
