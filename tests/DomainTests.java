@@ -119,8 +119,8 @@ public class DomainTests {
         s.record("home",at(2,7,0));long home=s.homeAt;
         GpsPoint point=new GpsPoint(-6.200001,106.816666,12.3,at(2,23,0),"Asia/Jakarta");
         s.record("meal",at(2,23,0),"Sarapan",point);
-        ok(s.hasMealToday("Sarapan",at(2,23,1)),"manual breakfast outside schedule updates checklist");
-        eq(s.mealCategory,"Sarapan","manual category respected");eq(s.homeAt,home,"manual meal preserves home");
+        ok(!s.hasMealToday("Sarapan",at(2,23,1)),"late breakfast does not check morning");
+        eq(s.mealCategory,"Makan","outside all windows becomes other meal");eq(s.homeAt,home,"manual meal preserves home");
         eq(s.gps.coordinates(),"-6.20000, 106.81667","coordinates formatted consistently");
         eq(s.gps.accuracy,13.0,"accuracy rounded conservatively");
         eq(KabarState.parse(s.json().toString()).gps.lat,point.lat,"GPS state survives roundtrip");
@@ -131,7 +131,9 @@ public class DomainTests {
         rejects(()->new GpsPoint(0,0,0,1,"UTC"),"reject missing accuracy");
         rejects(()->new GpsPoint(0,0,1,1,"not/a/zone"),"reject invalid GPS timezone");
         rejects(()->s.record("meal",at(2,23,1),"Snack",null),"reject unknown manual category");
-        s.record("meal",at(2,23,2),"Makan malam",null);ok(s.hasMealToday("Makan malam",at(2,23,3)),"manual dinner updates independent category");
+        s.record("meal",at(2,23,2),"Makan malam",null);ok(!s.hasMealToday("Makan malam",at(2,23,3)),"outside dinner window does not check dinner");
+        KabarState evening=new KabarState();evening.zone=TZ.getID();evening.record("meal",at(2,18,0),"Sarapan",null);eq(evening.mealCategory,"Makan malam","breakfast tap at 18 routes to dinner");ok(evening.hasMealToday("Makan malam",at(2,18,1)),"dinner checked");ok(!evening.hasMealToday("Sarapan",at(2,18,1)),"breakfast not checked");
+        GpsPoint named=new GpsPoint(-7.7956,110.3695,12,at(2,18,0),"Asia/Jakarta","Yogyakarta","Gondomanan");eq(GpsPoint.parse(named.json()).city,"Yogyakarta","city survives protocol round trip");eq(GpsPoint.parse(named.json()).place,"Gondomanan","area survives protocol round trip");
         eq(s.gps.at,point.at,"action without GPS preserves explicitly dated last point");
         s.zone="Asia/Makassar";s.record("outside",at(2,23,4));
         eq(s.events.getJSONObject(0).getString("zone"),"Asia/Makassar","new event uses current sender zone");

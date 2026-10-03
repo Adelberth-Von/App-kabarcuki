@@ -12,6 +12,7 @@ class FakeBackend extends Backend {
   Stream<void> get changes => updates.stream;
   final Map<String, dynamic> data;
   final List<String> calls = [];
+  Map<String,dynamic> lastArguments={};
   FakeBackend(
       {String language = 'id',
       String nickname = 'Cuki',
@@ -65,7 +66,9 @@ class FakeBackend extends Backend {
                     'lon': 110.3695,
                     'accuracy': 12,
                     'at': 1704103200000,
-                    'zone': 'Asia/Jakarta'
+                    'zone': 'Asia/Jakarta',
+                    'city': 'Yogyakarta',
+                    'place': 'Gondomanan'
                   }
               },
               {
@@ -88,6 +91,7 @@ class FakeBackend extends Backend {
   Future<Map<String, dynamic>> invoke(String name,
       [Map<String, dynamic> args = const {}]) async {
     calls.add(name);
+    lastArguments=args;
     if (name == 'snapshot') return data;
     if (name == 'preferences') {
       for (final entry in args.entries) {
@@ -107,7 +111,7 @@ class FakeBackend extends Backend {
           'kind': args['kind'],
           'at': DateTime.now().millisecondsSinceEpoch,
           'label':
-              args['kind'] == 'meal' ? args['category'] ?? 'Makan' : 'Keluar',
+              args['kind'] == 'meal' ? (AppModel(this)..snapshot=data).mealNow() : 'Keluar',
           'zone': 'Asia/Jakarta'
         },
         ...s['events'] as List
@@ -349,7 +353,7 @@ void main() {
     expect(b.calls.where((s) => s == 'record').length, 1);
     await close(tester);
   });
-  testWidgets('daily meal control works and chooses the selected category',
+  testWidgets('daily meal control follows local schedule instead of tapped category',
       (tester) async {
     final b = FakeBackend();
     await show(tester, b);
@@ -357,7 +361,7 @@ void main() {
     expect(find.byKey(const ValueKey('confirm-status')), findsOneWidget);
     expect(b.calls.contains('record'), false);
     await tapVisible(tester, find.byKey(const ValueKey('confirm-status')));
-    expect(b.data['state']['events'][0]['label'], 'Sarapan');
+    expect(b.data['state']['events'][0]['label'],(AppModel(b)..snapshot=b.data).mealNow());
     await close(tester);
   });
   testWidgets(
@@ -367,9 +371,12 @@ void main() {
     await show(tester, b);
     await tapVisible(tester, find.text('Riwayat').last);
     await tapVisible(tester, find.byKey(const ValueKey('detail-0')));
-    expect(find.text('-7.795600, 110.369500'), findsOneWidget);
+    expect(find.text('-7.795600, 110.369500'), findsNothing);
+    expect(find.text('Yogyakarta'),findsOneWidget);expect(find.text('Gondomanan'),findsOneWidget);
     expect(find.textContaining('±12'), findsOneWidget);
     expect(find.text(Copy('id')['senderTime']), findsOneWidget);
+    await tapVisible(tester,find.byKey(const ValueKey('open-map')));
+    expect(b.lastArguments['lat'],-7.7956);expect(b.lastArguments['lon'],110.3695);
     await tester.tap(find.byTooltip(Copy('id')['close']));
     await tester.pumpAndSettle();
     await tapVisible(tester, find.byKey(const ValueKey('detail-1')));

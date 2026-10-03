@@ -70,11 +70,13 @@ public struct GpsPoint: Codable, Equatable {
     public var lat: Double, lon: Double, accuracy: Double
     public var at: Int64
     public var zone: String
+    public var city: String? = nil, place: String? = nil
     public init(lat: Double, lon: Double, accuracy: Double, at: Int64, zone: String) throws {
         self.lat = (lat*1_000_000).rounded()/1_000_000; self.lon = (lon*1_000_000).rounded()/1_000_000
         self.accuracy = accuracy.rounded(.up); self.at = at; self.zone = zone; try validate()
     }
     public func validate() throws {
+        for text in [city,place].compactMap({$0}) { guard text.utf16.count<=32, !text.unicodeScalars.contains(where:{$0.value<32}) else {throw KabarError.invalid("Nama lokasi tidak valid")} }
         guard lat.isFinite, lon.isFinite, accuracy.isFinite, abs(lat)<=90, abs(lon)<=180, accuracy>0, accuracy<=1_000_000, at>0, zone.utf16.count<=80, TimeZone(identifier:zone) != nil else { throw KabarError.invalid("Lokasi tidak valid") }
     }
     public var coordinates: String { String(format:"%.5f, %.5f",locale:Locale(identifier:"en_US_POSIX"),lat,lon) }
@@ -140,7 +142,7 @@ public struct KabarState: Codable, Equatable {
         let label: String
         if kind == "meal" {
             guard meal == nil || ["Sarapan","Makan siang","Makan malam","Makan"].contains(meal!) else { throw KabarError.invalid("Kategori makan tidak valid") }
-            mealAt = at; mealCategory = meal ?? category(at: at); label = mealCategory
+            mealAt = at; mealCategory = category(at: at); label = mealCategory
             if mealCategory == "Sarapan" { breakfastAt = at }
             if mealCategory == "Makan siang" { lunchAt = at }
             if mealCategory == "Makan malam" { dinnerAt = at }

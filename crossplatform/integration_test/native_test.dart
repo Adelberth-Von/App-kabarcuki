@@ -75,9 +75,10 @@ void main() {
     await tap(find.byKey(const ValueKey('confirm-status')));
     expect(number(model.state['revision']), revision + 1);
     expect(model.events.first['kind'], 'outside');
+    final expectedMeal=model.mealNow();
     await tap(find.byKey(const ValueKey('meal-0')));
     await tap(find.byKey(const ValueKey('confirm-status')));
-    expect(model.events.first['label'], 'Sarapan');
+    expect(model.events.first['label'], expectedMeal);
     expect(model.state['location'], 'outside');
     await tap(find.text('Riwayat').last);
     await binding.takeScreenshot('abc-history');
@@ -103,6 +104,9 @@ void main() {
     await tap(find.byKey(const ValueKey('clock-12')));
     expect(model.clock12, true);
     if (model.snapshot['platform']=='android') {
+      await model.prefs({'animations':false});
+      expect((await backend.invoke('qaSurfaceProbe'))['widgetAnimated'],false);
+      await model.prefs({'animations':true});
       await model.command('record',{'kind':'home','shareLocation':false});
       await backend.invoke('qaSurfaceProbe',{'seed':true});
       for(final twelve in [false,true,false,true]) {
@@ -113,7 +117,7 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds:100));
           surfaces=await backend.invoke('qaSurfaceProbe');
         }
-        final texts=surfaces.entries.where((e)=>e.key.startsWith('widget')||e.key=='notification');
+        final texts=surfaces.entries.where((e)=>e.value is String && (e.key.startsWith('widget')||e.key.startsWith('notification')));
         expect(texts.length,greaterThanOrEqualTo(3));
         for(final text in texts)expect(RegExp(r'\b(AM|PM)\b').hasMatch(text.value as String),twelve,reason:text.key);
         if(surfaces.containsKey('notification'))expect(surfaces['onlyAlertOnce'],true);
@@ -157,7 +161,7 @@ void main() {
     expect(restored.together, true);
     expect(restored.dark, false);
     expect(restored.language, 'de');
-    expect(restored.events.any((e) => e['label'] == 'Sarapan'), true);
+    expect(restored.events.any((e) => e['label'] == expectedMeal), true);
     restored.dispose();
     await backend.invoke('preferences', {
       'language': 'id',

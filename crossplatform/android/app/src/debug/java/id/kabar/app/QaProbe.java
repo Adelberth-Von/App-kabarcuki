@@ -36,9 +36,11 @@ public final class QaProbe {
         }
         View widget=KabarWidget.views(c).apply(c,null);
         JSONObject result=new JSONObject();
+        result.put("widgetAnimated",((android.widget.ViewFlipper)widget.findViewById(R.id.widget_frames)).isAutoStart());
         for(int id:new int[]{R.id.widget_location,R.id.widget_home,R.id.widget_meal})result.put("widget"+id,((TextView)widget.findViewById(id)).getText().toString());
         for(android.service.notification.StatusBarNotification n:c.getSystemService(NotificationManager.class).getActiveNotifications())if(n.getId()==2) {
             result.put("notification",n.getNotification().extras.getCharSequence(Notification.EXTRA_TEXT));
+            result.put("notificationExpanded",n.getNotification().extras.getCharSequence(Notification.EXTRA_BIG_TEXT));
             result.put("onlyAlertOnce",(n.getNotification().flags&Notification.FLAG_ONLY_ALERT_ONCE)!=0);
         }
         for(Thread thread:Thread.getAllStackTraces().keySet())if(thread.getName().equals("KabarSync"))result.put("senderThread",thread.getState().name());

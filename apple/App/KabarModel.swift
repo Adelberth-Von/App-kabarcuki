@@ -219,6 +219,7 @@ import KabarCore
     func notify(_ packet: Packet) async {
         guard !Task.isCancelled, !role.isEmpty, let topic=SharedStore.pairing()?.topic else {return}
         let content = UNMutableNotificationContent(); content.title = "abc · \(packet.state.name)"; content.body = PhoneText.notification(packet); content.sound = .default
+        content.subtitle=SharedStore.defaults.bool(forKey:"appearanceRelationship") ? "Seirama":PhoneText.text("Kabar baru","New update","Neues Update");content.threadIdentifier="abc-updates"
         content.userInfo=PhoneText.notificationData(packet)
         let identifier="kabar-\(topic)-\(packet.state.revision)",center=UNUserNotificationCenter.current()
         try? await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil))
@@ -238,7 +239,7 @@ import KabarCore
                 guard let at=(delivered.request.content.userInfo["abcAt"] as? NSNumber)?.int64Value,
                       let label=delivered.request.content.userInfo["abcLabel"] as? String,
                       let content=delivered.request.content.mutableCopy() as? UNMutableNotificationContent else {continue}
-                content.body=PhoneText.label(label)+" · "+PhoneText.stamp(at)
+                content.body=PhoneText.notificationBody(label,at,content.userInfo["abcCity"] as? String ?? "")
                 content.sound=nil;content.interruptionLevel = .passive
                 try? await center.add(UNNotificationRequest(identifier:delivered.request.identifier,content:content,trigger:nil))
                 if role.isEmpty || SharedStore.pairing()?.topic != topic {

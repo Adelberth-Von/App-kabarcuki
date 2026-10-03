@@ -3,6 +3,7 @@ import UIKit
 import WidgetKit
 import KabarCore
 import Combine
+import CoreLocation
 
 @MainActor final class NativeBridge: NSObject, FlutterStreamHandler {
     let model = KabarModel()
@@ -10,6 +11,7 @@ import Combine
     private var updates:FlutterEventSink?
     private var observation:AnyCancellable?
     private var notifications:[NSObjectProtocol]=[]
+    private var settingsObserver:NSObjectProtocol?
     var profile: [String:Any] { SharedStore.defaults.dictionary(forKey:"abcProfile") ?? [:] }
     func attach(_ messenger: FlutterBinaryMessenger) {
         #if DEBUG
@@ -75,6 +77,14 @@ import Combine
             if call.method=="snapshot" {result(try encoded(snapshot()));return}
             model.error=nil
             switch call.method {
+            case "locationServices":result(try encoded(["enabled":CLLocationManager.locationServicesEnabled()]));return
+            case "locationSettings":
+                settingsObserver=NotificationCenter.default.addObserver(forName:UIApplication.didBecomeActiveNotification,object:nil,queue:.main) { [weak self] _ in
+                    guard let self else {return};if let observer=self.settingsObserver {NotificationCenter.default.removeObserver(observer)};self.settingsObserver=nil;self.answer(result)
+                }
+                UIApplication.shared.open(URL(string:UIApplication.openSettingsURLString)!) { [weak self] opened in
+                    if !opened,let self {if let observer=self.settingsObserver {NotificationCenter.default.removeObserver(observer)};self.settingsObserver=nil;self.answer(result)}
+                };return
             #if DEBUG
             case "qaCleanupProbe":result(try encoded(CleanupProbe.inspect(seed:a["seed"] as? Bool ?? false)));return
             #endif

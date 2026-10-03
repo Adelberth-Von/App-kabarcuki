@@ -444,14 +444,15 @@ class _ShellState extends State<Shell> {
           borderRadius: BorderRadius.circular(22),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            SizedBox(height: 104, child: PixelSky(
+            SizedBox(height: 144, child: PixelSky(
+                action: m.sceneAction,
                 together: m.together,
                 animate: m.animations && !m.energySaver)),
             Container(
                 color: p.card,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Text(t[m.together ? 'togetherLine' : 'tagline'],
+                child: Text(t[m.sceneAction == 'idle' ? (m.together ? 'togetherLine' : 'tagline') : 'scene${m.together ? 'Together' : ''}${m.sceneAction == 'outside' ? 'Outside' : m.sceneAction == 'home' ? 'Home' : 'Meal'}'],
                     style: TextStyle(color: p.muted, fontSize: 13)))
           ])),
       if (m.sender) ...[
@@ -603,7 +604,7 @@ class _ShellState extends State<Shell> {
   String mealWindow(num start, num end) =>
       '${clockDigits(DateTime(2000, 1, 1, start.toInt()), m.clock12)} – ${clockDigits(DateTime(2000, 1, 1, end.toInt()), m.clock12)}';
   Future<void> confirmStatus(String kind, {String? category}) async {
-    String selected = category ?? 'auto';
+    final selected = kind == 'meal' ? m.mealNow() : category;
     bool share = m.snapshot['shareLocation'] == true;
     final okay = await showDialog<bool>(
         context: context,
@@ -615,14 +616,14 @@ class _ShellState extends State<Shell> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                          ClipRRect(borderRadius: BorderRadius.circular(16),child:SizedBox(height:100,width:280,child:PixelSky(action:kind,together:m.together,animate:m.animations && !m.energySaver))),
+                          const SizedBox(height:14),
                           Row(children: [
                             PixelIcon(kind, size: 38),
                             const SizedBox(width: 12),
                             Expanded(
                                 child: Text(
-                                    category == null
-                                        ? m.actionLabel(kind)
-                                        : t.label(category),
+                                    kind == 'meal' ? t.label(selected!) : m.actionLabel(kind),
                                     style: const TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.w700)))
@@ -631,29 +632,9 @@ class _ShellState extends State<Shell> {
                           small(m.time(DateTime.now().millisecondsSinceEpoch)),
                           if (kind == 'meal') ...[
                             const SizedBox(height: 16),
-                            if (category == null)
-                              DropdownButtonFormField<String>(
-                                  initialValue: selected,
-                                  isExpanded: true,
-                                  decoration: InputDecoration(
-                                      labelText: t['chooseMeal']),
-                                  items: [
-                                    'auto',
-                                    'Sarapan',
-                                    'Makan siang',
-                                    'Makan malam',
-                                    'Makan'
-                                  ]
-                                      .map((v) => DropdownMenuItem(
-                                          value: v,
-                                          child: Text(v == 'auto'
-                                              ? t['auto']
-                                              : v == 'Makan'
-                                                  ? t['otherMeal']
-                                                  : t.label(v))))
-                                      .toList(),
-                                  onChanged: (v) =>
-                                      update(() => selected = v!)),
+                            small(t.fill('mealScheduled', t.label(selected!))),
+                            const SizedBox(height: 6),
+                            small(t['mealAutomatic']),
                             const SizedBox(height: 10),
                             small(t['mealKeepsPlace'])
                           ],
@@ -677,14 +658,25 @@ class _ShellState extends State<Shell> {
                           child: Text(t['send']))
                     ])));
     if (okay == true) {
+      if(share && !await ensureLocationServices())return;
       await m.command('record', {
         'kind': kind,
-        'category': selected == 'auto' ? null : selected,
+        'category': null,
         'shareLocation': share
       });
     }
   }
 
+  Future<bool> ensureLocationServices() async {
+    final status=await m.backend.invoke('locationServices');
+    if(status['enabled']!=false)return true;
+    if(!await confirm(t['enableLocation'],t['enableLocationBody']))return false;
+    if(!await m.command('locationSettings'))return false;
+    final after=await m.backend.invoke('locationServices');
+    if(after['enabled']==true)return true;
+    if(mounted)await simpleInfo(t['enableLocation'],t['enableLocationBody']);
+    return false;
+  }
   Widget locationCard() {
     final point = m.state['gps'] as Map?;
     return card(
@@ -698,7 +690,12 @@ class _ShellState extends State<Shell> {
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)))
       ]),
       const SizedBox(height: 10),
-      small(point == null ? t['noLocation'] : m.stamp(number(point['at']))),
+      if(point == null) small(t['noLocation']) else ...[
+        Text(m.place(point),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w700)),
+        const SizedBox(height:6),small('${t['city']} · ${m.city(point)}'),
+        const SizedBox(height:6),small('${t['gpsTime']} · ${m.stamp(number(point['at']))}'),
+        const SizedBox(height:6),small('${t['timeZone']} · ${point['zone'] ?? ''}'),
+      ],
       if (point != null) ...[
         if (DateTime.now().millisecondsSinceEpoch - number(point['at']) >=
             900000) ...[const SizedBox(height: 6), small(t['locationOld'])],
@@ -714,7 +711,7 @@ class _ShellState extends State<Shell> {
                 ? null
                 : () async {
                     if (await confirm(
-                        t['refreshLocation'], t['locationConsent']))
+                        t['refreshLocation'], t['locationConsent']) && await ensureLocationServices())
                       await m.command(
                           'record', {'kind': '', 'shareLocation': true});
                   },
@@ -855,8 +852,9 @@ class _ShellState extends State<Shell> {
               style:
                   const TextStyle(fontSize: 19, fontWeight: FontWeight.w700)),
           const SizedBox(height: 18),
-          detailRow(t['coordinates'],
-              '${(point['lat'] as num).toStringAsFixed(6)}, ${(point['lon'] as num).toStringAsFixed(6)}'),
+          detailRow(t['locationTitle'], m.place(point)),
+          const SizedBox(height:16),
+          detailRow(t['city'], m.city(point)),
           const SizedBox(height: 16),
           detailRow(t['accuracy'], '±${number(point['accuracy'])} m'),
           const SizedBox(height: 16),

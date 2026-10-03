@@ -13,9 +13,11 @@ enum PhoneText {
         f.dateFormat=twelve ? "dd.MM.yyyy · h.mm a":"dd.MM.yyyy · HH.mm"
         return f.string(from:Date(timeIntervalSince1970:Double(at)/1000))+" "+LocalClock.shortZone(.current,at:at)
     }
-    static func notification(_ packet:Packet)->String {label(packet.state.events.first?.label ?? packet.state.locationText)+" · "+stamp(packet.state.events.first?.at ?? packet.state.locationAt)}
+    static func notification(_ packet:Packet)->String {notificationBody(packet.state.events.first?.label ?? packet.state.locationText,packet.state.events.first?.at ?? packet.state.locationAt,packet.state.events.first?.gps?.city ?? "")}
+    static func notificationBody(_ event:String,_ at:Int64,_ city:String)->String {label(event)+"\n"+stamp(at)+(city.isEmpty ? "":"\n"+text("Lokasi terakhir · ","Last location · ","Letzter Standort · ")+city)}
     static func notificationData(_ packet:Packet)->[String:Any] {
         ["abcAt":packet.state.events.first?.at ?? packet.state.locationAt,
-         "abcLabel":packet.state.events.first?.label ?? packet.state.locationText]
+         "abcLabel":packet.state.events.first?.label ?? packet.state.locationText,
+         "abcCity":packet.state.events.first?.gps?.city ?? ""]
     }
 }

@@ -20,7 +20,7 @@ public final class KabarState {
         String label;
         if(kind.equals("meal")) {
             if(chosenMeal!=null&&!java.util.Arrays.asList("Sarapan","Makan siang","Makan malam","Makan").contains(chosenMeal))throw new IllegalArgumentException("Kategori makan tidak valid");
-            mealAt=timestamp; mealCategory=chosenMeal==null?StatusLogic.mealAt(timestamp,windows,TimeZone.getTimeZone(zone)):chosenMeal; label=mealCategory;
+            mealAt=timestamp; mealCategory=StatusLogic.mealAt(timestamp,windows,TimeZone.getTimeZone(zone)); label=mealCategory;
             if(mealCategory.equals("Sarapan"))breakfastAt=timestamp;
             if(mealCategory.equals("Makan siang"))lunchAt=timestamp;
             if(mealCategory.equals("Makan malam"))dinnerAt=timestamp;

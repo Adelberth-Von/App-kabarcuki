@@ -15,6 +15,7 @@ public class SyncService extends Service {
     private Thread worker;
     private volatile HttpURLConnection connection;
     private String session;
+    private final BroadcastReceiver widgetPower=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){KabarWidget.updateAll(c);}};
     public static void start(Context c) {
         if(!Store.role(c).isEmpty()&&Store.prefs(c).getBoolean("enabled",true))
             c.startForegroundService(new Intent(c,SyncService.class));
@@ -24,6 +25,8 @@ public class SyncService extends Service {
     }
     @Override public void onCreate() {
         super.onCreate();channels(this);
+        IntentFilter power=new IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
+        if(Build.VERSION.SDK_INT>=33)registerReceiver(widgetPower,power,Context.RECEIVER_NOT_EXPORTED);else registerReceiver(widgetPower,power);
         // Promote before checking a pause: startForegroundService may still be in flight.
         if(Build.VERSION.SDK_INT>=34)startForeground(1,persistent(),ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         else startForeground(1,persistent());
@@ -173,12 +176,25 @@ public class SyncService extends Service {
             .setContentTitle(s.name+" · "+LocalProfile.label(this,last.optString("label")))
             .setContentText(LocalProfile.stamp(this,last.optLong("at")))
             .setContentIntent(open).setAutoCancel(true)
-            .addExtras(alertData(s.name,last.optString("label"),last.optLong("at"))).build();
+            .setLargeIcon(KabarWidget.art(this,s,0)).setColor(new Appearance(this).accent)
+            .setStyle(new Notification.BigTextStyle().bigText(notificationDetail(this,last)))
+            .setCategory(Notification.CATEGORY_SOCIAL).setVisibility(Notification.VISIBILITY_PRIVATE)
+            .setSubText(new Appearance(this).relationship?"Seirama":"abc")
+            .addAction(new Notification.Action.Builder(null,LocalProfile.text(this,"Lihat kabar","View update","Update ansehen"),open).build())
+            .addExtras(alertData(s.name,last.optString("label"),last.optLong("at"),last.optJSONObject("gps")==null?"":last.optJSONObject("gps").optString("city"))).build();
         getSystemService(NotificationManager.class).notify(2,n);
         }
     }
     private static Bundle alertData(String name,String label,long at){
-        Bundle b=new Bundle();b.putString("abcName",name);b.putString("abcLabel",label);b.putLong("abcAt",at);return b;
+        return alertData(name,label,at,"");
+    }
+    private static Bundle alertData(String name,String label,long at,String city){
+        Bundle b=new Bundle();b.putString("abcName",name);b.putString("abcLabel",label);b.putLong("abcAt",at);b.putString("abcCity",city);return b;
+    }
+    private static String notificationDetail(Context c,JSONObject e){
+        String text=LocalProfile.label(c,e.optString("label"))+"\n"+LocalProfile.stamp(c,e.optLong("at"));
+        JSONObject gps=e.optJSONObject("gps");if(gps!=null&&!gps.optString("city").isEmpty())text+="\n"+LocalProfile.text(c,"Lokasi terakhir · ","Last location · ","Letzter Standort · ")+gps.optString("city");
+        return text;
     }
     public static void refreshNotifications(Context c) {
         java.util.TimeZone.setDefault(null);
@@ -189,13 +205,16 @@ public class SyncService extends Service {
                 .setOnlyAlertOnce(true).setSound(null).setVibrate(null).setDefaults(0);
             if(delivered.getId()==2) {
                 Bundle data=old.extras;
-                if(data.containsKey("abcAt"))data=alertData(data.getString("abcName",""),data.getString("abcLabel",""),data.getLong("abcAt"));
+                if(data.containsKey("abcAt"))data=alertData(data.getString("abcName",""),data.getString("abcLabel",""),data.getLong("abcAt"),data.getString("abcCity",""));
                 else {
                     KabarState s=Store.state(c);JSONObject last=s.events.optJSONObject(0);
                     if(last==null)continue;data=alertData(s.name,last.optString("label"),last.optLong("at"));
                 }
                 b.setContentTitle(data.getString("abcName","")+" · "+LocalProfile.label(c,data.getString("abcLabel","")))
                     .setContentText(LocalProfile.stamp(c,data.getLong("abcAt"))).addExtras(data);
+                String expanded=LocalProfile.label(c,data.getString("abcLabel",""))+"\n"+LocalProfile.stamp(c,data.getLong("abcAt"));
+                if(!data.getString("abcCity","").isEmpty())expanded+="\n"+LocalProfile.text(c,"Lokasi terakhir · ","Last location · ","Letzter Standort · ")+data.getString("abcCity");
+                b.setStyle(new Notification.BigTextStyle().bigText(expanded)).setSubText(new Appearance(c).relationship?"Seirama":"abc").setColor(new Appearance(c).accent);
             } else if(delivered.getId()==1) {
                 b.setContentTitle(LocalProfile.text(c,"abc aktif","abc is active","abc ist aktiv"))
                     .setContentText(Store.role(c).equals("sender")?LocalProfile.text(c,"Siap mengirim kabar","Ready to send updates","Bereit für Updates"):LocalProfile.text(c,"Menunggu kabar","Waiting for updates","Warten auf Updates"));
@@ -204,6 +223,7 @@ public class SyncService extends Service {
         }
     }
     @Override public void onDestroy() {
+        unregisterReceiver(widgetPower);
         running=false;if(connection!=null)connection.disconnect();if(worker!=null)worker.interrupt();
         Store.wakeSync();
         if(!Store.role(this).isEmpty())Store.prefs(this).edit().putString("connection","Koneksi dijeda · buka aplikasi untuk melanjutkan").apply();

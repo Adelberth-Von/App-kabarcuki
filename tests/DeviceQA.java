@@ -61,7 +61,7 @@ public class DeviceQA extends Instrumentation {
                 status("Keluar");s=Store.state(c);ok(s.location.equals("outside"),"outside location recorded");ok(s.homeAt==home,"outside preserves last home");
                 ok(Store.pending(c)>=3,"offline actions queued");
                 click("Riwayat");await("Di kost",3000);ok(Store.state(c).events.length()==3,"history records every click");
-                click("Beranda");status("Sarapan");ok(Store.state(c).breakfastAt>0,"today breakfast row functional");ok(Store.state(c).mealCategory.equals("Sarapan"),"today row selects explicit meal category");ok(Store.state(c).location.equals("outside"),"today row preserves location");
+                click("Beranda");status("Sarapan");ok(Store.state(c).mealAt>0,"today meal row functional");ok(Store.state(c).mealCategory.equals(StatusLogic.mealAt(System.currentTimeMillis(),Store.state(c).windows,java.util.TimeZone.getTimeZone(Store.state(c).zone))),"today row follows local meal window");ok(Store.state(c).location.equals("outside"),"today row preserves location");
                 long breakfast=Store.state(c).breakfastAt;click("Sarapan");main(()->activity.confirmationDialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick());ok(Store.state(c).breakfastAt==breakfast,"cancel today meal preserves its original time");
                 click("Pengaturan");await("Edit nama & tombol",3000);
                 boolean[] ready={false};long layoutEnd=SystemClock.elapsedRealtime()+5000;

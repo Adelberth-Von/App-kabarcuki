@@ -24,6 +24,19 @@ class Copy {
 }
 
 const messages = <String, List<String>>{
+  'city': ['Kota', 'City', 'Stadt'],
+  'placeUnknown': ['Nama daerah belum tersedia', 'Area name unavailable', 'Ortsname nicht verfügbar'],
+  'cityUnknown': ['Kota belum diketahui', 'City not available', 'Stadt noch unbekannt'],
+  'enableLocation': ['Aktifkan lokasi HP', 'Enable device location', 'Gerätestandort aktivieren'],
+  'enableLocationBody': ['Aktifkan layanan lokasi di pengaturan sistem, lalu kembali ke abc untuk melanjutkan. Lokasi hanya diambil saat kamu membagikannya.', 'Enable Location Services in system settings, then return to abc to continue. Location is only captured when you share it.', 'Aktiviere die Ortungsdienste in den Systemeinstellungen und kehre zu abc zurück. Dein Standort wird nur beim Teilen erfasst.'],
+  'mealScheduled': ['Dicatat sebagai {x}, sesuai jam lokal saat dikirim.', 'Recorded as {x}, based on your local time when sent.', 'Wird entsprechend der Ortszeit beim Senden als {x} erfasst.'],
+  'mealAutomatic': ['Centang mengikuti jadwal makanmu. Di luar jadwal, masuk Makan lainnya.', 'Your meal schedule decides the checkmark. Outside a window, it becomes Other meal.', 'Dein Zeitplan bestimmt die Mahlzeit. Außerhalb der Zeiten zählt es als Sonstige Mahlzeit.'],
+  'sceneOutside': ['Langkah kecil, kabar sampai.', 'Off you go. Stay connected.', 'Unterwegs und verbunden.'],
+  'sceneHome': ['Sudah pulang. Saatnya nyaman.', 'Home again. Time to unwind.', 'Wieder daheim. Zeit zum Entspannen.'],
+  'sceneMeal': ['Isi energi, lanjutkan hari.', 'A little fuel for your day.', 'Neue Energie für deinen Tag.'],
+  'sceneTogetherOutside': ['Satu pergi, satu menanti kabar.', 'A wave goodbye, an update away.', 'Ein Winken, ein kleines Update.'],
+  'sceneTogetherHome': ['Pulang terasa lebih hangat.', 'A warmer welcome home.', 'Ein herzliches Willkommen daheim.'],
+  'sceneTogetherMeal': ['Jauh dekat, tetap satu meja.', 'One table, even from afar.', 'Ein Tisch, auch aus der Ferne.'],
   'hello': ['Hai, {x}', 'Hi, {x}', 'Hallo, {x}'],
   'locating': [
     'Mengambil lokasi HP…',
@@ -265,8 +278,8 @@ const messages = <String, List<String>>{
   'appearance': ['Tampilan', 'Appearance', 'Darstellung'],
   'defaultTheme': ['Default', 'Default', 'Standard'],
   'relationshipTheme': [
-    'In Relationship',
-    'In Relationship',
+    'Seirama',
+    'Seirama',
     'In einer Beziehung'
   ],
   'defaultDescription': [

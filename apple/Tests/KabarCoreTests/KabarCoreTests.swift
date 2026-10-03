@@ -64,14 +64,21 @@ final class KabarCoreTests: XCTestCase {
         let json: [String: String] = ["code": sender.code, "topic": sender.topic, "envelope": try Packet(state: s, notify: true).envelope(pairing: sender)]
         try JSONSerialization.data(withJSONObject: json).write(to: root.appendingPathComponent("Fixtures/swift.json"))
     }
+    func testMealRoutingAtEveningAndPlaceNames() throws {
+        var s=KabarState();s.zone="Asia/Jakarta"
+        var point=try GpsPoint(lat:-7.7956,lon:110.3695,accuracy:12,at:at(2,18),zone:s.zone);point.city="Yogyakarta";point.place="Gondomanan"
+        try s.record("meal",at:at(2,18),meal:"Sarapan",point:point)
+        XCTAssertEqual(s.mealCategory,"Makan malam");XCTAssertTrue(s.hasMealToday("Makan malam",now:at(2,18)));XCTAssertFalse(s.hasMealToday("Sarapan",now:at(2,18)))
+        XCTAssertEqual(try JSONDecoder().decode(KabarState.self,from:JSONEncoder().encode(s)).gps?.city,"Yogyakarta")
+    }
     func testManualMealsAndOptionalLocation() throws {
         var s = KabarState(); s.zone = "Asia/Jakarta"
         let point = try GpsPoint(lat:-6.2,lon:106.816666,accuracy:12.3,at:at(2,23),zone:s.zone)
         try s.record("home",at:at(2,7));try s.record("meal",at:at(2,23),meal:"Sarapan",point:point)
-        XCTAssertTrue(s.hasMealToday("Sarapan",now:at(2,23)));XCTAssertEqual(s.location,"home");XCTAssertEqual(s.homeAt,at(2,7));XCTAssertEqual(s.gps,point)
+        XCTAssertFalse(s.hasMealToday("Sarapan",now:at(2,23)));XCTAssertEqual(s.mealCategory,"Makan");XCTAssertEqual(s.location,"home");XCTAssertEqual(s.homeAt,at(2,7));XCTAssertEqual(s.gps,point)
         XCTAssertEqual(point.accuracy,13);XCTAssertThrowsError(try GpsPoint(lat:91,lon:0,accuracy:10,at:1,zone:"UTC"))
         XCTAssertThrowsError(try s.record("meal",meal:"Snack"));try s.record("meal",at:at(2,23,1),meal:"Makan malam")
-        XCTAssertTrue(s.hasMealToday("Makan malam",now:at(2,23,2)));XCTAssertEqual(s.gps,point)
+        XCTAssertFalse(s.hasMealToday("Makan malam",now:at(2,23,2)));XCTAssertEqual(s.gps,point)
         s.zone = "Asia/Makassar";try s.record("outside",at:at(2,23,3));XCTAssertEqual(s.events[0].zone,"Asia/Makassar");XCTAssertEqual(s.events[1].zone,"Asia/Jakarta")
         for i in 0..<12 { try s.record("meal",at:at(2,23,4)+Int64(i),meal:"Makan",point:point) }
         XCTAssertEqual(s.events.filter({ $0.gps != nil }).count,3)

@@ -28,7 +28,8 @@ class PixelSky extends StatefulWidget {
   final bool together;
   final DateTime? at;
   final bool animate;
-  const PixelSky({super.key, this.together = false, this.at, this.animate = false});
+  final String action;
+  const PixelSky({super.key, this.together = false, this.at, this.animate = false, this.action='idle'});
   @override
   State<PixelSky> createState() => PixelSkyState();
 }
@@ -64,6 +65,7 @@ class PixelSkyState extends State<PixelSky> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(PixelSky oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if(oldWidget.action!=widget.action || oldWidget.together!=widget.together)_frames.value=0;
     _sync();
   }
   void _checkVisible() {
@@ -112,7 +114,7 @@ class PixelSkyState extends State<PixelSky> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) => RepaintBoundary(child: CustomPaint(
       painter: _SkyPainter(widget.together,
-          dayPhase(widget.at ?? DateTime.now()), _frames),
+          dayPhase(widget.at ?? DateTime.now()), _frames,widget.action),
       size: const Size(420, 112)));
 }
 
@@ -120,7 +122,8 @@ class _SkyPainter extends CustomPainter {
   final bool together;
   final int phase;
   final ValueNotifier<int> frames;
-  _SkyPainter(this.together, this.phase, this.frames) : super(repaint: frames);
+  final String action;
+  _SkyPainter(this.together, this.phase, this.frames,this.action) : super(repaint: frames);
   @override
   void paint(Canvas c, Size size) {
     final sky = [0xDEEAE7, 0xDCECF7, 0xF8D4C1, 0x293451][phase];
@@ -154,6 +157,19 @@ class _SkyPainter extends CustomPainter {
       r(16 + sway, 7, 8, 2, 0xFFFAE9);
       r(61 - sway, 12, 12, 2, 0xFFFAE9);
     }
+    // Time-of-day motion: morning birds, noon butterflies, dusk leaves,
+    // and tiny fireflies at night. All share the same four-fps canvas timer.
+    if(phase==0) {
+      final x=43+frame;
+      r(x,7+sway,2,1,0x7C8C91);r(x+3,7+sway,2,1,0x7C8C91);r(x+2,8,1,1,0x7C8C91);
+    } else if(phase==1) {
+      r(78+sway,24-frame%3,1,3,0xAF7399);r(76+sway,24-frame%3,2,2,0xE9B879);r(79+sway,24-frame%3,2,2,0xE9B879);
+    } else if(phase==2) {
+      r(95-frame%8,24+frame%6,2,1,0xD89D73);
+    } else {
+      r(43+frame%5,25-frame%3,1,1,frame%2==0?0xF9E9A4:0x687D75);
+      r(82-frame%6,27-frame%4,1,1,frame%2==1?0xF9E9A4:0x687D75);
+    }
     r(
         0,
         31,
@@ -172,34 +188,47 @@ class _SkyPainter extends CustomPainter {
     r(21, 11, 11, 3, roof);
     r(20, 22, 5, 5, 0xFFE7A0);
     r(29, 23, 4, 8, 0x58665A);
+    if(action=='home') {r(29,23,4,8,0xF8DEA5);r(17,29,19,2,0xCFAF93);}
     r(91, 24, 2, 8, 0x817462);
     r(87, 17, 10, 8, phase == 3 ? 0x657B70 : 0x7D9D7C);
     r(89, 14, 6, 4, phase == 3 ? 0x657B70 : 0x7D9D7C);
-    void person(int x, int shirt) {
-      r(x, 21, 5, 2, 0x4E4550);
-      r(x, 23, 5, 4, 0xEDC8AE);
+    void person(int x, int shirt,{bool walking=false,bool eating=false,bool waving=false,bool resting=false}) {
+      final bob=walking ? sway : 0;
+      r(x, 21-bob, 5, 2, 0x4E4550);
+      r(x, 23-bob, 5, 4, 0xEDC8AE);
       if (frame != 12) {
-        r(x + 1, 25, 1, 1, 0x4E4550);
-        r(x + 3, 25, 1, 1, 0x4E4550);
+        r(x + 1, 25-bob, 1, 1, 0x4E4550);
+        r(x + 3, 25-bob, 1, 1, 0x4E4550);
       }
-      r(x - 1, 27, 7, 4, shirt);
-      if (frame >= 6 && frame <= 9) {
-        r(x - 3, 25, 2, 4, shirt);
-        r(x - 3, 23, 2, 2, 0xEDC8AE);
+      r(x - 1, 27-bob, 7, 4, shirt);
+      if (waving || (action=='idle' && frame >= 6 && frame <= 9)) {
+        r(x - 3, 25-sway, 2, 4, shirt);
+        r(x - 3, 23-sway, 2, 2, 0xEDC8AE);
       }
-      r(x, 31, 2, 3, 0x4E4550);
-      r(x + 3, 31, 2, 3, 0x4E4550);
+      if(walking) {r(x-3,26-bob,3,5,0xBC967C);r(x-sway,31,2,3-sway,0x4E4550);r(x+3+sway,31,2,2+sway,0x4E4550);}
+      else {r(x,31,resting?4:2,resting?2:3,0x4E4550);r(x+3,31,2,3,0x4E4550);}
+      if(eating){r(x+5,frame%4<2?26:28,3,1,0xEDC8AE);r(x+7,frame%4<2?24:26,1,3,0xD5B785);}
+      if(resting){r(x-1,28,4,3,0xF4DCB6);r(x+3,28,3,3,0xD1B3D7);}
     }
-
-    person(53, together ? 0xA76B8B : 0x7980A5);
-    if (together) {
-      person(67, 0x9683AD);
-      r(61, 14 - sway, 2, 2, 0xCA779A);
-      r(64, 14 - sway, 2, 2, 0xCA779A);
-      r(61, 16 - sway, 5, 1, 0xCA779A);
-      r(62, 17 - sway, 3, 1, 0xCA779A);
-      r(63, 18 - sway, 1, 1, 0xCA779A);
-      r(60, 28, 7, 2, 0xEDC8AE);
+    final shirt=together?0xA76B8B:0x7980A5;
+    if(action=='outside') {
+      person(49+frame~/2,shirt,walking:true);
+      if(together)person(38,0x9683AD,waving:true);
+      r(76,30,5,1,0xE7DCC4);r(79,29,2,3,0xE7DCC4);
+    } else if(action=='meal') {
+      person(50,shirt,eating:true);if(together)person(68,0x9683AD,eating:true);
+      r(46,31,together?30:20,2,0xB78C76);r(48,33,2,3,0x886C67);r(together?72:62,33,2,3,0x886C67);
+      for(final x in together?[57,65]:[57]) {r(x,29,5,2,0xE6D7B5);r(x+1,28,3,1,0x8EA986);r(x+2+sway,25,1,2,0xF4EBDC);}
+    } else if(action=='home') {
+      r(47,29,together?30:16,6,together?0xBD91AA:0x98A0BF);
+      person(52,shirt,resting:true);if(together)person(68,0x9683AD,waving:frame<8,resting:frame>=8);
+      r(81,27,1,7,0x9E8470);r(78,25,7,2,phase==3?0xFFE5A3:0xE3CFAB);
+    } else {
+      person(53,shirt);if(together)person(67,0x9683AD);
+    }
+    if(together) {
+      final x=action=='outside'?40:61,y=13-sway;
+      r(x,y,2,2,0xCA779A);r(x+3,y,2,2,0xCA779A);r(x,y+2,5,1,0xCA779A);r(x+1,y+3,3,1,0xCA779A);r(x+2,y+4,1,1,0xCA779A);
     }
     r(45, 34, 32, 1, phase == 3 ? 0x68756B : 0xDADEC2);
     for (final x in [7, 42, 81, 103]) {
@@ -211,7 +240,7 @@ class _SkyPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SkyPainter old) =>
-      together != old.together || phase != old.phase;
+      together != old.together || phase != old.phase || action!=old.action;
 }
 
 class PixelIcon extends StatelessWidget {

@@ -150,6 +150,15 @@ class AppModel extends ChangeNotifier {
         'home' => 'Kost',
         _ => 'Makan'
       }) as String);
+  String get sceneAction => events.isEmpty ? 'idle' : events.first['kind'] as String? ?? 'idle';
+  String mealNow([DateTime? at]) {
+    final hour=(at ?? now()).hour;
+    final windows=(state['windows'] as List? ?? [5,10,10,15,17,22]);
+    for(var i=0;i<3;i++) {if(hour>=number(windows[i*2]) && hour<number(windows[i*2+1]))return ['Sarapan','Makan siang','Makan malam'][i];}
+    return 'Makan';
+  }
+  String place(Map point) => (point['place'] as String? ?? '').isNotEmpty ? point['place'] as String : copy['placeUnknown'];
+  String city(Map point) => (point['city'] as String? ?? '').isNotEmpty ? point['city'] as String : copy['cityUnknown'];
   String get locationLabel => switch (state['location']) {
         'home' => copy.fill('atPlace', actionLabel('home')),
         'outside' => actionLabel('outside'),

@@ -3,7 +3,7 @@
 <TextView android:id="@+id/widget_title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="abc" android:textSize="15sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end"/>
 <TextView android:id="@+id/widget_phase" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp"/>
 </LinearLayout>
-<ViewFlipper android:id="@+id/widget_frames" android:layout_width="match_parent" android:layout_height="64dp" android:layout_marginTop="6dp" android:autoStart="true" android:flipInterval="1500">
+<ViewFlipper android:id="@+id/widget_frames" android:layout_width="match_parent" android:layout_height="32dp" android:layout_marginTop="6dp" android:autoStart="false" android:flipInterval="1500">
 <ImageView android:id="@+id/widget_art" android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" android:scaleType="fitXY"/>
 <ImageView android:id="@+id/widget_art_next" android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" android:scaleType="fitXY"/>
 </ViewFlipper>

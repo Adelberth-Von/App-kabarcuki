@@ -23,6 +23,7 @@ public final class AbcActivity extends FlutterActivity {
     private String quickAction="";
     private EventChannel.EventSink updates;
     private boolean watching=false;
+    private MethodChannel.Result locationSettingsResult;
     private final BroadcastReceiver changed=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){
         if(Intent.ACTION_TIMEZONE_CHANGED.equals(i.getAction())||Intent.ACTION_TIME_CHANGED.equals(i.getAction())) {
             TimeZone.setDefault(null);KabarWidget.updateAll(c);SyncService.refreshNotifications(c);
@@ -88,6 +89,10 @@ public final class AbcActivity extends FlutterActivity {
                 Object probe=Class.forName("id.kabar.app.QaProbe").getMethod(call.method.equals("qaCleanupProbe")?"cleanup":"surfaces",Context.class,boolean.class).invoke(null,this,Boolean.TRUE.equals(args.get("seed")));
                 result.success(probe.toString());return;
             case "snapshot":result.success(snapshot().toString());return;
+            case "locationServices":result.success(new JSONObject().put("enabled",getSystemService(android.location.LocationManager.class).isLocationEnabled()).toString());return;
+            case "locationSettings":
+                if(locationSettingsResult!=null)throw new IllegalStateException();
+                locationSettingsResult=result;startActivityForResult(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS),46);return;
             case "preferences":{
                 SharedPreferences.Editor e=LocalProfile.prefs(this).edit();
                 if(args.containsKey("nickname")){String v=(String)args.get("nickname");if(!LocalProfile.validName(v)){result.error("invalid_name","Invalid nickname",null);return;}e.putString("nickname",v.trim());}
@@ -145,5 +150,6 @@ public final class AbcActivity extends FlutterActivity {
         }catch(Exception e){fail(result,e);}
     }
     private void requestAlerts(){if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},45);else startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,getPackageName()));}
+    @Override protected void onActivityResult(int request,int code,Intent data){super.onActivityResult(request,code,data);if(request==46&&locationSettingsResult!=null){MethodChannel.Result result=locationSettingsResult;locationSettingsResult=null;try{result.success(answer(null).toString());}catch(Exception e){fail(result,e);}}}
     @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==44&&permitted!=null){Runnable r=permitted;permitted=null;r.run();}}
 }
