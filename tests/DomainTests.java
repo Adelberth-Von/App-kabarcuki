@@ -121,6 +121,8 @@ public class DomainTests {
         for(int i=0;i<12;i++)s.record("meal",at(2,23,5)+i,"Makan",point);
         int points=0;for(int i=0;i<s.events.length();i++)if(s.events.getJSONObject(i).has("gps"))points++;
         eq(points,3,"only three historical GPS points retained");
+        ok(s.events.getJSONObject(3).optBoolean("gpsCaptured"),"pruned event remembers that a point was once included");
+        ok(!s.events.getJSONObject(3).has("gps"),"pruned event does not borrow the current GPS point");
         String encrypted=Pairing.create().encrypt(new JSONObject().put("state",s.json()).put("notify",true).toString());
         ok(encrypted.getBytes(StandardCharsets.UTF_8).length<=4096,"GPS history and timezone fit relay");
         ok(StatusLogic.zoneLabel(TimeZone.getTimeZone("Asia/Makassar"),at(2,12,0)).startsWith("UTC+08:00"),"sender timezone offset shown");

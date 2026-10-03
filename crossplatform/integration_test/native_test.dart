@@ -66,6 +66,18 @@ void main() {
     await binding.takeScreenshot('abc-detail');
     expect(find.text(model.copy['senderTime']),findsOneWidget);
     await tap(find.byTooltip('Tutup'));
+    if(const bool.fromEnvironment('QA_LOCATION')) {
+      await tap(find.text('Beranda').last);
+      await tap(find.byKey(const ValueKey('status-home')));
+      if(!tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value) await tap(find.byType(Switch).last);
+      await tap(find.byKey(const ValueKey('confirm-status')));
+      expect(model.events.first['gps'],isA<Map>());
+      expect(number(model.events.first['gps']['accuracy']),greaterThan(0));
+      await tap(find.text('Riwayat').last);
+      await tap(find.byKey(const ValueKey('detail-0')));
+      await binding.takeScreenshot('abc-detail-gps');
+      await tap(find.byTooltip('Tutup'));
+    }
     await tap(find.text('Pengaturan').last);
     await tap(find.byKey(const ValueKey('time-format')));
     await tap(find.byKey(const ValueKey('clock-12')));
@@ -74,11 +86,16 @@ void main() {
     await backend.invoke('preferences', {'dark': true});
     await model.refresh();
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text(model.copy['appearance']).first);await tester.pumpAndSettle();
     await binding.takeScreenshot('abc-appearance-dark');
     await backend.invoke('preferences', {'dark': false});
     await model.refresh();
     await tester.pumpAndSettle();
     await binding.takeScreenshot('abc-appearance-light');
+    await tap(find.text('Beranda').last);await tester.ensureVisible(find.byKey(const ValueKey('greeting')));await tester.pumpAndSettle();await binding.takeScreenshot('abc-relationship-home');
+    await backend.invoke('preferences',{'dark':true});await model.refresh();await tester.pumpAndSettle();await binding.takeScreenshot('abc-relationship-dark-home');
+    await backend.invoke('preferences',{'dark':false});await model.refresh();await tester.pumpAndSettle();await tap(find.text('Pengaturan').last);
+    await tester.ensureVisible(find.text(model.copy['settings']).first);await tester.pumpAndSettle();await binding.takeScreenshot('abc-settings');
     await tap(find.byKey(const ValueKey('language-settings')));
     await tap(find.byKey(const ValueKey('language-de')));
     expect(model.language, 'de');
@@ -91,7 +108,7 @@ void main() {
     expect(restored.together, true);
     expect(restored.dark, false);
     expect(restored.language, 'de');
-    expect(restored.events.first['label'], 'Sarapan');
+    expect(restored.events.any((e)=>e['label']=='Sarapan'),true);
     restored.dispose();
     await backend.invoke('preferences', {
       'language': 'id',

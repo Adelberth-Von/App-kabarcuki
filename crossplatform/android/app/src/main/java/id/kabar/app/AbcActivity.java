@@ -86,7 +86,7 @@ public final class AbcActivity extends FlutterActivity {
                     if(!isSender()||!session.equals(Store.prefs(this).getString("code","")))throw new SecurityException();
                     if(kind.isEmpty()&&point==null)return answer("locationFailed");
                     synchronized(Store.LOCK){KabarState s=Store.state(this);s.zone=TimeZone.getDefault().getID();if(kind.isEmpty()){s.gps=point;s.revision++;}else s.record(kind,System.currentTimeMillis(),category,point);Store.saveAndQueue(this,s,!kind.isEmpty());}
-                    return answer(share&&point==null?"locationFailed":null);
+                    return answer(share&&point==null?(LocationCapture.allowed(this)?"locationUnavailable":"locationDenied"):null);
                 });};
                 if(!share){save.done(null,"");return;}
                 if(LocationCapture.allowed(this)){capture=LocationCapture.start(this,save);return;}

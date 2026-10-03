@@ -1,6 +1,7 @@
 import Foundation
 
 public enum LocalClock {
+    public static func regionCode(_ zone: TimeZone) -> String? { ZoneCountries.all[zone.identifier] }
     public static func country(_ zone: TimeZone) -> String {
         guard let code = ZoneCountries.all[zone.identifier] else { return "Zona waktu HP" }
         return Locale(identifier:"id_ID").localizedString(forRegionCode:code) ?? code

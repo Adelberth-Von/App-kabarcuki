@@ -15,7 +15,7 @@ import KabarCore
     func validName(_ raw:String)->Bool {let s=raw.trimmingCharacters(in:.whitespacesAndNewlines);return !s.isEmpty && s.utf16.count<=24 && !s.unicodeScalars.contains(where:{$0.value<32 || $0.value==127})}
     func zone(_ z:TimeZone,_ at:Int64,offset:Bool)->[String:Any] {
         let locale=Locale(identifier:profile["language"] as? String ?? "id")
-        let country=ZoneCountries.all[z.identifier].flatMap { locale.localizedString(forRegionCode:$0) } ?? "UTC"
+        let country=LocalClock.regionCode(z).flatMap { locale.localizedString(forRegionCode:$0) } ?? "UTC"
         var info:[String:Any]=["id":z.identifier,"short":LocalClock.shortZone(z,at:at),"country":country]
         if offset {info["offsetMinutes"]=z.secondsFromGMT(for:Date(timeIntervalSince1970:Double(at)/1000))/60};return info
     }

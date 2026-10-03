@@ -31,7 +31,7 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: cd crossplatform && flutter drive --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d emulator-5554
+          script: cd crossplatform && flutter drive --keep-app-running --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d emulator-5554
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -58,7 +58,7 @@ jobs:
           xcrun simctl boot "$DEVICE" || true
           xcrun simctl bootstatus "$DEVICE" -b
           cd crossplatform
-          flutter drive --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d "$DEVICE"
+          flutter drive --keep-app-running --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d "$DEVICE"
         shell: bash --noprofile --norc -eo pipefail {0}
       - uses: actions/upload-artifact@v4
         if: always()

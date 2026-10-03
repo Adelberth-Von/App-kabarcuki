@@ -35,7 +35,7 @@ XcodeGen menggabungkan host Flutter, KabarCore, widget dan ekstensi notifikasi. 
 Hanya gunakan emulator/simulator khusus uji. Tes membuat pasangan jika belum ada dan menambah dua catatan status; tidak menghapus pasangan yang sudah ada. Gunakan emulator baru jika antrean lama penuh.
 
 ```sh
-flutter drive --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d DEVICE_ID
+flutter drive --keep-app-running --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d DEVICE_ID
 ```
 
 Gambar hasil tes disimpan pada `qa-screenshots/`. UI tests memeriksa bahasa, panggilan, konfirmasi, riwayat, GPS per kejadian, mode warna, dan teks besar 200%. Folder SDK, build, cache, dan rahasia tidak disertakan dalam paket sumber.
