@@ -12,6 +12,11 @@ public class DeviceQA extends Instrumentation {
     private Bundle args;
     private int assertions=0;
     private MainActivity activity;
+    @Override public void callActivityOnResume(Activity resumed) {
+        super.callActivityOnResume(resumed);
+        // Configuration changes can replace the Activity during a large-font run.
+        if(resumed instanceof MainActivity)activity=(MainActivity)resumed;
+    }
     @Override public void onCreate(Bundle arguments){args=arguments;start();}
     private void ok(boolean value,String label){assertions++;if(!value)throw new AssertionError(label);}
     private void main(Runnable run){runOnMainSync(run);waitForIdleSync();}
