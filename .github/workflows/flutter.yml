@@ -68,14 +68,16 @@ jobs:
           mkdir -p ../work
           flutter build ios --simulator --debug --dart-define=QA_CLEANUP=true --target=integration_test/native_test.dart 2>&1 | tee ../work/flutter-ios-drive.log
           xcrun simctl install "$DEVICE" build/ios/iphonesimulator/Runner.app
-          xcrun simctl launch --terminate-running-process --console "$DEVICE" id.kabar.app --enable-dart-profiling --enable-checked-mode --verify-entry-points > ../work/iphone-console.log 2>&1 &
-          VM_URL=''
+          # The simulator runs on the CI host. A fixed loopback port avoids
+          # relying on OS log forwarding to discover the test VM service.
+          xcrun simctl launch --terminate-running-process --console "$DEVICE" id.kabar.app --enable-dart-profiling --enable-checked-mode --verify-entry-points --vm-service-port=8181 --disable-service-auth-codes > ../work/iphone-console.log 2>&1 &
+          VM_URL='http://127.0.0.1:8181/'
+          VM_READY=false
           for attempt in $(seq 1 60); do
-            VM_URL=$(sed -nE 's/.*Dart VM service is listening on (http[^ ]+).*/\1/p' ../work/iphone-console.log | head -1)
-            if [ -n "$VM_URL" ]; then break; fi
+            if curl --fail --silent --max-time 1 "${VM_URL}getVM" > ../work/iphone-vm.json; then VM_READY=true; break; fi
             sleep 1
           done
-          if [ -z "$VM_URL" ]; then
+          if [ "$VM_READY" != true ]; then
             cat ../work/iphone-console.log
             PID=$(pgrep -f '/Runner.app/Runner' | head -1 || true)
             if [ -n "$PID" ]; then sample "$PID" 3 1 -file ../work/iphone-sample.txt || true; fi
@@ -103,4 +105,5 @@ jobs:
             work/iphone-system.log
             work/iphone-console.log
             work/iphone-sample.txt
+            work/iphone-vm.json
             work/Runner*

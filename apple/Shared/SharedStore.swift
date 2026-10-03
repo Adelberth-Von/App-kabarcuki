@@ -59,6 +59,9 @@ enum SharedStore {
         }
         defaults.removePersistentDomain(forName:group)
         if let identifier=Bundle.main.bundleIdentifier {UserDefaults.standard.removePersistentDomain(forName:identifier)}
+        // Release the app's disk cache before removing its database files.
+        URLCache.shared.removeAllCachedResponses()
+        URLCache.shared=URLCache(memoryCapacity:0,diskCapacity:0,diskPath:nil)
         let manager=FileManager.default
         var roots:[URL]=[]
         for directory:FileManager.SearchPathDirectory in [.documentDirectory,.applicationSupportDirectory,.cachesDirectory] {
@@ -74,7 +77,6 @@ enum SharedStore {
                 try manager.removeItem(at:child)
             }
         }
-        URLCache.shared.removeAllCachedResponses()
     }
     static func receive(_ packet: Packet, topic: String) throws -> Bool {
         guard pairing()?.topic == topic, packet.state.revision > state().revision else { return false }
