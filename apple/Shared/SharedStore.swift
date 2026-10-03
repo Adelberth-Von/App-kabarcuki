@@ -46,8 +46,10 @@ enum SharedStore {
     static func reset() {
         for key in ["code", "private"] { SecItemDelete(self.key(key) as CFDictionary) }
         let dark = defaults.bool(forKey:"appearanceDark"), together = defaults.bool(forKey:"appearanceRelationship")
+        let profile = defaults.dictionary(forKey:"abcProfile")
         defaults.removePersistentDomain(forName: group)
         defaults.set(dark,forKey:"appearanceDark");defaults.set(together,forKey:"appearanceRelationship")
+        if let profile { defaults.set(profile,forKey:"abcProfile") }
     }
     static func receive(_ packet: Packet, topic: String) throws -> Bool {
         guard pairing()?.topic == topic, packet.state.revision > state().revision else { return false }

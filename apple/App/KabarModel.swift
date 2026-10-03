@@ -27,7 +27,9 @@ import KabarCore
     }
     func beginSender() {
         do {
-            let pair = Pairing(); try install(pair, role: "sender"); try enqueue(state, notify: false); start()
+            let pair = Pairing(); try install(pair, role: "sender"); state.revision = 1
+            state.name = SharedStore.defaults.dictionary(forKey:"abcProfile")?["nickname"] as? String ?? "Aku"
+            try enqueue(state, notify: false); start()
         } catch { self.error = error.localizedDescription }
     }
     func join(_ code: String) {
@@ -44,20 +46,21 @@ import KabarCore
         self.role = role; state = KabarState(); try SharedStore.save(state); pending = 0; pushEndpoint = ""
         WidgetCenter.shared.reloadAllTimelines()
     }
-    func record(_ kind: String, meal: String? = nil, share: Bool = false) {
+    func record(_ kind: String, meal: String? = nil, share: Bool = false, completion: ((Bool)->Void)? = nil) {
         guard role == "sender", !locating else { return }
         guard pending<25 else { error = "Antrean 25 kabar penuh. Hubungkan internet sebelum menambah kabar."; return }
         let session = code
         let save: (GpsPoint?,String) -> Void = { [weak self] point,note in
             guard let self, self.role == "sender", self.code == session else { return }
             self.locating = false; self.sampler = nil; self.locationNote = note
-            if kind.isEmpty && point == nil { self.error = note; return }
+            if kind.isEmpty && point == nil { self.error = note; completion?(false); return }
             do {
                 var next = self.state; next.zone = TimeZone.current.identifier
                 if kind.isEmpty { next.gps = point; next.revision += 1 }
                 else { try next.record(kind,meal:meal,point:point) }
                 try self.enqueue(next,notify:!kind.isEmpty)
-            } catch { self.error = error.localizedDescription }
+                completion?(true)
+            } catch { self.error = error.localizedDescription; completion?(false) }
         }
         if share { locating = true; sampler = LocationSampler(completion:save); sampler?.start() }
         else { save(nil,"") }
@@ -70,7 +73,7 @@ import KabarCore
             try enqueue(next,notify:false); SharedStore.defaults.set(false,forKey:"shareLocation"); locationNote = "Lokasi dihapus dari kabar terbaru"
         } catch { self.error = error.localizedDescription }
     }
-    private func enqueue(_ next: KabarState, notify: Bool) throws {
+    func enqueue(_ next: KabarState, notify: Bool) throws {
         guard role == "sender", let pair = SharedStore.pairing() else { throw KabarError.invalid("Pasangan pengirim belum tersedia") }
         var q = queue; guard q.count < 25 else { throw KabarError.invalid("Antrean 25 kabar penuh. Hubungkan internet sebelum menambah kabar.") }
         q.append(try Packet(state: next, notify: notify).envelope(pairing: pair))
@@ -88,6 +91,14 @@ import KabarCore
         var next = state; next.location = ""; next.locationAt = 0; next.homeAt = 0; next.mealAt = 0; next.breakfastAt = 0; next.lunchAt = 0; next.dinnerAt = 0
         next.mealCategory = ""; next.events = []; next.gps = nil; next.revision += 1
         do { try enqueue(next, notify: false) } catch { self.error = error.localizedDescription }
+    }
+    func rotate() throws {
+        guard role == "sender" else { throw KabarError.invalid("Sender required") }
+        let pair = Pairing(); stop()
+        try SharedStore.saveSecret(Data(pair.code.utf8),name:"code")
+        try SharedStore.saveSecret(pair.privateKey!.rawRepresentation,name:"private")
+        SharedStore.defaults.set([],forKey:"queue"); SharedStore.defaults.removeObject(forKey:"cursor"); SharedStore.defaults.removeObject(forKey:"publishedAt")
+        var next=state; next.revision += 1; try enqueue(next,notify:false); start()
     }
     func pause() {
         SharedStore.defaults.set(!enabled, forKey: "enabled")
@@ -166,7 +177,7 @@ import KabarCore
         }
     }
     func notify(_ packet: Packet) async {
-        let content = UNMutableNotificationContent(); content.title = "Kabar \(packet.state.name)"; content.body = packet.notificationBody; content.sound = .default
+        let content = UNMutableNotificationContent(); content.title = "abc · \(packet.state.name)"; content.body = PhoneText.notification(packet); content.sound = .default
         try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "kabar-\(packet.state.revision)", content: content, trigger: nil))
     }
     private func validPushURL() -> URL? {

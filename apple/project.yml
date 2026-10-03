@@ -74,7 +74,7 @@ targets:
   KabarNotification:
     type: app-extension
     platform: iOS
-    sources: [Notification, Shared/SharedStore.swift]
+    sources: [Notification, Shared/SharedStore.swift, Shared/PhoneText.swift]
     dependencies:
       - package: KabarCore
     settings:

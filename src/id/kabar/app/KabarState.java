@@ -31,7 +31,7 @@ public final class KabarState {
         }
         revision++;
         JSONObject event=new JSONObject().put("kind",kind).put("at",timestamp).put("label",label).put("zone",zone);
-        if(point!=null){gps=point;event.put("gps",point.json());}
+        if(point!=null){gps=point;event.put("gps",point.json()).put("gpsCaptured",true);}
         JSONArray recent=new JSONArray();
         recent.put(event);
         for(int i=0;i<Math.min(11,events.length());i++) recent.put(events.getJSONObject(i));

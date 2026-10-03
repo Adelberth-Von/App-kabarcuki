@@ -1,0 +1,69 @@
+name: abc cross-platform QA
+on:
+  push:
+    paths: ['crossplatform/**', 'src/**', 'res/**', 'apple/**', 'scripts/**', '.github/workflows/flutter.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: flutter-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 30, 35, 36]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: subosito/flutter-action@v2
+        with: {channel: stable, flutter-version: '3.47.6', cache: true}
+      - run: flutter pub get && flutter analyze && flutter test
+        working-directory: crossplatform
+      - run: sudo chmod 666 /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: '${{ matrix.api }}'
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: cd crossplatform && flutter drive --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d emulator-5554
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: abc-android-${{ matrix.api }}
+          path: crossplatform/qa-screenshots
+  apple:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: {channel: stable, flutter-version: '3.47.6', cache: true}
+      - run: brew install xcodegen
+      - name: Prepare shared Flutter iOS host
+        run: |
+          cd crossplatform
+          flutter pub get
+          flutter build ios --simulator --debug --config-only --no-codesign
+          cd ios
+          xcodegen generate
+      - name: Build and test on iPhone simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for v in d["devices"].values() for x in v if x["name"].startswith("iPhone")))')
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          cd crossplatform
+          flutter drive --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d "$DEVICE"
+        shell: bash --noprofile --norc -eo pipefail {0}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: abc-iPhone-simulator
+          path: |
+            crossplatform/build/ios/iphonesimulator/Runner.app
+            crossplatform/qa-screenshots

@@ -86,6 +86,7 @@ public struct KabarEvent: Codable, Equatable, Identifiable {
     public var label: String
     public var zone: String? = nil
     public var gps: GpsPoint? = nil
+    public var gpsCaptured: Bool? = nil
     public var id: String { "\(at)-\(kind)" }
 }
 public struct KabarState: Codable, Equatable {
@@ -149,7 +150,7 @@ public struct KabarState: Codable, Equatable {
             label = locationText
         }
         if let point { try point.validate(); gps = point }
-        revision += 1; events.insert(KabarEvent(kind: kind, at: at, label: label, zone: zone, gps: point), at: 0); events = Array(events.prefix(12))
+        revision += 1; events.insert(KabarEvent(kind: kind, at: at, label: label, zone: zone, gps: point, gpsCaptured: point == nil ? nil : true), at: 0); events = Array(events.prefix(12))
         for i in events.indices where i>=3 { events[i].gps = nil }
     }
     public func validate() throws {

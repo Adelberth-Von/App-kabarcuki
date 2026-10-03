@@ -53,11 +53,11 @@ public class SyncService extends Service {
         nm.createNotificationChannel(new NotificationChannel("updates","Kabar keluarga",NotificationManager.IMPORTANCE_HIGH));
     }
     private Notification persistent() {
-        PendingIntent open=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent open=PendingIntent.getActivity(this,0,AppEntry.open(this),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent stop=PendingIntent.getService(this,1,new Intent(this,SyncService.class).setAction("STOP").putExtra("stopSession",Store.prefs(this).getString("code","")),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-        return new Notification.Builder(this,"connection").setSmallIcon(R.drawable.notification_icon).setContentTitle("Kabar aktif")
-            .setContentText(Store.role(this).equals("sender")?"Siap mengirim kabar keluarga":"Menunggu kabar keluarga")
-            .setContentIntent(open).setOngoing(true).addAction(new Notification.Action.Builder(null,"Jeda",stop).build()).build();
+        return new Notification.Builder(this,"connection").setSmallIcon(R.drawable.notification_icon).setContentTitle(LocalProfile.text(this,"abc aktif","abc is active","abc ist aktiv"))
+            .setContentText(Store.role(this).equals("sender")?LocalProfile.text(this,"Siap mengirim kabar","Ready to send updates","Bereit für Updates"):LocalProfile.text(this,"Menunggu kabar","Waiting for updates","Warten auf Updates"))
+            .setContentIntent(open).setOngoing(true).addAction(new Notification.Action.Builder(null,LocalProfile.text(this,"Jeda","Pause","Pausieren"),stop).build()).build();
     }
     private boolean current() {return running&&Thread.currentThread()==worker&&Store.prefs(this).getBoolean("enabled",true)&&session.equals(Store.prefs(this).getString("code",""));}
     private void status(String text) {
@@ -156,10 +156,10 @@ public class SyncService extends Service {
     private void alert(KabarState s) {
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)return;
         JSONObject last=s.events.optJSONObject(0);if(last==null)return;
-        PendingIntent open=PendingIntent.getActivity(this,2,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent open=PendingIntent.getActivity(this,2,AppEntry.open(this),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         Notification n=new Notification.Builder(this,"updates").setSmallIcon(R.drawable.notification_icon)
-            .setContentTitle(s.name+" · "+last.optString("label"))
-            .setContentText(StatusLogic.localWhen(last.optLong("at"),System.currentTimeMillis(),java.util.TimeZone.getDefault()))
+            .setContentTitle(s.name+" · "+LocalProfile.label(this,last.optString("label")))
+            .setContentText(LocalProfile.stamp(this,last.optLong("at")))
             .setContentIntent(open).setAutoCancel(true).build();
         getSystemService(NotificationManager.class).notify(2,n);
     }

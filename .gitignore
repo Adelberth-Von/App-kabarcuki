@@ -19,3 +19,10 @@ DerivedData/
 apple/Fixtures/
 apple/*.xcodeproj/
 server/data/
+.idea/
+*.iml
+.dart_tool/
+**/Pods/
+**/.symlinks/
+**/ephemeral/
+crossplatform/qa-screenshots/

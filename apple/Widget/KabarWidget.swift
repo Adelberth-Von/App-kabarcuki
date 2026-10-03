@@ -23,13 +23,13 @@ struct KabarWidgetView: View {
     var content: some View {
         HStack(spacing:12) {
             VStack(alignment:.leading,spacing:6) {
-                Text("kabar. \(entry.state.name)").font(.headline).foregroundStyle(palette.accent)
+                Text("abc · \(entry.state.name)").font(.headline).foregroundStyle(palette.accent)
                 if entry.paired {
-                    Text(entry.state.locationText).font(.subheadline.bold())
-                    Text(LocalClock.when(entry.state.locationAt)).font(.caption2)
-                    Text("\(entry.state.meal): \(LocalClock.when(entry.state.mealAt))").font(.caption2)
-                    Text("\(entry.state.home): \(LocalClock.when(entry.state.homeAt))").font(.caption2)
-                } else { Text("Buka Kabar untuk menghubungkan HP").font(.caption) }
+                    Text(PhoneText.label(entry.state.locationText)).font(.subheadline.bold())
+                    Text(PhoneText.stamp(entry.state.locationAt)).font(.caption2)
+                    Text("\(PhoneText.label(entry.state.meal)): \(PhoneText.stamp(entry.state.mealAt))").font(.caption2)
+                    Text("\(PhoneText.label(entry.state.home)): \(PhoneText.stamp(entry.state.homeAt))").font(.caption2)
+                } else { Text(PhoneText.text("Buka abc untuk menghubungkan HP","Open abc to connect your phone","Öffne abc, um dein Handy zu verbinden")).font(.caption) }
             }.minimumScaleFactor(0.8)
             Group { if together { DayScene(together:true,at:Int64(entry.date.timeIntervalSince1970*1000)) } else { PixelScene(outside:entry.state.location == "outside") } }.frame(width:70,height:70)
         }.padding(12).foregroundStyle(palette.ink).environment(\.colorScheme,dark ? .dark:.light).widgetURL(URL(string:"kabar://home"))
@@ -42,6 +42,6 @@ struct KabarWidgetView: View {
 @main struct KabarWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind:"KabarWidget",provider:KabarProvider()) { KabarWidgetView(entry:$0) }
-            .configurationDisplayName("Kabar keluarga").description("Lihat status tempat tinggal dan makan terakhir.").supportedFamilies([.systemMedium])
+            .configurationDisplayName("abc").description(PhoneText.text("Lihat kabar terakhir.","See the latest update.","Das neueste Update ansehen.")).supportedFamilies([.systemMedium])
     }
 }

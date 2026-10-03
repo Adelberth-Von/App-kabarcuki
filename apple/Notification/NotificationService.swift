@@ -8,7 +8,7 @@ final class NotificationService: UNNotificationServiceExtension {
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         completion = contentHandler
         guard let content = request.content.mutableCopy() as? UNMutableNotificationContent else { contentHandler(request.content); completion = nil; return }
-        content.title = "Kabar keluarga"; content.body = "Ada kabar baru. Buka aplikasi untuk melihatnya."; fallback = content
+        content.title = "abc"; content.body = PhoneText.text("Ada kabar baru. Buka aplikasi untuk melihatnya.","There is a new update. Open the app to see it.","Es gibt ein neues Update. Öffne die App, um es zu sehen."); fallback = content
         work = Task {
             do {
                 guard SharedStore.defaults.object(forKey:"enabled") as? Bool ?? true, let pair = SharedStore.pairing(), request.content.userInfo["topic"] as? String == pair.topic else { finish(content); return }
@@ -26,7 +26,7 @@ final class NotificationService: UNNotificationServiceExtension {
                 let packet = try Packet.decode(envelope,pairing:pair)
                 guard SharedStore.pairing()?.topic == pair.topic else { finish(content); return }
                 _ = try SharedStore.receive(packet,topic:pair.topic)
-                content.title = "Kabar \(packet.state.name)"; content.body = packet.notificationBody
+                content.title = "abc · \(packet.state.name)"; content.body = PhoneText.notification(packet)
                 WidgetCenter.shared.reloadAllTimelines(); finish(content)
             } catch { finish(content) }
         }

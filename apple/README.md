@@ -1,5 +1,13 @@
 # Kabar untuk iPhone dan iPad
 
+## Pembaruan 0.4.0
+
+Tema Default/In Relationship dan mode Terang/Gelap tersedia di Pengaturan → Appearance. Ilustrasi pagi/siang/sore/malam mengikuti jam lokal dan terpisah dari mode warna. Status/riwayat menggunakan jam pembaca dengan label zona/negara; jadwal makan tetap memakai zona pengirim. Tema disimpan per perangkat dan juga dipakai widget.
+
+Konfirmasi diperlukan sebelum mencatat status atau menyimpan personalisasi. Daftar Makan hari ini bisa dipakai mencatat kategori. Lokasi GPS opsional diambil satu kali dengan izin When In Use; kartu menampilkan akurasi, umur titik dan tautan peta. Tidak ada pelacakan latar belakang.
+
+Distribusi perangkat fisik tetap memerlukan penandatanganan Apple dan TestFlight/IPA yang sesuai. APK Android tidak bisa dipasang pada iPhone.
+
 Aplikasi native SwiftUI, minimum **iOS/iPadOS 16**. UI sage/krem/pixel art, pengirim/penerima tanpa login, kode pasangan lintas Android–Apple, tombol Keluar/Kost/Makan yang dapat diganti, jadwal makan, riwayat, antrean offline, widget layar utama, serta Notification Service Extension tersedia dalam sumber ini.
 
 **Status distribusi:** sumber dan build simulator tersedia. Belum ada IPA bertanda tangan atau undangan TestFlight. APK Android tidak dapat dipasang di iPhone. Pengujian simulator tidak menggantikan pengujian iPhone/iPad fisik, APNs, dan seluruh versi iOS.

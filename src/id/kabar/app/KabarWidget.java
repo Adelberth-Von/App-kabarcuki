@@ -24,10 +24,10 @@ public class KabarWidget extends AppWidgetProvider {
         android.graphics.Bitmap art=android.graphics.Bitmap.createBitmap(80,64,android.graphics.Bitmap.Config.ARGB_8888);
         View illustration=a.relationship?new DayScene(c,true,now,zone):new PixelArt(c,s.location.equals("outside")?"outside":"home");illustration.layout(0,0,80,64);illustration.draw(new android.graphics.Canvas(art));
         v.setImageViewBitmap(R.id.widget_art,art);
-        v.setTextViewText(R.id.widget_title,Store.role(c).isEmpty()?"Kabar":"Kabar "+s.name);
-        v.setTextViewText(R.id.widget_location,s.locationText()+ (s.locationAt>0?" · "+StatusLogic.localWhen(s.locationAt,now,zone):""));
-        v.setTextViewText(R.id.widget_home,"Terakhir di "+s.home.toLowerCase(new java.util.Locale("id"))+": "+StatusLogic.localWhen(s.homeAt,now,zone));
-        v.setTextViewText(R.id.widget_meal,s.mealAt==0?"Makan belum tercatat":s.mealCategory+" · "+StatusLogic.localWhen(s.mealAt,now,zone));
+        v.setTextViewText(R.id.widget_title,Store.role(c).isEmpty()?"abc":"abc · "+s.name);
+        v.setTextViewText(R.id.widget_location,LocalProfile.label(c,s.locationText())+ (s.locationAt>0?" · "+LocalProfile.stamp(c,s.locationAt):""));
+        v.setTextViewText(R.id.widget_home,LocalProfile.label(c,s.home)+": "+LocalProfile.stamp(c,s.homeAt));
+        v.setTextViewText(R.id.widget_meal,s.mealAt==0?LocalProfile.text(c,"Makan belum tercatat","Meal not recorded","Essen nicht erfasst"):LocalProfile.label(c,s.mealCategory)+" · "+LocalProfile.stamp(c,s.mealAt));
         String connection=Store.prefs(c).getString("connection","Buka aplikasi untuk menghubungkan");
         if(StatusLogic.stale(s.locationAt,now))connection="Lokasi sudah lama · "+connection;
         if(Store.pending(c)>0)connection=Store.pending(c)+" kabar menunggu dikirim";
@@ -42,7 +42,7 @@ public class KabarWidget extends AppWidgetProvider {
         return v;
     }
     private static PendingIntent open(Context c,String action,int request) {
-        Intent i=new Intent(c,MainActivity.class).putExtra("quickAction",action).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        Intent i=AppEntry.open(c).putExtra("quickAction",action).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
         return PendingIntent.getActivity(c,request,i,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
     }
 }
