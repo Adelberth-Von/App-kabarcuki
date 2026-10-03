@@ -172,6 +172,9 @@ public class DeviceQA extends Instrumentation {
             // The previous run may already have left Tokyo active while a broadcast
             // was in flight. Force a real change so this tests a system notification.
             shell("cmd alarm set-timezone UTC");
+            long utcDeadline=SystemClock.elapsedRealtime()+8000;boolean[] utcShown={false};
+            while(!utcShown[0]&&SystemClock.elapsedRealtime()<utcDeadline){main(()->utcShown[0]=find(activity.getWindow().getDecorView(),StatusLogic.clock(System.currentTimeMillis(),java.util.TimeZone.getTimeZone("UTC")))!=null);if(!utcShown[0])Thread.sleep(100);}
+            ok(utcShown[0],"UTC clock rendered before changing to Tokyo");
             shell("cmd alarm set-timezone Asia/Tokyo");
             // Wait for the actual system broadcast and the rendered result.
             long deadline=SystemClock.elapsedRealtime()+5000;boolean[] shown={false};
@@ -194,17 +197,22 @@ public class DeviceQA extends Instrumentation {
         ok(Store.state(c).revision==before+1,"GPS disabled still saves confirmed status");ok(Store.state(c).gps==null,"disabled GPS does not invent coordinates");
         shell("settings put secure location_mode 3");shell("appops set id.kabar.app android:mock_location allow");Thread.sleep(400);
         android.location.LocationManager manager=c.getSystemService(android.location.LocationManager.class);
+        Handler gpsFeed=new Handler(Looper.getMainLooper());
+        Runnable feed=new Runnable(){public void run(){android.location.Location sample=new android.location.Location("gps");sample.setLatitude(-6.2);sample.setLongitude(106.816666);sample.setAccuracy(1);sample.setTime(System.currentTimeMillis());sample.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());manager.setTestProviderLocation("gps",sample);gpsFeed.postDelayed(this,200);}};
         try{
             main(()->{
                 manager.addTestProvider("gps",false,false,false,false,true,true,true,android.location.Criteria.POWER_LOW,android.location.Criteria.ACCURACY_FINE);manager.setTestProviderEnabled("gps",true);
                 android.location.Location point=new android.location.Location("gps");point.setLatitude(-6.2);point.setLongitude(106.816666);point.setAccuracy(1);point.setTime(System.currentTimeMillis());point.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());manager.setTestProviderLocation("gps",point);
-            });Thread.sleep(500);
+            });main(()->gpsFeed.post(feed));
+            long providerDeadline=SystemClock.elapsedRealtime()+5000;boolean[] providerReady={false};
+            while(!providerReady[0]&&SystemClock.elapsedRealtime()<providerDeadline){main(()->{android.location.Location sample=manager.getLastKnownLocation("gps");providerReady[0]=LocationCapture.fresh(sample)&&Math.abs(sample.getLatitude()+6.2)<0.00001;});if(!providerReady[0])Thread.sleep(100);}
+            ok(providerReady[0],"mock provider is delivering fresh samples before UI capture");
             before=Store.state(c).revision;status("Pergi");end=System.currentTimeMillis()+15000;while(Store.state(c).revision==before&&System.currentTimeMillis()<end)Thread.sleep(100);
             GpsPoint point=Store.state(c).gps;ok(point!=null,"confirmed status captures real LocationManager sample from emulator test provider");ok(Math.abs(point.lat+6.2)<0.00001,"shared coordinate matches sample");
             ok(Store.state(c).events.getJSONObject(0).optJSONObject("gps")!=null,"history retains dated location sample");await("Lihat di peta",5000);ok(find(activity.getWindow().getDecorView(),"Lihat di peta")!=null,"map action visible for received coordinate");
             Pairing receiver=Pairing.parse(Store.prefs(c).getString("code",""));JSONArray queue=new JSONArray(Store.prefs(c).getString("queue","[]"));
             JSONObject packet=new JSONObject(receiver.decrypt(queue.getJSONObject(queue.length()-1).getString("body")));ok(packet.getJSONObject("state").getJSONObject("gps").getDouble("lat")==point.lat,"location included in authenticated encrypted packet");
-        }finally{main(()->manager.removeTestProvider("gps"));shell("appops set id.kabar.app android:mock_location deny");}
+        }finally{main(()->{gpsFeed.removeCallbacks(feed);manager.removeTestProvider("gps");});shell("appops set id.kabar.app android:mock_location deny");}
     }
     private void saveScreenshot(Context c,String name)throws Exception {Thread.sleep(400);android.graphics.Bitmap bitmap=getUiAutomation().takeScreenshot();try(java.io.FileOutputStream out=new java.io.FileOutputStream(new java.io.File(c.getCacheDir(),name))){if(bitmap!=null)bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,out);}}
     private ScrollView scrollView(){ViewGroup content=activity.findViewById(android.R.id.content);LinearLayout root=(LinearLayout)content.getChildAt(0);return (ScrollView)root.getChildAt(0);}
