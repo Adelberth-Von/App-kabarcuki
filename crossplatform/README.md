@@ -11,6 +11,7 @@ flutter pub get
 flutter analyze
 flutter test
 flutter build apk --release
+python ../scripts/verify-release.py build/app/outputs/flutter-apk/app-release.apk
 ```
 
 Hasil ada di `build/app/outputs/flutter-apk/app-release.apk`. Build pengembangan menggunakan kunci debug. Untuk tanda tangan Anda sendiri, isi lingkungan `ABC_KEYSTORE` (path absolut), `ABC_KEYSTORE_PASSWORD`, dan `ABC_KEY_ALIAS`. Jangan menyimpan kunci/password dalam repositori. Paket Android tetap `id.kabar.app`.
@@ -40,10 +41,19 @@ flutter drive --keep-app-running --driver=test_driver/integration.dart --target=
 
 Gambar hasil tes disimpan pada `qa-screenshots/`. UI tests memeriksa bahasa, panggilan, konfirmasi, riwayat, GPS per kejadian, mode warna, dan teks besar 200%. Folder SDK, build, cache, dan rahasia tidak disertakan dalam paket sumber.
 
-## QA 0.6 dan penghapusan
+## QA 0.7 dan penghapusan
 
 Animasi memakai empat repaint canvas per detik, mengikuti lifecycle/visibility/Reduce Motion/Low Power Mode. EventChannel `abc/updates` menggantikan polling UI. Pengirim native menunggu antrean melalui condition/continuation sampai kabar baru atau heartbeat empat jam.
 
 Pada simulator kosong, tambahkan `--dart-define=QA_CLEANUP=true` ke perintah integrasi. Mode ini menolak pasangan yang sudah ada sebelum memulai; setelah uji UI/persistensi, ia menanam fixture di penyimpanan abc lalu memanggil pembersihan. Pemeriksaan mencakup preferensi tambahan, file/cache/database, kode/kunci, antrean, riwayat, dan notifikasi Android; iOS juga memeriksa satu fixture Keychain dengan service lain tetap ada. Probe Android hanya dikompilasi di source set debug dan probe iOS dibungkus `#if DEBUG`. Jangan jalankan mode pembersihan di HP berisi data pribadi.
 
 Tombol Uninstall membersihkan data abc lokal sebelum dialog uninstall Android/petunjuk Delete App iOS. Jika dialog sistem dibatalkan, data tetap sudah dibersihkan. File di luar sandbox abc, Download dan salinan di HP lain tetap ada.
+
+
+Widget Android menggunakan RemoteViews dengan varian ukuran dan dua frame native, berhenti pada mode hemat daya. Tinggi portrait memakai OPTION_APPWIDGET_MAX_HEIGHT, landscape memakai minimum. WidgetKit memakai transisi pembaruan data. Nama tema hubungan kini Seirama; key preferensi lama tetap kompatibel.
+
+Nada asli dibuat oleh `scripts/make-chime.py` sebagai mono PCM WAV 1,08 detik. Android memakai channel `updates_pixel_v1` dan URI resource berdasarkan nama, dengan mempertahankan channel lama yang dimatikan serta pilihan suara pengguna pada Android 11 ke atas. XcodeGen memasukkan WAV ke bundle aplikasi utama; notifikasi lokal, ekstensi dan payload APNs memakai nama yang sama. Server APNs tetap perlu deployment.
+
+Driver menolak hasil kosong: hanya lulus jika marker penyelesaian native dan sembilan screenshot wajib tersedia. Registrasi testWidgets tetap sinkron; pemanasan accessibility dilakukan pada setUpAll. CI pada simulator kosong juga memverifikasi cleanup. Semua perintah Flutter lokal dijalankan berurutan agar registrasi plugin debug/release tidak saling menimpa.
+
+Resource nada dipanggil melalui nama URI yang stabil; res/raw/keep_id_kabar.xml mempertahankannya ketika release dioptimasi. Pemeriksaan paket release membandingkan WAV asli dan memastikan kelas probe debug tidak dibundel.

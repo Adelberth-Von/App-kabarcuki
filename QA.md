@@ -1,4 +1,69 @@
-# Laporan QA â€” abc 0.6.0
+# Laporan QA — abc 0.7.0
+
+Tanggal: **3 Oktober 2026**. Fokus: animasi per tindakan/tema/fase hari, widget, nada notifikasi, lokasi dengan nama dan kategori makan sesuai jam lokal. [Pratinjau dan video release](TAMPILAN.md).
+
+## APK yang dibagikan
+
+- Paket `id.kabar.app`, versionName **0.7.0**, versionCode **7**, minimum Android **10/API 29**, target/compile **36**. APK universal ARM32, ARM64 dan x86_64.
+- Ukuran **51.060.606 byte**; SHA-256 `39f21fcc11068a3f06a0ba7fd2eac51f275de5cec44f36b6ae40949743ade50f`.
+- Signature v2 diverifikasi. Sertifikat SHA-256 `ae0b8561a0364415fb9c13292fbae8903fe55e97714a4595f2cf0249323d3065`, sama dengan rilis sebelumnya; update mempertahankan pasangan/data pada kedua emulator.
+- Alignment ZIP 16 KB serta segmen LOAD keenam library ELF diverifikasi. Tidak ditemukan fixture kode pasangan release, `PAIRING_CODE`, `DeviceQA` atau `QaProbe` dalam lokasi binary yang diperiksa. Paket sumber mengecualikan SDK/build/cache/fixture pasangan/kredensial/kunci pribadi.
+
+## Hasil aktual
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Flutter analyze | Lulus tanpa issue |
+| Flutter unit/widget | **23 kasus lulus**; 24 kombinasi tindakan × tema × fase menghasilkan gambar berbeda, frame bergerak mengubah piksel; lifecycle, visibility, Reduce Motion/hemat daya, format waktu dua arah, Detail terbuka, tiga bahasa dan teks 200% |
+| Domain Java | **120 assertions lulus**, termasuk kategori makan mengikuti jam sebenarnya, lokasi bernama dan paket terenkripsi ≤4.096 byte dengan label multibyte maksimal |
+| Apple core | **8 kasus Swift lulus**, interoperabilitas Java/CryptoKit dua arah, build aplikasi/widget/ekstensi dan UI native simulator lulus |
+| Server APNs | **7 kasus lulus**, termasuk validasi otorisasi/tanda tangan, batas payload dan nama suara `abc_chime.wav` |
+| Integrasi Flutter Android/iPhone | **Lulus API 29/30/35/36 dan simulator iPhone**: seluruh alur selesai, marker native terverifikasi dan sembilan screenshot wajib per perangkat; preferensi, bahasa/tema/format, detail dan cleanup |
+| Komponen/UI native Android arsip | **Lulus API 29–36**, termasuk font 1,5× pada API 35. UI MainActivity arsip tidak masuk APK Flutter |
+| Dua APK release | Lulus pada APK akhir setelah perbaikan resource: pengirim Asia/Jakarta dan penerima Europe/Berlin; kabar terenkripsi tersinkron, notifikasi diterima saat penerima di latar belakang |
+| Widget Android release | Lulus: tiga sampel frame berbeda ketika aktif, satu frame statis pada Battery Saver, dua frame berbeda setelah Battery Saver dimatikan. Proporsi portrait dan tombol/info diperiksa pada launcher emulator |
+| Suara/notifikasi | WAV mono PCM 22.050 Hz, 1,08 detik, dibundel Android/iPhone; Android memeriksa channel `updates_pixel_v1`, resource URI nama stabil, format waktu normal/diperluas dan pembaruan senyap. Pada APK release akhir, lookup URI resource berhasil, durasi 1.080 ms dan callback pemutaran selesai diverifikasi melalui fixture terpisah pada emulator penerima. Playback akustik pada HP fisik belum diukur |
+| Guard APK release | Build release teroptimasi di CI lulus; file nada identik dengan WAV sumber dan kelas debug tidak dibundel. Uji negatif memastikan APK tanpa nada ditolak |
+| Persetujuan GPS | Membatalkan aktivasi tidak mengubah revisi. Setelah pengaturan lokasi diaktifkan dan kembali ke aplikasi, sampel baru tertangkap dan tersinkron |
+| Detail dan peta | Sampel simulasi Yogyakarta `-7.7956, 110.3695`, akurasi 5 m; detail tidak menampilkan angka koordinat, intent peta memakai titik yang sama. Geocoder emulator tidak tersedia: fallback kota belum diketahui tampil tanpa mengarang nama |
+| Makan berdasarkan waktu | Tes domain memverifikasi Sarapan pada 18.00 masuk Makan malam untuk jadwal 17.00–22.00. Uji GUI release pada 22.34 masuk Makan karena di luar seluruh rentang awal; konfirmasi menjelaskan kategori otomatis |
+| Retensi/paket | Data lokasi bernama tetap di bawah batas relay dengan mengurangi GPS riwayat lama lalu kejadian tertua; titik terbaru dan waktu makan independen dipertahankan |
+| Cleanup native | CI memeriksa file/cache/database/preferensi, kode/kunci, antrean/riwayat dan notifikasi; item Keychain fixture dengan service lain tetap ada. Penghapusan dibatasi data abc |
+| Pemeriksaan visual | Beranda, konfirmasi, lokasi/Detail/peta, notifikasi, widget kedua tema dan screenshot iPhone diperiksa; video 30 detik merekam tiga tindakan dari APK release |
+
+### Bukti CI
+
+- [Flutter Android 10/11/15/16 dan iPhone — seluruh job lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37132886142), sumber `f0eca53`.
+- [Komponen Android API 29–36 — seluruh job lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37133402259), sumber `99dcd98`.
+- [Apple core/native/widget/ekstensi — lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37131749866), sumber `5c2c3ac`.
+- [Server notifikasi Apple — lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37131749865), sumber `5c2c3ac`.
+- [Build dan guard paket release — lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37134844124), sumber `2cfee63`.
+
+Kode aplikasi release memuat fitur pada `5c2c3ac` dan koreksi ukuran portrait widget pada `706a58b`. Commit sesudahnya memperbaiki penguji/driver dan dokumentasi; tidak mengubah perilaku aplikasi release. Angka kasus yang tumpang tindih tidak dijumlahkan sebagai kasus unik.
+
+Pemeriksaan paket akhir menemukan nada dipangkas pada build release karena hanya dipanggil melalui nama URI. Resource kini dipertahankan dengan aturan tools:keep sesuai [panduan Android](https://developer.android.com/topic/performance/app-optimization/customize-which-resources-to-keep). Guard release membandingkan bytes WAV asli, durasi/format serta daftar kelas debug. APK dibangun ulang dan nada benar-benar diputar dari resource APK tersebut.
+
+### Perbaikan keandalan QA
+
+Percobaan awal menemukan registrasi tes yang menunggu pekerjaan asinkron sebelum `testWidgets`, sehingga runner bisa berstatus berhasil tanpa menjalankan alur UI. Klaim awal dikoreksi. Registrasi kini sinkron, pemanasan accessibility ada di `setUpAll`, dan driver **menolak hasil tanpa marker penyelesaian native serta sembilan screenshot wajib**. Run awal `37131749814` tidak digunakan sebagai bukti integrasi. Run Flutter yang ditautkan di atas menjalankan tiga tes dan menampilkan **QA PASS** serta **All tests passed**.
+
+Penguji waktu juga memisahkan teks notifikasi dari metadata channel suara; penguji GPS menunggu sampel siap dan render UI selesai. Tes zona waktu menunggu tampilan UTC sebelum mengganti ke Tokyo agar perubahan benar-benar diperiksa.
+
+## Batas pengujian
+
+Belum mengukur persentase konsumsi baterai, playback suara pada HP fisik, seluruh merek/launcher, atau perangkat page-size 16 KB nyata. Android penerima tetap menggunakan koneksi/foreground service; jaringan, Doze dan pengaturan baterai merek HP dapat menunda kabar. Pemeriksaan frame membuktikan animasi berhenti, bukan angka penghematan daya keseluruhan.
+
+Widget iPhone dibangun tetapi belum diperiksa pada layar utama iPhone fisik; WidgetKit memakai transisi pembaruan data, bukan loop berkelanjutan. iPhone fisik tetap memerlukan signing/provisioning/TestFlight serta deployment APNs. Build/simulator bukan bukti pengiriman APNs fisik.
+
+GPS diambil sekali setelah persetujuan; sistem tidak mengizinkan abc mengaktifkannya diam-diam. Nama kota tergantung layanan geocoder; peta tetap memakai titik tepat ketika nama tidak tersedia. Pengujian GPS simulasi bukan pengukuran akurasi perangkat nyata.
+
+QA ini bukan audit keamanan independen atau pengesahan Play Protect. Sertifikat APK masih kunci pengembangan. Mute channel lama dipertahankan; pilihan suara non-null pengguna pada Android 11 ke atas dipertahankan melalui informasi sistem. Pada Android 10, migrasi channel tidak dapat membedakan pilihan suara tersebut dengan mekanisme yang digunakan; pengguna dapat mengatur suara kembali dari pengaturan notifikasi HP.
+
+---
+
+Arsip berikut merekam laporan versi terdahulu sebelum driver diberi penjagaan hasil kosong. Hasil integrasi terdahulu tidak dipakai sebagai bukti QA versi 0.7; bukti yang digunakan adalah run lengkap di atas.
+
+# Arsip QA — abc 0.6.0
 
 Tanggal: **3 Oktober 2026**. Fokus: animasi pixel yang mengikuti kondisi baterai/lifecycle, format waktu konsisten, dan pembersihan hanya data abc lokal sebelum uninstall.
 
@@ -50,7 +115,7 @@ iPhone fisik tetap memerlukan signing/provisioning/TestFlight dan deployment APN
 
 ---
 
-# Arsip QA â€” abc 0.5.0
+# Arsip QA — abc 0.5.0
 
 Tanggal: **3 Oktober 2026**. Antarmuka aktif sekarang **Flutter**, dengan integrasi native Android/Apple untuk enkripsi, GPS, notifikasi dan widget. APK yang dibagikan adalah `abc.apk`.
 
@@ -58,7 +123,7 @@ Tanggal: **3 Oktober 2026**. Antarmuka aktif sekarang **Flutter**, dengan integr
 
 - Paket `id.kabar.app`, versi **0.5.0 / 5**, minimum Android **10/API 29**, compile/target **36**. APK universal ARM32, ARM64, x86_64.
 - **51.594.718 byte**, SHA-256 `bed0b50eaea70cdae5dd10c6f02ce39ccba3a3fa7cc5e2844fc4984a042102bf`.
-- Signature **v2 diverifikasi**; sertifikat sama dengan Kabar 0.1â€“0.4: `ae0b8561a0364415fb9c13292fbae8903fe55e97714a4595f2cf0249323d3065`.
+- Signature **v2 diverifikasi**; sertifikat sama dengan Kabar 0.1–0.4: `ae0b8561a0364415fb9c13292fbae8903fe55e97714a4595f2cf0249323d3065`.
 - Upgrade dari Kabar 0.4 ke abc berhasil pada emulator uji dan snapshot masih membaca pasangan/revisi lama. Upgrade APK debug uji ke release abc juga berhasil pada pengirim/penerima baru; nama, peran, riwayat dan koneksi tetap terbaca.
 - `zipalign -c -P 16 4` lulus. Semua segmen LOAD enam library ELF memiliki alignment minimal 16 KB. Ini pemeriksaan binary, bukan uji perangkat fisik dengan page size 16 KB.
 - Source ZIP tidak memuat SDK/cache/build, credential, fixture pasangan, atau private signing key. APK release tidak memuat kode pasangan QA, konstanta `PAIRING_CODE`, ataupun instrumentasi DeviceQA.
@@ -70,19 +135,19 @@ Tanggal: **3 Oktober 2026**. Antarmuka aktif sekarang **Flutter**, dengan integr
 | Pemeriksaan Dart/Flutter | `flutter analyze`: **tanpa masalah** |
 | Unit dan widget Flutter | **15 test case lulus**, termasuk tiga bahasa, nama wajib, konfirmasi/batal, makan harian, Detail GPS per kejadian, format jam dan teks 200% pada lebar 360 |
 | Domain native Android | **107 assertions lulus**: status, serialisasi, kategori makan, enkripsi/tanda tangan, GPS, zona waktu dan fase langit |
-| Integrasi Flutter â†’ native Android 11 | **Lulus** pada emulator baru: membuat pasangan, konfirmasi/batal, makan mempertahankan status tempat tinggal, riwayat, tema/format/bahasa lokal, dan data setelah aplikasi dibuat ulang |
+| Integrasi Flutter → native Android 11 | **Lulus** pada emulator baru: membuat pasangan, konfirmasi/batal, makan mempertahankan status tempat tinggal, riwayat, tema/format/bahasa lokal, dan data setelah aplikasi dibuat ulang |
 | Detail GPS | **Lulus** dengan sampel LocationManager simulasi `-7.7956, 110.3695`, akurasi 5 m; waktu/koordinat sesuai kejadian. Provider ini hanya fixture emulator, tidak masuk APK |
 | Dua perangkat melalui internet | **Lulus**: pengirim Asia/Jakarta dan penerima Europe/Berlin menggunakan relay ntfy terenkripsi; penerima English/AM-PM menampilkan Germany dan tidak dapat melakukan aksi pengirim |
 | APK release dan notifikasi | **Lulus**: konfirmasi Keluar pada pengirim memperbarui penerima; NotificationManager mem-post notifikasi update ID 2 ketika aplikasi penerima di latar belakang |
-| Pergantian suasana real time | **Lulus pada APK release**: 17.59 â†’ 18.00 WIB mengubah Selamat sore menjadi Selamat malam tanpa membuka ulang. Mode terang pada malam hari tetap terang; langit tetap malam |
+| Pergantian suasana real time | **Lulus pada APK release**: 17.59 → 18.00 WIB mengubah Selamat sore menjadi Selamat malam tanpa membuka ulang. Mode terang pada malam hari tetap terang; langit tetap malam |
 | CI Flutter Android | **Lulus Android 10/11/15/16 (API 29/30/35/36)**: analisis, 15 test case dan integrasi native/UI |
-| CI komponen Android native dan arsip UI | **Lulus API 29â€“36**, termasuk ulangan Android 15 pada font 1,5Ã— |
+| CI komponen Android native dan arsip UI | **Lulus API 29–36**, termasuk ulangan Android 15 pada font 1,5× |
 | Apple native/core | **Lulus**: build aplikasi/widget/ekstensi, enam test case Swift, Java/CryptoKit dua arah dan UI native simulator |
-| CI UI Flutter iPhone | **Lulus**: build host Flutter + widget/ekstensi dan integrasi pada simulator iPhone; pasangan, konfirmasi/batal, makan, Detail, Indonesiaâ†’Deutsch, AM-PM, tema/mode dan preferensi setelah root UI dibuat ulang |
+| CI UI Flutter iPhone | **Lulus**: build host Flutter + widget/ekstensi dan integrasi pada simulator iPhone; pasangan, konfirmasi/batal, makan, Detail, Indonesia→Deutsch, AM-PM, tema/mode dan preferensi setelah root UI dibuat ulang |
 
 [Workflow Flutter](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37091767248), [komponen Android native](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37092012906), dan [Apple core/interoperability](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37091507011). Pengujian native lama dipisahkan dari antarmuka Flutter aktif; hasilnya tidak menggantikan pengujian Flutter.
 
-Workflow Flutter akhir bersumber pada commit `b39120f`; pembaruan sesudahnya hanya mengubah penguji native lama, dokumentasi, screenshot dan APK. Penguji native lama dahulu menyimpan referensi Activity yang sudah diganti setelah konfigurasi/font berubah; sekarang penguji mengikuti Activity yang benar-benar aktif. Seluruh API 29â€“36 dan font 1,5Ã— kemudian lulus.
+Workflow Flutter akhir bersumber pada commit `b39120f`; pembaruan sesudahnya hanya mengubah penguji native lama, dokumentasi, screenshot dan APK. Penguji native lama dahulu menyimpan referensi Activity yang sudah diganti setelah konfigurasi/font berubah; sekarang penguji mengikuti Activity yang benar-benar aktif. Seluruh API 29–36 dan font 1,5× kemudian lulus.
 
 Rangkaian domain yang tumpang tindih tidak dijumlahkan sebagai kasus unik. Screenshot menggunakan nama/status uji. Uji GPS simulasi bukan bukti akurasi GPS di HP fisik. Integrasi Flutter membuat ulang root UI dan membaca ulang snapshot native; uji native tersendiri mencakup restart proses.
 
@@ -100,14 +165,14 @@ Ini QA fungsional, bukan audit keamanan independen atau pengesahan Play Protect.
 
 ---
 
-# Arsip QA â€” Kabar 0.4.0
+# Arsip QA — Kabar 0.4.0
 
 Tanggal: **3 Oktober 2026**. Fokus: jam lokal per HP, tema Default/In Relationship, mode terang/gelap terpisah dari suasana waktu; termasuk perbaikan konfirmasi, makan harian dan lokasi opsional dari 0.3.0.
 
 ## Artefak
 
 - APK `Kabar-0.4.0.apk`: **70,468 byte**; SHA-256 `f1f375af2b12fa0a8e235e7f3c5b73c0c29e72e331e183c7b18477d4803c4757`.
-- `id.kabar.app`, versionCode **4**, minimum Android **10/API 29**, compile/target **35**. Tanda tangan APK v3 diverifikasi. Kunci sama dengan 0.1.0â€“0.3.0; upgrade lokal diuji tanpa konflik tanda tangan.
+- `id.kabar.app`, versionCode **4**, minimum Android **10/API 29**, compile/target **35**. Tanda tangan APK v3 diverifikasi. Kunci sama dengan 0.1.0–0.3.0; upgrade lokal diuji tanpa konflik tanda tangan.
 - APK akhir dipasang dan diuji pada emulator Android 11/API 30. Penguji terpisah, kunci build, credential, dan fixture rahasia tidak masuk APK/source ZIP.
 
 ## Hasil 0.4.0
@@ -117,11 +182,11 @@ Tanggal: **3 Oktober 2026**. Fokus: jam lokal per HP, tema Default/In Relationsh
 | Logika, serialisasi, aturan makan, enkripsi/tanda tangan, GPS, zona waktu dan fase langit | **105 assertions lulus** |
 | Rangkaian di atas + publish/subscribe nyata ntfy (terenkripsi, cursor, stream) | **124 assertions lulus** |
 | Alur APK Android final: konfirmasi/batal, makan harian, edit label, lokasi, antrean, widget, 4 kombinasi tema/mode, persistensi, zona pembaca | **95 assertions lulus** pada emulator dengan izin lokasi telah diberikan |
-| Sore â†’ malam saat layar tetap terbuka, melalui perubahan jam pada emulator | **Lulus**; 17.59 â†’ 18.00 WIB, sapaan dan pixel sky berubah tanpa membuka ulang |
+| Sore → malam saat layar tetap terbuka, melalui perubahan jam pada emulator | **Lulus**; 17.59 → 18.00 WIB, sapaan dan pixel sky berubah tanpa membuka ulang |
 | Mode terang pada malam hari | **Lulus**; kartu tetap terang, langit malam tetap tampil |
 | Apple core + Java/CryptoKit dua arah | **6 test case Swift lulus**, termasuk WIB/WITA/WIT, DST, beda tanggal, titik GPS dan kategori makan manual |
 | Apple aplikasi/widget/ekstensi dan UI simulator iPhone | **Lulus**; konfirmasi, edit tombol, tema relationship, mode gelap/terang dan persistensi setelah restart |
-| Android 10â€“16 dan Android 15 font 1,5Ã— | Lulus pada versi 0.4.0 |
+| Android 10–16 dan Android 15 font 1,5× | Lulus pada versi 0.4.0 |
 
 [QA Apple 0.4.0](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37083913533).
 
@@ -132,7 +197,7 @@ Angka logika/live tidak dijumlahkan karena sebagian besar kasusnya sama. Rangkai
 ## Kasus penting
 
 - Label `12.00 WIB - Indonesia`, WITA/WIT, Jepang, alias Amerika, negara dengan aturan jam yang sama tetap berbeda, serta offset tetap yang tidak ditebak negaranya. Tabel IANA memetakan 549 identifier/alias; aturan jam dan DST berasal dari OS.
-- WIB â†’ New York dapat mengubah tanggal tampilan menjadi kemarin, tanpa mengubah timestamp, revisi, kode pasangan, atau tanggal kategori makan pengirim.
+- WIB → New York dapat mengubah tanggal tampilan menjadi kemarin, tanpa mengubah timestamp, revisi, kode pasangan, atau tanggal kategori makan pengirim.
 - Batas 05.00/11.00/15.00/18.00 serta 00.00 diuji. Langit mengikuti waktu lokal, pilihan mode disimpan terpisah.
 - Mengganti tema tidak mengirim status keluarga. Koneksi, catatan dan kode tetap ada setelah pergantian tema/mode dan Activity dibuat ulang. Warna widget mengikuti mode lokal.
 - GPS ditolak/tidak aktif/stale diperiksa; titik uji hanya dari provider emulator, bukan bukti akurasi GPS di HP nyata.
@@ -143,7 +208,7 @@ Angka logika/live tidak dijumlahkan karena sebagian besar kasusnya sama. Rangkai
 - Ilustrasi SwiftUI diberi identitas sesuai tema/mode/fase agar diperbarui setelah perubahan color scheme. Teks pendamping memakai warna dengan kontras lebih jelas.
 
 - Penguji tombol Sarapan dahulu bisa mengambil judul status Sarapan. Pencarian sekarang memilih elemen yang dapat diklik.
-- Perubahan jam sistem dahulu membuat timer menunggu batas menit lama. Penerima broadcast kini menjadwalkan ulang refresh menuju menit lokal berikutnya; uji pergantian 17.59 â†’ 18.00 kemudian lulus.
+- Perubahan jam sistem dahulu membuat timer menunggu batas menit lama. Penerima broadcast kini menjadwalkan ulang refresh menuju menit lokal berikutnya; uji pergantian 17.59 → 18.00 kemudian lulus.
 - Penguji zona lokal kini mengubah zona Android yang sebenarnya dan menunggu hasil broadcast. Override zona JVM saja dapat direset oleh perubahan konfigurasi Android (misalnya font besar/recreation), sehingga tidak mewakili pengaturan HP.
 
 ## Batas pengujian
@@ -159,19 +224,19 @@ QA fungsional ini bukan audit keamanan independen, pemindaian malware tersertifi
 ## Uji cepat di dua HP
 
 1. Perbarui kedua HP memakai APK 0.4.0; buka pasangan yang sudah tersimpan.
-2. Di Pengaturan â†’ Appearance, pilih Relationship/Gelap di A dan Default/Terang di B. Pilihan masing-masing harus bertahan sendiri.
+2. Di Pengaturan → Appearance, pilih Relationship/Gelap di A dan Default/Terang di B. Pilihan masing-masing harus bertahan sendiri.
 3. Aktifkan zona waktu otomatis di HP. Untuk simulasi, ubah zona B ke Tokyo; jam/negara di B berubah, A tetap lokal, catatan kejadian tetap sama. Kembalikan zona otomatis sesudah tes.
-4. Tekan Kost lalu Batal: tidak ada catatan baru. Tekan Kost â†’ Kirim status: B menerima kabar. Coba Makan serta tiap kategori Makan hari ini.
+4. Tekan Kost lalu Batal: tidak ada catatan baru. Tekan Kost → Kirim status: B menerima kabar. Coba Makan serta tiap kategori Makan hari ini.
 5. Coba Sertakan lokasi HP; uji izin diterima dan ditolak. Kartu harus menjelaskan waktu/akurasi atau belum ada lokasi baru. Jangan menganggap titik lama sebagai posisi saat ini.
 6. Amati pergantian suasana pada batas jam dengan mode tetap. Riwayat, widget dan notifikasi harus tetap dapat dibaca dalam mode pilihan.
 
 ## Catatan 0.3.0 sebelum pembaruan tema
 
-Android API 29â€“36 lulus [run 37040875684](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37040875684), Apple lulus [run 37039778312](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37039778312). Android final 0.3.0 juga diuji sebagai pengirim native (**9 assertions**) dan penerima native (**6 assertions**, termasuk notifikasi nyata) terhadap klien Java melalui ntfy; pengirim Java menyertakan titik uji dan zona Asia/Makassar.
+Android API 29–36 lulus [run 37040875684](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37040875684), Apple lulus [run 37039778312](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37039778312). Android final 0.3.0 juga diuji sebagai pengirim native (**9 assertions**) dan penerima native (**6 assertions**, termasuk notifikasi nyata) terhadap klien Java melalui ntfy; pengirim Java menyertakan titik uji dan zona Asia/Makassar.
 
 ---
 
-# Laporan QA â€” Kabar 0.2.0
+# Laporan QA — Kabar 0.2.0
 
 Tanggal: **2 Oktober 2026**. Perubahan kompatibilitas Android, aplikasi Apple dan backend Apple diperiksa sebelum penyerahan. Riwayat QA 0.1.0 dipertahankan di bawah sebagai catatan versi sebelumnya.
 
@@ -189,14 +254,14 @@ Tanggal: **2 Oktober 2026**. Perubahan kompatibilitas Android, aplikasi Apple da
 
 | OS | API | UI, edit tombol, persistensi, antrean offline dan widget |
 |---|---:|---|
-| Android 10 | 29 | Lulus Â· 33 assertions |
-| Android 11 | 30 | Lulus Â· 33 assertions |
-| Android 12 | 31 | Lulus Â· 33 assertions |
-| Android 12L | 32 | Lulus Â· 33 assertions |
-| Android 13 | 33 | Lulus Â· 33 assertions |
-| Android 14 | 34 | Lulus Â· 33 assertions |
-| Android 15 | 35 | Lulus Â· 33 assertions; diulang pada font scale 1.5 dan lulus |
-| Android 16 | 36 | Lulus Â· 33 assertions |
+| Android 10 | 29 | Lulus · 33 assertions |
+| Android 11 | 30 | Lulus · 33 assertions |
+| Android 12 | 31 | Lulus · 33 assertions |
+| Android 12L | 32 | Lulus · 33 assertions |
+| Android 13 | 33 | Lulus · 33 assertions |
+| Android 14 | 34 | Lulus · 33 assertions |
+| Android 15 | 35 | Lulus · 33 assertions; diulang pada font scale 1.5 dan lulus |
+| Android 16 | 36 | Lulus · 33 assertions |
 
 Emulator x86_64 Google APIs dijalankan di GitHub Actions. Android 13+ diberikan permission POST_NOTIFICATIONS untuk tes; alur menolak permission secara manual dan kebijakan baterai berbagai produsen belum tercakup matriks ini. Tes UI menekan kontrol aplikasi melalui instrumentasi; tes edit field menggunakan UI Automation dan widget diuji sebagai RemoteViews. Angka assertions pada versi OS berbeda adalah pengulangan rangkaian yang sama, bukan kasus unik baru.
 
@@ -208,14 +273,14 @@ Pada emulator lokal **Android 11/API 30**, APK final yang dibagikan di root bena
 
 - **81 assertions** aturan domain/crypto dan jaringan nyata: 62 aturan lokal (termasuk empat cek signed alert hint) serta 19 relay/cursor/live stream.
 - **33 assertions** UI, perubahan nama/tombol, antrean 25 item, persistensi, scroll dan widget.
-- **6 assertions** pengirim native: Kost â†’ Makan â†’ Keluar, antrean terkirim, revisi/waktu benar, server mengakui pengiriman.
+- **6 assertions** pengirim native: Kost → Makan → Keluar, antrean terkirim, revisi/waktu benar, server mengakui pengiriman.
 - **6 assertions** penerima native: menerima tiga kabar dari klien Java terpisah, mempertahankan waktu makan/tempat tinggal, widget penerima menyembunyikan tombol, serta NotificationManager benar-benar mem-post notification ID 2 saat Activity dipindahkan ke latar belakang.
 - Tambahan pemeriksaan independen memastikan ciphertext serta Title notifikasi dari APK diterima ntfy, public hint terikat ciphertext, dan kedua tanda tangan diverifikasi oleh kode Node push bridge. Backend tidak membutuhkan kunci AES untuk verifikasi.
 - Screenshot APK final diperiksa pada `screenshots/android-0.2.0.png`; screenshot hasil CI API 36 juga diperiksa. Screenshot CI yang kembali ke launcher setelah instrumentasi tidak dianggap bukti visual layar aplikasi.
 
 ## Apple dan server
 
-Aplikasi iPhone/iPad menargetkan **iOS/iPadOS 16+**, dengan SwiftUI, WidgetKit, Keychain/App Group serta Notification Service Extension. Build simulator aplikasi dan dua ekstensi berhasil di Xcode 16.4/SDK iOS 18.5. Tes Swift memiliki empat test case (jam makan, riwayat/status, crypto, interoperability); Java â†’ CryptoKit dan CryptoKit â†’ Java memverifikasi AES-GCM, tanda tangan P-256 DER, topic dan state.
+Aplikasi iPhone/iPad menargetkan **iOS/iPadOS 16+**, dengan SwiftUI, WidgetKit, Keychain/App Group serta Notification Service Extension. Build simulator aplikasi dan dua ekstensi berhasil di Xcode 16.4/SDK iOS 18.5. Tes Swift memiliki empat test case (jam makan, riwayat/status, crypto, interoperability); Java → CryptoKit dan CryptoKit → Java memverifikasi AES-GCM, tanda tangan P-256 DER, topic dan state.
 
 [Workflow Apple akhir yang lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37030986763), sumber commit `4d6f5fd`: build aplikasi/widget/ekstensi, empat tes Swift dan interoperability dua arah, serta **satu tes UI iPhone simulator** (pilih pengirim, jeda koneksi, ketuk Kost/Makan/Keluar, riwayat, ganti Kost menjadi Rumah, lalu terminate/relaunch dan cek data bertahan). Build simulator memakai penandatanganan ad hoc lokal agar Keychain asli dapat berfungsi. Pengujian awal menemukan bahwa build tanpa tanda tangan ditolak oleh Keychain; konfigurasi QA diperbaiki. Waktu/tanggal/checklist Apple diperbarui setiap menit selama UI terbuka.
 
@@ -229,7 +294,7 @@ Hasil simulator Android tidak menjamin semua merek HP atau versi Android masa de
 
 ---
 
-# Arsip QA â€” Kabar 0.1.0
+# Arsip QA — Kabar 0.1.0
 
 Tanggal: **2 Oktober 2026** (Asia/Bangkok). Hasil: **127 assertions otomatis lulus**, ditambah pemeriksaan visual dan alur Android yang dijelaskan di bawah.
 
@@ -245,7 +310,7 @@ Tanggal: **2 Oktober 2026** (Asia/Bangkok). Hasil: **127 assertions otomatis lul
 
 ## Lingkungan dan hasil otomatis
 
-Pengujian aplikasi dijalankan pada **satu emulator Android 11 / API 30, AOSP x86_64, layar 412 Ã— 892**, dengan akselerasi WHPX. Pengujian antarperangkat memakai emulator dan klien Java terpisah melalui relay internet ntfy.sh. **Dua HP fisik belum diuji.**
+Pengujian aplikasi dijalankan pada **satu emulator Android 11 / API 30, AOSP x86_64, layar 412 × 892**, dengan akselerasi WHPX. Pengujian antarperangkat memakai emulator dan klien Java terpisah melalui relay internet ntfy.sh. **Dua HP fisik belum diuji.**
 
 | Rangkaian pengujian | Assertions | Hasil |
 |---|---:|---|
@@ -253,7 +318,7 @@ Pengujian aplikasi dijalankan pada **satu emulator Android 11 / API 30, AOSP x86
 | Pengiriman nyata melalui relay, cursor/replay, dan stream subscription | 19 | Lulus |
 | UI Android, antrean offline, pengeditan nama/tombol, persistensi, scroll, dan widget pixel art | 33 | Lulus |
 | Android menerima update dari pengirim Java, mempertahankan riwayat lokasi/makan, dan menampilkan notifikasi saat Activity di latar belakang | 6 | Lulus |
-| Android mengirim Kost â†’ Makan â†’ Keluar, antrean terkirim, dan relay mengakui pengiriman | 6 | Lulus |
+| Android mengirim Kost → Makan → Keluar, antrean terkirim, dan relay mengakui pengiriman | 6 | Lulus |
 | Penerima Java memverifikasi tanda tangan dan mendekripsi status yang dibuat APK Android | 5 | Lulus |
 | **Total checks dalam rangkaian tes** | **127** | **Lulus** |
 
@@ -261,7 +326,7 @@ Angka di atas menghitung assertions dalam rangkaian akhir, bukan menjumlahkan se
 
 ### Kasus yang tercakup
 
-- Batas jam makan awal/akhir, sela 15.00â€“17.00, jadwal khusus, dan penolakan rentang kosong/tumpang tindih/jam di luar 0â€“24.
+- Batas jam makan awal/akhir, sela 15.00–17.00, jadwal khusus, dan penolakan rentang kosong/tumpang tindih/jam di luar 0–24.
 - Catatan **Makan** mempertahankan lokasi dan waktu terakhir di kost; **Keluar** mempertahankan waktu kost dan makan.
 - Pergantian hari mempertahankan waktu terakhir makan, menampilkan **Kemarin**, dan mengosongkan checklist makan hari ini secara logis.
 - Catatan sarapan tetap tersedia setelah riwayat 12 kabar bergeser.
@@ -275,7 +340,7 @@ Angka di atas menghitung assertions dalam rangkaian akhir, bukan menjumlahkan se
 - Pembaruan status mempertahankan posisi gulir halaman Pengaturan.
 - Widget dapat di-inflate Android sebagai RemoteViews, menampilkan nama/tombol baru, dan merender ilustrasi pixel art. Widget penerima menyembunyikan tombol pengirim.
 - Replay memakai cursor sehingga tidak mengambil ulang kabar yang sudah diproses. Koneksi stream nyata yang sama dengan layanan Android diuji.
-- Arah Java â†’ Android dan Android â†’ Java diuji lewat relay sebenarnya, dengan payload terenkripsi dan tanda tangan, bukan relay mock.
+- Arah Java → Android dan Android → Java diuji lewat relay sebenarnya, dengan payload terenkripsi dan tanda tangan, bukan relay mock.
 - Android receiver benar-benar mem-post notification ID 2 saat Activity berada di latar belakang. Ini belum menguji Doze atau penghentian aplikasi oleh produsen HP.
 
 ## Pemeriksaan manual pada emulator
@@ -284,8 +349,8 @@ Angka di atas menghitung assertions dalam rangkaian akhir, bukan menjumlahkan se
 - Dialog Android untuk **Tambahkan widget** muncul; widget ditambahkan ke launcher melalui **Add automatically**.
 - Layout aplikasi pengirim dan penerima, pixel art, navigasi, serta widget diperiksa melalui screenshot.
 - Menekan tombol widget membuka aplikasi dan menjalankan aksinya. Saat antrean penuh, muncul pesan batas antrean yang sesuai.
-- **Uninstall Kabar â†’ Lanjutkan** membuka dialog uninstall milik Android. Dialog dibatalkan agar aplikasi tetap tersedia untuk QA.
-- **Putuskan hubungan HP ini â†’ Putuskan** mengembalikan aplikasi ke layar pemilihan peran.
+- **Uninstall Kabar → Lanjutkan** membuka dialog uninstall milik Android. Dialog dibatalkan agar aplikasi tetap tersedia untuk QA.
+- **Putuskan hubungan HP ini → Putuskan** mengembalikan aplikasi ke layar pemilihan peran.
 - Log `AndroidRuntime:E` tidak menampilkan crash pada pemeriksaan akhir.
 
 Screenshot berada di `screenshots/`. Data pada screenshot adalah fixture QA, bukan kabar pengguna.
@@ -301,7 +366,7 @@ Screenshot berada di `screenshots/`. Data pada screenshot adalah fixture QA, buk
 
 ## Belum terverifikasi pada HP fisik
 
-Android 8, Android 13â€“16, prompt izin notifikasi Android 13+, aturan foreground service Android 14+, edge-to-edge Android 15+, launcher tiap merek, Doze, layar mati dalam waktu lama, pembatasan baterai vendor, restart, dan jaringan seluler yang berpindah-pindah belum diuji pada perangkat nyata. Manifest dan kode memiliki cabang versi yang diperlukan, tetapi kompilasi bukan bukti pengujian runtime untuk semua versi.
+Android 8, Android 13–16, prompt izin notifikasi Android 13+, aturan foreground service Android 14+, edge-to-edge Android 15+, launcher tiap merek, Doze, layar mati dalam waktu lama, pembatasan baterai vendor, restart, dan jaringan seluler yang berpindah-pindah belum diuji pada perangkat nyata. Manifest dan kode memiliki cabang versi yang diperlukan, tetapi kompilasi bukan bukti pengujian runtime untuk semua versi.
 
 Versi ini memakai foreground service dengan notifikasi tetap, bukan FCM. Notifikasi dapat tertunda atau berhenti jika internet mati, layanan dijeda, aplikasi dipaksa berhenti, atau Android membatasi aplikasi. Setelah restart atau Paksa berhenti, buka Kabar lagi. Relay memiliki cache sementara dan batas layanan; bukan arsip permanen atau jaminan pengiriman instan.
 
