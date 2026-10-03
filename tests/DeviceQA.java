@@ -64,8 +64,13 @@ public class DeviceQA extends Instrumentation {
                 click("Beranda");status("Sarapan");ok(Store.state(c).breakfastAt>0,"today breakfast row functional");ok(Store.state(c).mealCategory.equals("Sarapan"),"today row selects explicit meal category");ok(Store.state(c).location.equals("outside"),"today row preserves location");
                 long breakfast=Store.state(c).breakfastAt;click("Sarapan");main(()->activity.confirmationDialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick());ok(Store.state(c).breakfastAt==breakfast,"cancel today meal preserves its original time");
                 click("Pengaturan");await("Edit nama & tombol",3000);
-                main(()->{scrollView().scrollTo(0,200);Store.changed(c);});Thread.sleep(150);waitForIdleSync();
-                main(()->ok(scrollView().getScrollY()==200,"settings retain scroll after status refresh"));
+                boolean[] ready={false};long layoutEnd=SystemClock.elapsedRealtime()+5000;
+                while(!ready[0]&&SystemClock.elapsedRealtime()<layoutEnd){main(()->ready[0]=scrollView().isLaidOut()&&scrollView().canScrollVertically(1));if(!ready[0])Thread.sleep(50);}
+                ok(ready[0],"settings laid out before scroll test");
+                ScrollView[] previous={null};main(()->{scrollView().scrollTo(0,200);previous[0]=scrollView();Store.changed(c);});
+                boolean[] restored={false};long scrollEnd=SystemClock.elapsedRealtime()+5000;
+                while(!restored[0]&&SystemClock.elapsedRealtime()<scrollEnd){main(()->restored[0]=scrollView()!=previous[0]&&scrollView().getScrollY()==200);if(!restored[0])Thread.sleep(50);}
+                ok(restored[0],"settings retain scroll after status refresh");
                 click("Edit nama & tombol");
                 android.accessibilityservice.AccessibilityServiceInfo info=getUiAutomation().getServiceInfo();info.flags|=android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;getUiAutomation().setServiceInfo(info);
                 android.view.accessibility.AccessibilityNodeInfo dialogRoot=null;
@@ -163,6 +168,9 @@ public class DeviceQA extends Instrumentation {
         try{
             // Change the emulator's actual setting. A JVM-only override can be reset by
             // Android configuration changes (e.g. large text / appearance recreation).
+            // The previous run may already have left Tokyo active while a broadcast
+            // was in flight. Force a real change so this tests a system notification.
+            shell("cmd alarm set-timezone UTC");
             shell("cmd alarm set-timezone Asia/Tokyo");
             // Wait for the actual system broadcast and the rendered result.
             long deadline=SystemClock.elapsedRealtime()+5000;boolean[] shown={false};
