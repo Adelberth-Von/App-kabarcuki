@@ -12,10 +12,19 @@ import Combine
     private var notifications:[NSObjectProtocol]=[]
     var profile: [String:Any] { SharedStore.defaults.dictionary(forKey:"abcProfile") ?? [:] }
     func attach(_ messenger: FlutterBinaryMessenger) {
+        #if DEBUG
+        NSLog("abc-QA: attaching channels")
+        #endif
         channel=FlutterMethodChannel(name:"abc/native",binaryMessenger:messenger)
         channel?.setMethodCallHandler { [weak self] call,result in self?.handle(call,result) }
         FlutterEventChannel(name:"abc/updates",binaryMessenger:messenger).setStreamHandler(self)
+        #if DEBUG
+        NSLog("abc-QA: channels ready")
+        #endif
         model.start()
+        #if DEBUG
+        NSLog("abc-QA: native model started")
+        #endif
     }
     func onListen(withArguments arguments:Any?,eventSink events:@escaping FlutterEventSink)->FlutterError? {
         _=onCancel(withArguments:nil);updates=events

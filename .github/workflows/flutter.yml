@@ -3,6 +3,11 @@ on:
   push:
     paths: ['crossplatform/**', 'src/**', 'res/**', 'apple/**', 'scripts/**', '.github/workflows/flutter.yml']
   workflow_dispatch:
+    inputs:
+      apple_only:
+        description: 'Run only iPhone QA'
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -10,6 +15,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   android:
+    if: ${{ github.event.inputs.apple_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
@@ -53,14 +59,29 @@ jobs:
           cd ios
           xcodegen generate
       - name: Build and test on iPhone simulator
-        timeout-minutes: 12
+        timeout-minutes: 15
         run: |
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for v in d["devices"].values() for x in v if x["name"].startswith("iPhone")))')
           xcrun simctl boot "$DEVICE" || true
           xcrun simctl bootstatus "$DEVICE" -b
           cd crossplatform
           mkdir -p ../work
-          flutter drive -v --keep-app-running --dart-define=QA_CLEANUP=true --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d "$DEVICE" 2>&1 | tee ../work/flutter-ios-drive.log
+          flutter build ios --simulator --debug --dart-define=QA_CLEANUP=true --target=integration_test/native_test.dart 2>&1 | tee ../work/flutter-ios-drive.log
+          xcrun simctl install "$DEVICE" build/ios/iphonesimulator/Runner.app
+          xcrun simctl launch --terminate-running-process --console "$DEVICE" id.kabar.app --enable-dart-profiling --enable-checked-mode --verify-entry-points > ../work/iphone-console.log 2>&1 &
+          VM_URL=''
+          for attempt in $(seq 1 60); do
+            VM_URL=$(sed -nE 's/.*Dart VM service is listening on (http[^ ]+).*/\1/p' ../work/iphone-console.log | head -1)
+            if [ -n "$VM_URL" ]; then break; fi
+            sleep 1
+          done
+          if [ -z "$VM_URL" ]; then
+            cat ../work/iphone-console.log
+            PID=$(pgrep -f '/Runner.app/Runner' | head -1 || true)
+            if [ -n "$PID" ]; then sample "$PID" 3 1 -file ../work/iphone-sample.txt || true; fi
+            exit 1
+          fi
+          flutter drive --keep-app-running --dart-define=QA_CLEANUP=true --driver=test_driver/integration.dart --target=integration_test/native_test.dart --use-existing-app="$VM_URL" -d "$DEVICE" 2>&1 | tee -a ../work/flutter-ios-drive.log
         shell: bash --noprofile --norc -eo pipefail {0}
       - name: Capture simulator diagnostics
         if: always()
@@ -80,4 +101,6 @@ jobs:
             work/flutter-ios-drive.log
             work/iphone-final.png
             work/iphone-system.log
+            work/iphone-console.log
+            work/iphone-sample.txt
             work/Runner*
