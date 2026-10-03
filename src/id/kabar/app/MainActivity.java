@@ -30,7 +30,10 @@ public class MainActivity extends Activity {
     private boolean locating=false;
     private Runnable permissionAction;
     private final Handler handler=new Handler(Looper.getMainLooper());
-    private final BroadcastReceiver updates=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){render();}};
+    private final BroadcastReceiver updates=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){
+        if(Intent.ACTION_TIMEZONE_CHANGED.equals(i.getAction()))TimeZone.setDefault(null);
+        handler.removeCallbacks(clockRefresh);handler.postDelayed(clockRefresh,60000-System.currentTimeMillis()%60000);render();
+    }};
     private final Runnable clockRefresh=new Runnable(){public void run(){render();handler.postDelayed(this,60000-System.currentTimeMillis()%60000);}};
     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private GradientDrawable background(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}

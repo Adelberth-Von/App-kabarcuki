@@ -156,8 +156,11 @@ public class DeviceQA extends Instrumentation {
         ok(code.equals(Store.prefs(c).getString("code","")),"appearance preserves pairing");ok(revision==Store.state(c).revision,"appearance does not publish status");
         java.util.TimeZone original=java.util.TimeZone.getDefault();
         try{
-            main(()->{java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo"));Store.changed(c);});Thread.sleep(250);waitForIdleSync();
-            main(()->ok(find(activity.getWindow().getDecorView(),StatusLogic.clock(System.currentTimeMillis(),java.util.TimeZone.getDefault()))!=null,"local clock follows device zone on refresh"));
+            main(()->{java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo"));Store.changed(c);});
+            // Modern Android may queue broadcasts; wait for the rendered result, not a fixed delay.
+            long deadline=SystemClock.elapsedRealtime()+5000;boolean[] shown={false};
+            while(!shown[0]&&SystemClock.elapsedRealtime()<deadline){main(()->shown[0]=find(activity.getWindow().getDecorView(),StatusLogic.clock(System.currentTimeMillis(),java.util.TimeZone.getTimeZone("Asia/Tokyo")))!=null);if(!shown[0])Thread.sleep(100);}
+            ok(shown[0],"local clock follows device zone on refresh");
             ok(Store.state(c).revision==revision,"viewer zone leaves state untouched");
         }finally{main(()->{java.util.TimeZone.setDefault(original);Store.changed(c);});}
     }
