@@ -1,12 +1,18 @@
-# abc 0.5.0 — pratinjau
+# abc 0.6.0 — pratinjau
 
 Screenshot dari aplikasi Flutter yang berjalan pada emulator Android, dengan nama/status QA. Pengirim memakai Indonesia/WIB/24 jam; penerima memakai English/Germany/AM-PM. Jam malam dan koordinat GPS pada contoh merupakan **simulasi uji**.
+
+## Pixel art bergerak
+
+[Lihat rekaman animasi dari APK release](screenshots/abc-motion.mp4). Karakter berkedip/melambaikan tangan, awan/bunga bergerak pelan dan bintang berkelip. Tema In Relationship menambah hati melayang. Animasi berhenti otomatis saat tidak terlihat atau hemat daya aktif; tersedia sakelar Animasi pixel pada Appearance.
+
+Format 24 jam/AM-PM berlaku serentak pada status, jadwal makan, riwayat, Detail UTC/GPS, widget dan notifikasi. Setiap HP tetap memakai zona dan preferensinya sendiri.
 
 ## Pengirim dan penerima
 
 | Beri kabar · Indonesia | Terima kabar · English, AM/PM |
 |---|---|
-| <img src="screenshots/abc-release-home.png" width="280" alt="Beranda abc pengirim dengan tiga tombol status"> | <img src="screenshots/abc-release-receiver.png" width="280" alt="Beranda penerima memakai zona Germany dan AM/PM"> |
+| <img src="screenshots/abc06-home.png" width="280" alt="Beranda abc pengirim dengan tiga tombol status"> | <img src="screenshots/abc06-receiver.png" width="280" alt="Beranda penerima memakai zona Germany dan AM/PM"> |
 
 Panggilan dipilih sebelum masuk dan hanya dipakai pada HP itu. Format waktu ada di **Pengaturan → Format jam**; tersedia 24 jam dan 12 jam AM/PM. Bahasa dibatasi Indonesia, English, dan Deutsch.
 
@@ -16,7 +22,7 @@ Panggilan dipilih sebelum masuk dan hanya dipakai pada HP itu. Format waktu ada 
 
 | Periksa sebelum mengirim | Detail suatu kejadian |
 |---|---|
-| <img src="screenshots/abc-confirm.png" width="280" alt="Konfirmasi status dan pilihan lokasi opsional"> | <img src="screenshots/abc-detail-gps.png" width="280" alt="Detail riwayat dengan jam lokal, jam pengirim dan lokasi simulasi"> |
+| <img src="screenshots/abc-confirm.png" width="280" alt="Konfirmasi status dan pilihan lokasi opsional"> | <img src="screenshots/abc06-detail-12.png" width="280" alt="Detail riwayat termasuk UTC mengikuti AM/PM"> |
 
 Detail dapat digulir untuk melihat seluruh informasi dan tombol peta. Koordinat, akurasi dan waktu lokasi berasal dari kejadian itu; catatan tanpa GPS tidak meminjam lokasi terakhir.
 
@@ -44,7 +50,7 @@ Pagi 05–11 · Siang 11–15 · Sore 15–18 · Malam 18–05. Batas ini mengik
 
 ## Tampilan yang sama pada iPhone
 
-Screenshot simulator iPhone dari QA yang lulus. Jam mengikuti GMT/UTC yang dipakai simulator CI. Aplikasi iPhone fisik tetap memerlukan signing Apple/TestFlight.
+Screenshot iPhone berikut berasal dari QA versi 0.5.0 yang lulus. QA iPhone 0.6.0 sedang diulang setelah build berhasil tetapi alat uji tidak menemukan port simulator. Jam mengikuti GMT/UTC yang dipakai CI. Aplikasi iPhone fisik tetap memerlukan signing Apple/TestFlight.
 
 | Beranda iPhone | Pengaturan iPhone |
 |---|---|

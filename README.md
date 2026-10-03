@@ -1,4 +1,4 @@
-# abc 0.5.0 — kabar kecil, bikin tenang
+# abc 0.6.0 — kabar kecil, bikin tenang
 
 Antarmuka **Flutter** yang sama dipakai untuk Android dan iPhone. Desain baru memakai kartu yang ringkas, ikon pixel, tiga tombol status di bagian atas, serta tema Default dan In Relationship. Sinkronisasi, enkripsi, lokasi, notifikasi, dan widget menggunakan kemampuan native masing-masing perangkat.
 
@@ -24,6 +24,16 @@ Di **Pengaturan**, setiap HP dapat memilih **Indonesia, English, atau Deutsch**.
 **Format waktu** menyediakan **24 jam** (`12.00 WIB - Indonesia`) dan **12 jam AM/PM** (`12.00 PM WIB - Indonesia`). Jam pada beranda/riwayat mengikuti zona waktu sistem HP pembaca. Detail juga menunjukkan waktu di zona pengirim, identifier zona, serta waktu kejadian UTC. Jam musim panas dihitung untuk tanggal masing-masing kejadian. Nama negara menjelaskan zona waktu, bukan bukti lokasi GPS. Aktifkan zona waktu otomatis di pengaturan HP ketika bepergian.
 
 Pilih tema **Default** (krem/periwinkle, satu karakter) atau **In Relationship** (rose/lilac, dua karakter dengan hati), lalu **Terang** atau **Gelap**. Ilustrasi dan sapaan mengikuti pagi 05.00–10.59, siang 11.00–14.59, sore 15.00–17.59, dan malam 18.00–04.59. Suasana diperbarui setiap menit saat aplikasi aktif. Mode warna tetap mengikuti pilihan Anda; mode terang pada malam hari menampilkan langit malam dengan kartu terang.
+
+## Animasi dan baterai
+
+Beranda menampilkan karakter berkedip/melambaikan tangan, awan bergerak, bunga bergoyang, bintang berkelip dan hati melayang pada In Relationship. Animasi kecil ini memakai empat repaint canvas per detik; halaman tidak dibangun ulang untuk tiap frame. Widget layar utama tetap statis.
+
+Animasi berhenti saat ilustrasi keluar layar, tertutup dialog, aplikasi tidak aktif, sistem meminta pengurangan animasi, atau mode hemat daya HP aktif. Pilihan **Pengaturan → Appearance → Animasi pixel** dapat dimatikan dan disimpan. Mode terang/gelap tetap terpisah dari fase langit.
+
+UI menerima pemberitahuan perubahan dari native; pemeriksaan status tiap lima detik dihapus. Pengirim menunggu kabar baru, menggantikan timer 1,5 detik. Jam UI diperbarui sekali per menit saat aktif. GPS hanya diambil sekali setelah persetujuan. Penerima Android mempertahankan koneksi untuk notifikasi; konsumsi baterai tetap bergantung pada jaringan/HP. Tidak meminta pengecualian optimasi baterai secara otomatis. Besarnya penghematan belum diukur pada HP fisik.
+
+Mengganti 24 jam/AM-PM memperbarui waktu status, makan harian, rentang jadwal di beranda, riwayat, Detail termasuk UTC/GPS, widget, dan notifikasi abc yang masih tampil. Detail yang terbuka ikut berubah. Preferensi lokal tiap HP tetap terpisah dan waktu kejadian yang tersimpan tidak berubah. Pembaruan notifikasi Android tidak membunyikan ulang kabar.
 
 ## Tombol, makan hari ini dan riwayat
 
@@ -60,7 +70,9 @@ iPhone menggunakan APNs untuk notifikasi saat aplikasi tertutup dan WidgetKit un
 - **Hapus lokasi yang dibagikan:** menghapus koordinat snapshot terbaru dan mematikan pilihan lokasi berikutnya.
 - **Hapus riwayat:** mengosongkan status/catatan dan mengirim snapshot kosong kepada penerima.
 - **Putuskan HP ini:** menghapus kode dan data keluarga lokal. Preferensi tampilan/panggilan tetap ada.
-- **Uninstall abc:** membuka konfirmasi Android; iPhone mendapat petunjuk penghapusan melalui layar utama.
+- **Uninstall abc:** meminta konfirmasi, lalu menghapus semua data abc lokal: kode/kunci pasangan, riwayat, antrean, panggilan, bahasa/tema/format jam, database, file dan cache milik aplikasi, serta notifikasi. Android kemudian membuka dialog uninstall sistem. **Membatalkan dialog sistem tidak mengembalikan data yang sudah dibersihkan.** Pada iPhone, data abc dan dua akun Keychain miliknya dibersihkan lebih dulu, kemudian ikuti petunjuk **Delete App/Hapus App**, bukan Offload.
+
+Pembersihan dibatasi ke penyimpanan abc dan App Group/akun Keychain abc. Foto, folder Download, installer APK yang Anda unduh, file pribadi di luar abc, dan data aplikasi lain tidak disentuh. Android menonaktifkan backup aplikasi dan pilihan mempertahankan data setelah uninstall. Salinan kabar di HP lain atau cache relay tidak ikut terhapus melalui tombol lokal ini.
 
 Menghapus file APK di Download hanya menghapus installer. Tidak ada skrip terpisah yang dipasang di HP. Menghapus data pengirim dapat menghilangkan kunci; kode penerima tidak bisa memulihkannya. Tidak ada akses kontak, SMS, mikrofon, root, atau Accessibility Service. Versi uji belum memiliki distribusi Play Store/App Store, FCM, pemulihan kunci, atau audit keamanan independen.
 
