@@ -23,6 +23,8 @@ public class MainActivity extends Activity {
     private LinearLayout root,body;
     private int page=0;
     private int renderedPage=-1;
+    private int pendingScroll=0;
+    private boolean restoringScroll=false;
     private String renderedRole="";
     private boolean registered=false,busy=false;
     AlertDialog confirmationDialog;
@@ -88,13 +90,14 @@ public class MainActivity extends Activity {
     private void render() {
         if(root==null)return;
         String role=Store.role(this);
-        int previousScroll=(renderedPage==page&&renderedRole.equals(role)&&root.getChildCount()>0&&root.getChildAt(0) instanceof ScrollView)?((ScrollView)root.getChildAt(0)).getScrollY():0;
+        int previousScroll=(renderedPage==page&&renderedRole.equals(role)&&root.getChildCount()>0&&root.getChildAt(0) instanceof ScrollView)?(restoringScroll?pendingScroll:((ScrollView)root.getChildAt(0)).getScrollY()):0;
+        pendingScroll=previousScroll;restoringScroll=previousScroll>0;
         renderedPage=page;renderedRole=role;
         root.removeAllViews();
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);
         body=column();body.setPadding(dp(22),dp(20),dp(22),dp(16));scroll.addView(body);
         root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        if(previousScroll>0){final int restore=previousScroll;scroll.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener(){public void onGlobalLayout(){scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);scroll.scrollTo(0,restore);}});}
+        if(previousScroll>0){final int restore=previousScroll;scroll.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener(){public void onGlobalLayout(){scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);if(root.getChildCount()>0&&root.getChildAt(0)==scroll){scroll.scrollTo(0,restore);restoringScroll=false;}}});}
         if(role.isEmpty()){welcome();return;}
         if(page==1)history();else if(page==2)settings();else home();
         LinearLayout nav=new LinearLayout(this);nav.setPadding(dp(12),dp(8),dp(12),dp(10));
