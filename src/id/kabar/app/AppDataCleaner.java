@@ -16,7 +16,9 @@ public final class AppDataCleaner {
             }
             // Clear known stores even if no XML file had been persisted yet.
             if(!Store.prefs(c).edit().clear().commit()||!LocalProfile.prefs(c).edit().clear().commit())throw new IOException("Cannot clear application preferences");
-            for(String db:c.databaseList())if(!c.deleteDatabase(db))throw new IOException("Cannot clear application database");
+            // Deleting a database also removes its journal/WAL companions. A later
+            // inventory entry may therefore already be gone; that is success.
+            for(String db:c.databaseList())if(!c.deleteDatabase(db)&&c.getDatabasePath(db).exists())throw new IOException("Cannot clear application database");
             for(File dir:new File[]{c.getFilesDir(),c.getCacheDir(),c.getCodeCacheDir(),c.getNoBackupFilesDir(),c.getDir("flutter",Context.MODE_PRIVATE)})ScopedFiles.clear(dir);
             for(File dir:c.getExternalFilesDirs(null))ScopedFiles.clear(dir);
             for(File dir:c.getExternalCacheDirs())ScopedFiles.clear(dir);

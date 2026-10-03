@@ -53,7 +53,7 @@ public final class AbcActivity extends FlutterActivity {
     @Override protected void onDestroy(){stopWatching();if(capture!=null)capture.cancel();io.shutdown();super.onDestroy();}
     private interface Job{JSONObject run()throws Exception;}
     private void background(MethodChannel.Result result,Job job){io.execute(()->{try{String value=job.run().toString();main.post(()->result.success(value));}catch(Exception e){main.post(()->fail(result,e));}});}
-    private void fail(MethodChannel.Result result,Exception e){String code=e.getMessage()!=null&&e.getMessage().contains("25 kabar")?"queue_full":"error";result.error(code,"Action could not be completed",null);}
+    private void fail(MethodChannel.Result result,Exception e){if((getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)android.util.Log.e("abc-QA","Native action failed",e);String code=e.getMessage()!=null&&e.getMessage().contains("25 kabar")?"queue_full":"error";result.error(code,"Action could not be completed",null);}
     private JSONObject answer(String note)throws Exception{JSONObject j=new JSONObject().put("snapshot",snapshot());if(note!=null&&!note.isEmpty())j.put("note",note);return j;}
     private boolean isSender(){return "sender".equals(Store.role(this));}
     private void requireSender(){if(!isSender())throw new SecurityException("Sender required");}
