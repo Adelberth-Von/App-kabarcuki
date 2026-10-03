@@ -67,9 +67,10 @@ public class DeviceQA extends Instrumentation {
                 boolean[] ready={false};long layoutEnd=SystemClock.elapsedRealtime()+5000;
                 while(!ready[0]&&SystemClock.elapsedRealtime()<layoutEnd){main(()->ready[0]=scrollView().isLaidOut()&&scrollView().canScrollVertically(1));if(!ready[0])Thread.sleep(50);}
                 ok(ready[0],"settings laid out before scroll test");
-                ScrollView[] previous={null};main(()->{scrollView().scrollTo(0,200);previous[0]=scrollView();Store.changed(c);});
+                ScrollView[] previous={null};int[] actualScroll={0};main(()->{scrollView().scrollTo(0,200);previous[0]=scrollView();actualScroll[0]=scrollView().getScrollY();Store.changed(c);});
+                ok(actualScroll[0]>0,"settings actually scrolled before refresh");
                 boolean[] restored={false};long scrollEnd=SystemClock.elapsedRealtime()+5000;
-                while(!restored[0]&&SystemClock.elapsedRealtime()<scrollEnd){main(()->restored[0]=scrollView()!=previous[0]&&scrollView().getScrollY()==200);if(!restored[0])Thread.sleep(50);}
+                while(!restored[0]&&SystemClock.elapsedRealtime()<scrollEnd){main(()->restored[0]=scrollView()!=previous[0]&&scrollView().getScrollY()==actualScroll[0]);if(!restored[0])Thread.sleep(50);}
                 ok(restored[0],"settings retain scroll after status refresh");
                 click("Edit nama & tombol");
                 android.accessibilityservice.AccessibilityServiceInfo info=getUiAutomation().getServiceInfo();info.flags|=android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;getUiAutomation().setServiceInfo(info);
