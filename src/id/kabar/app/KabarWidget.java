@@ -10,11 +10,17 @@ import android.graphics.*;
 import java.util.TimeZone;
 
 public class KabarWidget extends AppWidgetProvider {
-    @Override public void onUpdate(Context c,AppWidgetManager manager,int[] ids){for(int id:ids)manager.updateAppWidget(id,views(c,manager.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,280)));}
-    @Override public void onAppWidgetOptionsChanged(Context c,AppWidgetManager manager,int id,Bundle options){manager.updateAppWidget(id,views(c,options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,280)));}
+    @Override public void onUpdate(Context c,AppWidgetManager manager,int[] ids){for(int id:ids)manager.updateAppWidget(id,views(c,widgetHeight(c,manager.getAppWidgetOptions(id))));}
+    @Override public void onAppWidgetOptionsChanged(Context c,AppWidgetManager manager,int id,Bundle options){manager.updateAppWidget(id,views(c,widgetHeight(c,options)));}
+    private static int widgetHeight(Context c,Bundle options){
+        // The larger height belongs to portrait; minimum height is landscape.
+        boolean portrait=c.getResources().getConfiguration().orientation!=android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        return options.getInt(portrait?AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT:AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,280);
+    }
     public static void updateAll(Context c){AppWidgetManager m=AppWidgetManager.getInstance(c);int[] ids=m.getAppWidgetIds(new ComponentName(c,KabarWidget.class));if(ids.length>0)new KabarWidget().onUpdate(c,m,ids);}
     public static String action(KabarState s){org.json.JSONObject e=s.events.optJSONObject(0);return e==null?"idle":e.optString("kind","idle");}
-    public static Bitmap art(Context c,KabarState s,int frame){Bitmap bitmap=Bitmap.createBitmap(336,114,Bitmap.Config.ARGB_8888);DayScene scene=new DayScene(c,new Appearance(c).relationship,System.currentTimeMillis(),TimeZone.getDefault(),action(s),frame);scene.layout(0,0,336,114);scene.draw(new Canvas(bitmap));return bitmap;}
+    public static Bitmap art(Context c,KabarState s,int frame){return art(c,s,frame,false);}
+    private static Bitmap art(Context c,KabarState s,int frame,boolean compact){int height=compact?48:114;Bitmap bitmap=Bitmap.createBitmap(336,height,Bitmap.Config.ARGB_8888);DayScene scene=new DayScene(c,new Appearance(c).relationship,System.currentTimeMillis(),TimeZone.getDefault(),action(s),frame);scene.layout(0,0,336,height);scene.draw(new Canvas(bitmap));return bitmap;}
     public static RemoteViews views(Context c){return views(c,280);}
     private static RemoteViews views(Context c,int height){
         TimeZone.setDefault(null);
@@ -32,7 +38,7 @@ public class KabarWidget extends AppWidgetProvider {
         v.setTextViewCompoundDrawables(R.id.widget_outside,0,R.drawable.widget_icon_outside,0,0);
         v.setTextViewCompoundDrawables(R.id.widget_home_action,0,R.drawable.widget_icon_home,0,0);
         v.setTextViewCompoundDrawables(R.id.widget_meal_action,0,R.drawable.widget_icon_meal,0,0);
-        v.setImageViewBitmap(R.id.widget_art,art(c,s,0));v.setImageViewBitmap(R.id.widget_art_next,art(c,s,1));
+        v.setImageViewBitmap(R.id.widget_art,art(c,s,0,compact));v.setImageViewBitmap(R.id.widget_art_next,art(c,s,1,compact));
         int phase=StatusLogic.phase(now,zone);
         String[][] phases={{"Pagi","Morning","Morgen"},{"Siang","Daytime","Tag"},{"Sore","Evening","Abend"},{"Malam","Night","Nacht"}};
         v.setTextViewText(R.id.widget_phase,(a.relationship?"Seirama · ":"")+LocalProfile.text(c,phases[phase][0],phases[phase][1],phases[phase][2]));

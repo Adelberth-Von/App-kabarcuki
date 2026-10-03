@@ -99,7 +99,7 @@ public class DeviceQA extends Instrumentation {
                 main(()->{
                     RemoteViews rv=KabarWidget.views(c);View widget=rv.apply(c,new FrameLayout(c));
                     ok(find(widget,"Rumah")!=null,"sender widget labels updated");
-                    ok(find(widget,"abc · QA")!=null,"widget sender name updated");
+                    ok(find(widget,"QA · abc")!=null,"widget sender name updated");
                     ok(((ImageView)widget.findViewById(R.id.widget_art)).getDrawable()!=null,"widget renders native pixel art");
                 });
                 testLocation(c);
