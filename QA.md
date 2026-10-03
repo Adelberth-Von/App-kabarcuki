@@ -24,13 +24,15 @@ Tanggal: **3 Oktober 2026**. Fokus: animasi pixel yang mengikuti kondisi baterai
 | Tombol hapus di APK release | Lulus: batal pada konfirmasi awal mempertahankan data; lanjut membersihkan data sebelum dialog sistem. Batal pada dialog sistem meninggalkan aplikasi kosong. Sentinel di Download serta salinan di pengirim tetap ada |
 | Uninstall dan instal ulang Android | Lulus melalui pengelola paket OS pada emulator uji; instal ulang menampilkan input panggilan kosong, sentinel Download tetap ada |
 | CI Flutter Android 10/11/15/16 | **Lulus API 29/30/35/36**, mencakup snapshot tanpa feedback loop, seluruh UI/persistensi, format widget/notifikasi jika izin tersedia, dan cleanup fixture |
-| CI Flutter iPhone | Build lulus; UI belum terverifikasi karena alat uji gagal menemukan port VM simulator. Sedang diuji ulang dengan console/koneksi langsung |
+| CI Flutter iPhone | **Lulus**, UI/persistensi/format/tema/bahasa, snapshot tanpa feedback loop, cleanup file/preferensi/kode/kunci/riwayat/antrean; item Keychain fixture dari service lain tetap ada |
 | Apple core/native/widget/ekstensi | **Lulus**, termasuk enam kasus Swift dan interoperabilitas Java/CryptoKit |
 | Komponen/UI native Android arsip | **Lulus API 29–36**, termasuk teks 1,5× pada API 35; posisi gulir dipertahankan ketika render lama saling menyusul. MainActivity arsip tidak masuk APK Flutter |
 
-[Flutter Android/iPhone](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37096450226), [Apple core/native](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37095357870), [Android native arsip](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37097127174).
+[Flutter Android — empat job lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37096450226), [Flutter iPhone — lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37098673868), [Apple core/native](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37095357870), [Android native arsip](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37097127174).
 
-Kode antarmuka aktif yang diuji CI Flutter bersumber dari `fa13d76`. Perubahan setelahnya menyangkut penguji/UI native arsip (MainActivity tidak dimasukkan ke abc Flutter), artefak dan dokumentasi. Angka kasus yang tumpang tindih tidak dijumlahkan. Screenshot dan penanda menggunakan perangkat serta data khusus uji.
+APK dan CI Android bersumber dari `fa13d76`; QA iPhone bersumber dari `6d0a208`, dengan tambahan diagnostik debug, koneksi VM langsung untuk CI, dan reset URLCache sebelum menghapus file cache. Antarmuka Dart sama. Perubahan UI native arsip (MainActivity) tidak dimasukkan ke abc Flutter. Angka kasus yang tumpang tindih tidak dijumlahkan. Screenshot dan penanda menggunakan perangkat serta data khusus uji.
+
+Percobaan iPhone awal berhasil build tetapi Flutter tidak menemukan alamat VM dari log. Menentukan port loopback khusus simulator dan menghubungkan driver langsung menghasilkan **All tests passed** dan sembilan screenshot. Ini perbaikan alat QA, bukan perubahan jaringan aplikasi release. Log URLCache menyebut database yang sudah dihapus ketika proses cache asinkron menyusul cleanup; semua assertion pembersihan tetap lulus. Notifikasi APNs fisik belum diuji.
 
 ## Perbaikan yang diverifikasi
 

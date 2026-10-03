@@ -50,10 +50,10 @@ Pagi 05–11 · Siang 11–15 · Sore 15–18 · Malam 18–05. Batas ini mengik
 
 ## Tampilan yang sama pada iPhone
 
-Screenshot iPhone berikut berasal dari QA versi 0.5.0 yang lulus. QA iPhone 0.6.0 sedang diulang setelah build berhasil tetapi alat uji tidak menemukan port simulator. Jam mengikuti GMT/UTC yang dipakai CI. Aplikasi iPhone fisik tetap memerlukan signing Apple/TestFlight.
+Screenshot iPhone berikut berasal dari [QA versi 0.6.0 yang lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37098673868), termasuk pembersihan file, preferensi dan kunci abc tanpa menghapus item Keychain service lain. Jam mengikuti GMT/UTC yang dipakai CI. Aplikasi iPhone fisik tetap memerlukan signing Apple/TestFlight.
 
 | Beranda iPhone | Pengaturan iPhone |
 |---|---|
-| <img src="screenshots/abc-iphone-home.png" width="280" alt="Beranda abc Flutter pada simulator iPhone"> | <img src="screenshots/abc-iphone-settings.png" width="280" alt="Pengaturan AM/PM dan tema pada simulator iPhone"> |
+| <img src="screenshots/abc06-iphone-home.png" width="280" alt="Beranda abc Flutter 0.6 pada simulator iPhone"> | <img src="screenshots/abc06-iphone-settings.png" width="280" alt="Pengaturan tema dan animasi pixel pada simulator iPhone"> |
 
 [Unduh abc.apk](abc.apk) · [Panduan](README.md) · [Hasil QA](QA.md)
