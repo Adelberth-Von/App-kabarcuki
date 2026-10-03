@@ -89,7 +89,7 @@ struct KabarView: View {
     }
     private var dayCard: some View {
         VStack(alignment:.leading,spacing:0) {
-            DayScene(together:together).frame(height:108)
+            DayScene(together:together).id("hero-\(together)-\(dark)-\(LocalClock.phase())").frame(height:108)
             VStack(alignment:.leading,spacing:5) {
                 Text("Selamat "+LocalClock.phaseName().lowercased()+(together ? " ♥":"")).font(.subheadline.bold()).foregroundStyle(sage)
                 Text(LocalClock.clock()).font(.headline).accessibilityIdentifier("local-clock")
@@ -111,7 +111,7 @@ struct KabarView: View {
     private func themeChoice(_ value: Bool,_ name: String,_ detail: String) -> some View {
         Button { together = value } label: {
             VStack(alignment:.leading,spacing:8) {
-                DayScene(together:value).frame(height:72)
+                DayScene(together:value).id("preview-\(value)-\(dark)-\(LocalClock.phase())").frame(height:72)
                 Text((together == value ? "✓  ":"")+name).font(.headline)
                 Text(detail).font(.caption)
             }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(together == value ? palette.tint:palette.surface,in:RoundedRectangle(cornerRadius:18))

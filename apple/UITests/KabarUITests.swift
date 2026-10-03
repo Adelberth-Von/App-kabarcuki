@@ -42,6 +42,8 @@ final class KabarUITests: XCTestCase {
         XCTAssertTrue(app.segmentedControls["appearance-mode"].buttons["Gelap"].isSelected)
         tapVisible(app.segmentedControls["appearance-mode"].buttons["Terang"],app:app)
         app.tabBars.buttons["Beranda"].tap();for _ in 0..<3 { app.swipeDown() }
+        // Allow the system color-scheme transition to finish before visual verification.
+        Thread.sleep(forTimeInterval:1)
         let light=XCTAttachment(screenshot:app.screenshot());light.name="Relationship light home";light.lifetime = .keepAlways;add(light)
     }
 }
