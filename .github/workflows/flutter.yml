@@ -53,12 +53,22 @@ jobs:
           cd ios
           xcodegen generate
       - name: Build and test on iPhone simulator
+        timeout-minutes: 12
         run: |
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for v in d["devices"].values() for x in v if x["name"].startswith("iPhone")))')
           xcrun simctl boot "$DEVICE" || true
           xcrun simctl bootstatus "$DEVICE" -b
           cd crossplatform
-          flutter drive --keep-app-running --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d "$DEVICE"
+          mkdir -p ../work
+          flutter drive -v --keep-app-running --driver=test_driver/integration.dart --target=integration_test/native_test.dart -d "$DEVICE" 2>&1 | tee ../work/flutter-ios-drive.log
+        shell: bash --noprofile --norc -eo pipefail {0}
+      - name: Capture simulator diagnostics
+        if: always()
+        run: |
+          mkdir -p work
+          xcrun simctl io booted screenshot work/iphone-final.png || true
+          xcrun simctl spawn booted log show --last 15m --style compact --predicate 'process == "Runner" OR eventMessage CONTAINS "id.kabar.app"' > work/iphone-system.log || true
+          find "$HOME/Library/Logs/DiagnosticReports" -name 'Runner*' -exec cp {} work/ \; || true
         shell: bash --noprofile --norc -eo pipefail {0}
       - uses: actions/upload-artifact@v4
         if: always()
@@ -67,3 +77,7 @@ jobs:
           path: |
             crossplatform/build/ios/iphonesimulator/Runner.app
             crossplatform/qa-screenshots
+            work/flutter-ios-drive.log
+            work/iphone-final.png
+            work/iphone-system.log
+            work/Runner*

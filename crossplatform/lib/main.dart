@@ -117,7 +117,17 @@ class _AbcAppState extends State<AbcApp> with WidgetsBindingObserver {
               bottomSheetTheme: BottomSheetThemeData(
                   backgroundColor: p.bg, showDragHandle: true),
             ),
-            home: Shell(model: model));
+            home: AnnotatedRegion<SystemUiOverlayStyle>(
+                value: SystemUiOverlayStyle(
+                    statusBarColor: p.bg,
+                    statusBarIconBrightness:
+                        model.dark ? Brightness.light : Brightness.dark,
+                    statusBarBrightness:
+                        model.dark ? Brightness.dark : Brightness.light,
+                    systemNavigationBarColor: p.card,
+                    systemNavigationBarIconBrightness:
+                        model.dark ? Brightness.light : Brightness.dark),
+                child: Shell(model: model)));
       });
 }
 
