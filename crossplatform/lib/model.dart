@@ -31,6 +31,7 @@ class AppModel extends ChangeNotifier {
   Map<String, dynamic> snapshot = {};
   bool loading = true, busy = false;
   String? error, note;
+  String progress = 'saving';
   Timer? _poll;
   AppModel(this.backend);
   Map<String, dynamic> get state =>
@@ -83,6 +84,9 @@ class AppModel extends ChangeNotifier {
       [Map<String, dynamic> arguments = const {}]) async {
     if (busy) return false;
     busy = true;
+    progress = name == 'record' && arguments['shareLocation'] == true
+        ? 'locating'
+        : 'saving';
     error = null;
     note = null;
     notifyListeners();

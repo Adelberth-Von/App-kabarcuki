@@ -25,6 +25,12 @@ class Copy {
 
 const messages = <String, List<String>>{
   'hello': ['Hai, {x}', 'Hi, {x}', 'Hallo, {x}'],
+  'locating': [
+    'Mengambil lokasi HP…',
+    'Getting your location…',
+    'Standort wird ermittelt…'
+  ],
+  'saving': ['Menyimpan…', 'Saving…', 'Wird gespeichert…'],
   'morning': ['Selamat pagi', 'Good morning', 'Guten Morgen'],
   'afternoon': ['Selamat siang', 'Good afternoon', 'Guten Tag'],
   'evening': ['Selamat sore', 'Good evening', 'Guten Abend'],
@@ -214,9 +220,9 @@ const messages = <String, List<String>>{
     'Für dieses Update wurde kein Standort erfasst.'
   ],
   'eventGpsExpired': [
-    'Koordinat catatan ini sudah tidak disimpan; hanya tiga titik riwayat terbaru disimpan.',
-    'This update’s coordinates are no longer retained; only the three newest history points are kept.',
-    'Die Koordinaten dieses Updates werden nicht mehr gespeichert; nur die drei neuesten Verlaufspunkte bleiben erhalten.'
+    'Koordinat catatan ini sudah tidak disimpan. Lokasi riwayat disimpan terbatas dan dapat dihapus.',
+    'This update’s coordinates are no longer retained. History locations have limited retention and can be removed.',
+    'Die Koordinaten dieses Updates werden nicht mehr gespeichert. Standorte im Verlauf werden begrenzt aufbewahrt und können gelöscht werden.'
   ],
   'gpsNote': [
     'Lokasi merupakan titik saat diambil, bukan pelacakan terus-menerus.',

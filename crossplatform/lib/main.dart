@@ -408,6 +408,15 @@ class _ShellState extends State<Shell> {
                 color: p.tint, borderRadius: BorderRadius.circular(18)),
             child: const PixelIcon('brand', size: 30))
       ]),
+      if (m.busy && m.progress == 'locating')
+        card(Row(children: [
+          const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2)),
+          const SizedBox(width: 12),
+          Expanded(child: small(t['locating']))
+        ])),
       Wrap(spacing: 8, runSpacing: 8, children: [
         Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
