@@ -17,23 +17,26 @@ struct KabarProvider: TimelineProvider {
 }
 struct KabarWidgetView: View {
     var entry: KabarEntry
+    private var together: Bool { SharedStore.defaults.bool(forKey:"appearanceRelationship") }
+    private var dark: Bool { SharedStore.defaults.bool(forKey:"appearanceDark") }
+    private var palette: KabarPalette { KabarPalette(together:together,dark:dark) }
     var content: some View {
         HStack(spacing:12) {
             VStack(alignment:.leading,spacing:6) {
-                Text("kabar. \(entry.state.name)").font(.headline).foregroundStyle(Color(red:0.29,green:0.42,blue:0.32))
+                Text("kabar. \(entry.state.name)").font(.headline).foregroundStyle(palette.accent)
                 if entry.paired {
                     Text(entry.state.locationText).font(.subheadline.bold())
-                    Text(entry.state.when(entry.state.locationAt)).font(.caption2)
-                    Text("\(entry.state.meal): \(entry.state.when(entry.state.mealAt))").font(.caption2)
-                    Text("\(entry.state.home): \(entry.state.when(entry.state.homeAt))").font(.caption2)
+                    Text(LocalClock.when(entry.state.locationAt)).font(.caption2)
+                    Text("\(entry.state.meal): \(LocalClock.when(entry.state.mealAt))").font(.caption2)
+                    Text("\(entry.state.home): \(LocalClock.when(entry.state.homeAt))").font(.caption2)
                 } else { Text("Buka Kabar untuk menghubungkan HP").font(.caption) }
             }.minimumScaleFactor(0.8)
-            PixelScene(outside:entry.state.location == "outside").frame(width:70,height:70)
-        }.padding(12).widgetURL(URL(string:"kabar://home"))
+            Group { if together { DayScene(together:true,at:Int64(entry.date.timeIntervalSince1970*1000)) } else { PixelScene(outside:entry.state.location == "outside") } }.frame(width:70,height:70)
+        }.padding(12).foregroundStyle(palette.ink).environment(\.colorScheme,dark ? .dark:.light).widgetURL(URL(string:"kabar://home"))
     }
     var body: some View {
-        if #available(iOSApplicationExtension 17.0, *) { content.containerBackground(Color(red:0.97,green:0.96,blue:0.92),for:.widget) }
-        else { content.background(Color(red:0.97,green:0.96,blue:0.92)) }
+        if #available(iOSApplicationExtension 17.0, *) { content.containerBackground(palette.background,for:.widget) }
+        else { content.background(palette.background) }
     }
 }
 @main struct KabarWidget: Widget {

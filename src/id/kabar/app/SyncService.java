@@ -159,7 +159,7 @@ public class SyncService extends Service {
         PendingIntent open=PendingIntent.getActivity(this,2,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         Notification n=new Notification.Builder(this,"updates").setSmallIcon(R.drawable.notification_icon)
             .setContentTitle(s.name+" · "+last.optString("label"))
-            .setContentText(StatusLogic.when(last.optLong("at"),System.currentTimeMillis(),java.util.TimeZone.getTimeZone(s.zone)))
+            .setContentText(StatusLogic.localWhen(last.optLong("at"),System.currentTimeMillis(),java.util.TimeZone.getDefault()))
             .setContentIntent(open).setAutoCancel(true).build();
         getSystemService(NotificationManager.class).notify(2,n);
     }

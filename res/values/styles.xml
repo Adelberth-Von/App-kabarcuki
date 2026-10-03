@@ -9,4 +9,14 @@
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowBackground">#F8F6F0</item>
     </style>
+    <style name="AppThemeDark" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#B5D7AC</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowBackground">#18231F</item>
+        <item name="android:statusBarColor">#18231F</item>
+        <item name="android:navigationBarColor">#18231F</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
 </resources>

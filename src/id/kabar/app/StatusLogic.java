@@ -50,5 +50,20 @@ public final class StatusLogic {
         return prefix+" · "+clock.format(timestamp);
     }
     public static boolean stale(long timestamp,long now) { return timestamp>0 && now-timestamp>=6L*60*60*1000; }
+    /** Display in the viewer's zone. This never changes stored timestamps or meal dates. */
+    public static String localWhen(long timestamp,long now,TimeZone zone) {
+        return timestamp<=0?"Belum tercatat":when(timestamp,now,zone)+" "+shortZone(zone,timestamp)+" - "+country(zone);
+    }
+    public static String clock(long at,TimeZone zone) {
+        SimpleDateFormat f=new SimpleDateFormat("HH.mm",Locale.ROOT);f.setTimeZone(zone);
+        return f.format(at)+" "+shortZone(zone,at)+" - "+country(zone);
+    }
+    public static String country(TimeZone zone){String code=ZoneCountries.ALL.get(zone.getID());return code==null?"Zona waktu HP":new Locale("",code).getDisplayCountry(new Locale("id"));}
+    public static String shortZone(TimeZone zone,long at){
+        if("ID".equals(ZoneCountries.ALL.get(zone.getID()))){int offset=zone.getOffset(at)/3600000;if(offset==7)return "WIB";if(offset==8)return "WITA";if(offset==9)return "WIT";}
+        return zone.getDisplayName(zone.inDaylightTime(new java.util.Date(at)),TimeZone.SHORT,Locale.US);
+    }
+    public static int phase(long at,TimeZone zone){Calendar c=Calendar.getInstance(zone);c.setTimeInMillis(at);int h=c.get(Calendar.HOUR_OF_DAY);return h>=5&&h<11?0:h>=11&&h<15?1:h>=15&&h<18?2:3;}
+    public static String phaseName(long at,TimeZone zone){return new String[]{"Pagi","Siang","Sore","Malam"}[phase(at,zone)];}
     public static String zoneLabel(TimeZone zone,long at){int minutes=zone.getOffset(at)/60000;return String.format(Locale.ROOT,"UTC%s%02d:%02d · %s",minutes<0?"−":"+",Math.abs(minutes)/60,Math.abs(minutes)%60,zone.getID());}
 }

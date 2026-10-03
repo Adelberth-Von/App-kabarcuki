@@ -16,15 +16,18 @@ public class KabarWidget extends AppWidgetProvider {
         if(ids.length>0)new KabarWidget().onUpdate(c,m,ids);
     }
     public static RemoteViews views(Context c) {
-        KabarState s=Store.state(c);long now=System.currentTimeMillis();TimeZone zone=TimeZone.getTimeZone(s.zone);
-        RemoteViews v=new RemoteViews(c.getPackageName(),R.layout.widget);
+        KabarState s=Store.state(c);long now=System.currentTimeMillis();TimeZone zone=TimeZone.getDefault();
+        RemoteViews v=new RemoteViews(c.getPackageName(),R.layout.widget);Appearance a=new Appearance(c);
+        v.setInt(R.id.widget_root,"setBackgroundColor",a.bg);
+        for(int id:new int[]{R.id.widget_title,R.id.widget_location,R.id.widget_home,R.id.widget_meal,R.id.widget_connection,R.id.widget_outside,R.id.widget_home_action,R.id.widget_meal_action})v.setTextColor(id,a.ink);
+        for(int id:new int[]{R.id.widget_outside,R.id.widget_home_action,R.id.widget_meal_action})v.setInt(id,"setBackgroundColor",a.tint);
         android.graphics.Bitmap art=android.graphics.Bitmap.createBitmap(80,64,android.graphics.Bitmap.Config.ARGB_8888);
-        PixelArt illustration=new PixelArt(c,s.location.equals("outside")?"outside":"home");illustration.layout(0,0,80,64);illustration.draw(new android.graphics.Canvas(art));
+        View illustration=a.relationship?new DayScene(c,true,now,zone):new PixelArt(c,s.location.equals("outside")?"outside":"home");illustration.layout(0,0,80,64);illustration.draw(new android.graphics.Canvas(art));
         v.setImageViewBitmap(R.id.widget_art,art);
         v.setTextViewText(R.id.widget_title,Store.role(c).isEmpty()?"Kabar":"Kabar "+s.name);
-        v.setTextViewText(R.id.widget_location,s.locationText()+ (s.locationAt>0?" · "+StatusLogic.when(s.locationAt,now,zone):""));
-        v.setTextViewText(R.id.widget_home,"Terakhir di "+s.home.toLowerCase(new java.util.Locale("id"))+": "+StatusLogic.when(s.homeAt,now,zone));
-        v.setTextViewText(R.id.widget_meal,s.mealAt==0?"Makan belum tercatat":s.mealCategory+" · "+StatusLogic.when(s.mealAt,now,zone));
+        v.setTextViewText(R.id.widget_location,s.locationText()+ (s.locationAt>0?" · "+StatusLogic.localWhen(s.locationAt,now,zone):""));
+        v.setTextViewText(R.id.widget_home,"Terakhir di "+s.home.toLowerCase(new java.util.Locale("id"))+": "+StatusLogic.localWhen(s.homeAt,now,zone));
+        v.setTextViewText(R.id.widget_meal,s.mealAt==0?"Makan belum tercatat":s.mealCategory+" · "+StatusLogic.localWhen(s.mealAt,now,zone));
         String connection=Store.prefs(c).getString("connection","Buka aplikasi untuk menghubungkan");
         if(StatusLogic.stale(s.locationAt,now))connection="Lokasi sudah lama · "+connection;
         if(Store.pending(c)>0)connection=Store.pending(c)+" kabar menunggu dikirim";

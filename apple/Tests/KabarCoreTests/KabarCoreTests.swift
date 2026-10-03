@@ -14,6 +14,20 @@ final class KabarCoreTests: XCTestCase {
         XCTAssertTrue(KabarState.validWindows([0,8,8,16,16,24]))
         XCTAssertEqual(s.when(at(1,23,59), now: at(2,0,1)), "Kemarin · 23.59")
     }
+    func testLocalClockAndDayScene() {
+        let jakarta = TimeZone(identifier:"Asia/Jakarta")!, ny = TimeZone(identifier:"America/New_York")!
+        XCTAssertEqual(LocalClock.clock(at(2,12),zone:jakarta),"12.00 WIB - Indonesia")
+        XCTAssertEqual(LocalClock.clock(at(2,12),zone:TimeZone(identifier:"Asia/Makassar")!),"13.00 WITA - Indonesia")
+        XCTAssertEqual(LocalClock.clock(at(2,12),zone:TimeZone(identifier:"Asia/Jayapura")!),"14.00 WIT - Indonesia")
+        XCTAssertEqual(LocalClock.country(TimeZone(identifier:"Asia/Tokyo")!),"Jepang")
+        XCTAssertEqual(LocalClock.country(TimeZone(identifier:"Europe/Brussels")!),"Belgia")
+        XCTAssertEqual(LocalClock.country(TimeZone(secondsFromGMT:7*3600)!),"Zona waktu HP")
+        let iso = ISO8601DateFormatter()
+        XCTAssertEqual(LocalClock.shortZone(ny,at:Int64(iso.date(from:"2026-01-02T12:00:00Z")!.timeIntervalSince1970*1000)),"EST")
+        XCTAssertEqual(LocalClock.shortZone(ny,at:Int64(iso.date(from:"2026-07-02T12:00:00Z")!.timeIntervalSince1970*1000)),"EDT")
+        for (h,m,phase) in [(4,59,3),(5,0,0),(10,59,0),(11,0,1),(14,59,1),(15,0,2),(17,59,2),(18,0,3),(23,59,3),(0,0,3)] { XCTAssertEqual(LocalClock.phase(at(2,h,m),zone:jakarta),phase) }
+        XCTAssertEqual(LocalClock.when(at(2,0,30),now:at(2,12),zone:ny),"Kemarin · 13.30 EDT - Amerika Serikat")
+    }
     func testIndependentStatusAndHistory() throws {
         var s = KabarState(); s.zone = "Asia/Jakarta"
         try s.record("home", at: at(2,8)); try s.record("meal", at: at(2,8,30)); try s.record("outside", at: at(2,9))

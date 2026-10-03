@@ -33,7 +33,7 @@ Run (Join-Path $bt 'zipalign.exe') @('-f','-p','4',(Join-Path $build 'unsigned.a
 $keystore = Join-Path $ToolRoot 'kabar-test.p12'
 if (-not (Test-Path -LiteralPath $keystore)) { Run $keytool @('-genkeypair','-keystore',$keystore,'-storetype','PKCS12','-storepass','kabar-development-only','-keypass','kabar-development-only','-alias','kabar','-keyalg','RSA','-keysize','2048','-validity','3650','-dname','CN=Kabar Local Test, O=Kabar') }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
-$apk=Join-Path $OutDir 'Kabar-0.3.0.apk'
+$apk=Join-Path $OutDir 'Kabar-0.4.0.apk'
 Run $java @('-jar',(Join-Path $bt 'lib\apksigner.jar'),'sign','--ks',$keystore,'--ks-pass','pass:kabar-development-only','--out',$apk,(Join-Path $build 'aligned.apk'))
 Run $java @('-jar',(Join-Path $bt 'lib\apksigner.jar'),'verify','--verbose',$apk)
 Run (Join-Path $bt 'aapt.exe') @('dump','badging',$apk)

@@ -36,7 +36,7 @@ public class DeviceQA extends Instrumentation {
         try {
             Context c=getTargetContext();String mode=args.getString("mode","ui");
             if(mode.equals("ui")){
-                c.stopService(new Intent(c,SyncService.class));Store.prefs(c).edit().clear().commit();
+                c.stopService(new Intent(c,SyncService.class));Store.prefs(c).edit().clear().commit();Appearance.prefs(c).edit().clear().commit();
                 Intent launch=new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 activity=(MainActivity)startActivitySync(launch);waitForIdleSync();
                 await("Aku membagikan kabar",5000);click("Aku membagikan kabar");await("Update status",10000);
@@ -90,7 +90,7 @@ public class DeviceQA extends Instrumentation {
                 main(()->scrollView().scrollTo(0,0));Thread.sleep(200);
                 saveScreenshot(c,"ui-home.png");
                 click("Rumah");saveScreenshot(c,"ui-confirm.png");main(()->activity.confirmationDialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick());
-                main(()->activity.recreate());Thread.sleep(1200);
+                testAppearance(c);
                 ok(Store.state(c).home.equals("Rumah"),"settings survive recreation");
                 while(Store.pending(c)<25){KabarState pending=Store.state(c);pending.record("meal",System.currentTimeMillis());Store.saveAndQueue(c,pending,true);}
                 long lastSaved=Store.state(c).revision;boolean rejected=false;
@@ -127,6 +127,34 @@ public class DeviceQA extends Instrumentation {
     private void collectEditable(android.view.accessibility.AccessibilityNodeInfo n,java.util.ArrayList<android.view.accessibility.AccessibilityNodeInfo> out){
         if(n==null)return;if(n.isEditable())out.add(n);
         for(int i=0;i<n.getChildCount();i++)collectEditable(n.getChild(i),out);
+    }
+    private void appearanceClick(String control)throws Exception{
+        ActivityMonitor monitor=addMonitor(MainActivity.class.getName(),null,false);
+        click(control);Activity next=waitForMonitorWithTimeout(monitor,8000);removeMonitor(monitor);
+        ok(next instanceof MainActivity,"appearance recreation completes");activity=(MainActivity)next;waitForIdleSync();
+    }
+    private void testAppearance(Context c)throws Exception{
+        String code=Store.prefs(c).getString("code","");long revision=Store.state(c).revision;
+        click("Pengaturan");appearanceClick("Tema In Relationship");
+        ok(new Appearance(c).relationship&&!new Appearance(c).dark,"relationship chosen without dark mode");
+        appearanceClick("Mode gelap");ok(new Appearance(c).relationship&&new Appearance(c).dark,"dark and relationship independent");
+        click("Beranda");main(()->scrollView().scrollTo(0,0));saveScreenshot(c,"ui-relationship-dark.png");
+        click("Pengaturan");main(()->scrollView().scrollTo(0,0));saveScreenshot(c,"ui-appearance-dark.png");
+        appearanceClick("Mode terang");click("Beranda");main(()->scrollView().scrollTo(0,0));saveScreenshot(c,"ui-relationship-light.png");
+        click("Pengaturan");appearanceClick("Tema Default");appearanceClick("Mode gelap");click("Beranda");main(()->scrollView().scrollTo(0,0));saveScreenshot(c,"ui-default-dark.png");
+        ok(!new Appearance(c).relationship&&new Appearance(c).dark,"default theme keeps dark preference");
+        main(()->{
+            View widget=KabarWidget.views(c).apply(c,new FrameLayout(c));
+            ok(((TextView)widget.findViewById(R.id.widget_title)).getCurrentTextColor()==new Appearance(c).ink,"widget respects dark palette");
+        });
+        click("Pengaturan");appearanceClick("Mode terang");click("Beranda");
+        ok(code.equals(Store.prefs(c).getString("code","")),"appearance preserves pairing");ok(revision==Store.state(c).revision,"appearance does not publish status");
+        java.util.TimeZone original=java.util.TimeZone.getDefault();
+        try{
+            main(()->{java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo"));Store.changed(c);});Thread.sleep(250);waitForIdleSync();
+            main(()->ok(find(activity.getWindow().getDecorView(),StatusLogic.clock(System.currentTimeMillis(),java.util.TimeZone.getDefault()))!=null,"local clock follows device zone on refresh"));
+            ok(Store.state(c).revision==revision,"viewer zone leaves state untouched");
+        }finally{main(()->{java.util.TimeZone.setDefault(original);Store.changed(c);});}
     }
     private void shell(String command)throws Exception {try(android.os.ParcelFileDescriptor fd=getUiAutomation().executeShellCommand(command);java.io.FileInputStream in=new java.io.FileInputStream(fd.getFileDescriptor())){while(in.read()!=-1){}}}
     private void testLocation(Context c)throws Exception {

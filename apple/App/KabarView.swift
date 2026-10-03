@@ -1,18 +1,22 @@
 import SwiftUI
 import KabarCore
+import WidgetKit
 
-private let cream = Color(red:0.97,green:0.96,blue:0.92)
-private let sage = Color(red:0.29,green:0.42,blue:0.32)
 private struct StatusDraft: Identifiable { let id = UUID(); var kind: String; var category: String? = nil }
 struct KabarView: View {
     @EnvironmentObject var model: KabarModel
+    @AppStorage("appearanceRelationship",store:SharedStore.defaults) private var together = false
+    @AppStorage("appearanceDark",store:SharedStore.defaults) private var dark = false
+    private var palette: KabarPalette { KabarPalette(together:together,dark:dark) }
+    private var cream: Color { palette.background }
+    private var sage: Color { palette.accent }
     @State private var joinCode = ""
     @State private var tab = 0
     @State private var editing = false
     @State private var confirm = ""
     @State private var draft: StatusDraft?
     var body: some View {
-        TimelineView(.periodic(from:.now,by:60)) { _ in
+        TimelineView(.periodic(from:Date(timeIntervalSince1970:floor(Date().timeIntervalSince1970/60)*60),by:60)) { _ in
         Group {
             if model.role.isEmpty { welcome }
             else {
@@ -32,7 +36,7 @@ struct KabarView: View {
         .sheet(item:$draft) { value in StatusConfirmView(draft:value,state:model.state) { category,share in SharedStore.defaults.set(share,forKey:"shareLocation"); model.record(value.kind,meal:category,share:share) } }
     }
     private func page<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        ScrollView { VStack(alignment:.leading,spacing:20) { content() }.padding(24).frame(maxWidth:600).frame(maxWidth:.infinity) }.background(cream)
+        ScrollView { VStack(alignment:.leading,spacing:20) { content() }.padding(24).frame(maxWidth:600).frame(maxWidth:.infinity) }.background(cream).foregroundStyle(palette.ink)
     }
     private var welcome: some View {
         page {
@@ -51,45 +55,77 @@ struct KabarView: View {
         page {
             HStack { Text("kabar.").font(.largeTitle.bold()).foregroundStyle(sage); Spacer(); Text(model.role == "sender" ? "PENGIRIM" : "PENERIMA").font(.caption.monospaced()).foregroundStyle(sage) }
             Text("Kabar \(model.state.name)").font(.title2.bold())
-            Text("Waktu pengirim · \(model.state.zone)").font(.caption).foregroundStyle(.secondary)
+            dayCard
+            if model.state.zone != TimeZone.current.identifier { Text("Di HP pengirim · "+LocalClock.clock(zone:model.state.timeZone)+"\nZona terakhir saat mengirim kabar.").font(.caption).foregroundStyle(.secondary) }
             VStack(alignment:.leading,spacing:14) {
-                PixelScene(outside:model.state.location == "outside").frame(height:150)
+                PixelScene(outside:model.state.location == "outside").frame(height:86)
                 Text(model.state.locationText).font(.title.bold())
-                Text(model.state.when(model.state.locationAt)).foregroundStyle(.secondary)
+                Text(LocalClock.when(model.state.locationAt)).foregroundStyle(.secondary)
                 if model.state.stale { Text("Lokasi belum diperbarui lebih dari 6 jam").font(.caption).foregroundStyle(.orange) }
                 Divider()
                 Label("Terakhir \(model.state.meal.lowercased())",systemImage:"fork.knife").font(.headline)
-                Text(model.state.when(model.state.mealAt)).foregroundStyle(.secondary)
+                Text(LocalClock.when(model.state.mealAt)).foregroundStyle(.secondary)
                 Label("Terakhir di \(model.state.home.lowercased())",systemImage:"house").font(.headline)
-                Text(model.state.when(model.state.homeAt)).foregroundStyle(.secondary)
-            }.padding(20).background(.white,in:RoundedRectangle(cornerRadius:24))
+                Text(LocalClock.when(model.state.homeAt)).foregroundStyle(.secondary)
+            }.padding(20).background(palette.surface,in:RoundedRectangle(cornerRadius:24))
             if model.role == "sender" {
                 Text("Update status").font(.headline)
                 ViewThatFits(in:.horizontal) { actionRow; VStack(spacing:12) { actions } }
             }
             Text("Makan hari ini").font(.headline)
+            Text("Tanggal & jadwal mengikuti HP pengirim · "+LocalClock.shortZone(model.state.timeZone,at:KabarState.now)).font(.caption).foregroundStyle(.secondary)
             Text(model.role == "sender" ? "Ketuk kategori untuk mencatat atau memperbarui waktu makan." : "Mengikuti catatan HP pengirim.").font(.caption).foregroundStyle(.secondary)
             ForEach(["Sarapan","Makan siang","Makan malam"],id:\.self) { category in
                 let at = category == "Sarapan" ? model.state.breakfastAt : category == "Makan siang" ? model.state.lunchAt : model.state.dinnerAt
                 Button { if model.role == "sender" { draft = StatusDraft(kind:"meal",category:category) } } label: {
-                    HStack { Image(systemName:model.state.hasMealToday(category) ? "checkmark.circle.fill" : "plus.circle"); VStack(alignment:.leading,spacing:5) { Text(category).font(.headline); Text(model.state.hasMealToday(category) ? model.state.when(at) : "Belum tercatat").font(.caption) }; Spacer(); if model.role == "sender" { Image(systemName:"chevron.right").font(.caption) } }.padding(16).background(.white,in:RoundedRectangle(cornerRadius:16))
+                    HStack { Image(systemName:model.state.hasMealToday(category) ? "checkmark.circle.fill" : "plus.circle"); VStack(alignment:.leading,spacing:5) { Text(category).font(.headline); Text(model.state.hasMealToday(category) ? LocalClock.when(at) : "Belum tercatat").font(.caption) }; Spacer(); if model.role == "sender" { Image(systemName:"chevron.right").font(.caption) } }.padding(16).background(palette.surface,in:RoundedRectangle(cornerRadius:16))
                 }.foregroundStyle(sage).disabled(model.role != "sender" || model.locating).accessibilityIdentifier("meal-"+category)
             }
-            if model.state.mealCategory == "Makan", model.state.day(model.state.mealAt) == model.state.day(KabarState.now) { Text("Makan lainnya · "+model.state.when(model.state.mealAt)).font(.caption).foregroundStyle(.secondary) }
+            if model.state.mealCategory == "Makan", model.state.day(model.state.mealAt) == model.state.day(KabarState.now) { Text("Makan lainnya · "+LocalClock.when(model.state.mealAt)).font(.caption).foregroundStyle(.secondary) }
             gpsCard
             if !model.locationNote.isEmpty { Text(model.locationNote).font(.caption).foregroundStyle(.secondary) }
             Text(model.connection + (model.pending > 0 ? " · \(model.pending) antrean" : "")).font(.caption).foregroundStyle(.secondary)
         }
+    }
+    private var dayCard: some View {
+        VStack(alignment:.leading,spacing:0) {
+            DayScene(together:together).frame(height:108)
+            VStack(alignment:.leading,spacing:5) {
+                Text("Selamat "+LocalClock.phaseName().lowercased()+(together ? " ♥":"")).font(.subheadline.bold()).foregroundStyle(sage)
+                Text(LocalClock.clock()).font(.headline).accessibilityIdentifier("local-clock")
+                Text(together ? "Dekat dalam setiap kabar." : "Kabar kecil, bikin tenang.").font(.caption).foregroundStyle(.secondary)
+            }.padding(16)
+        }.frame(maxWidth:.infinity,alignment:.leading).background(palette.surface).clipShape(RoundedRectangle(cornerRadius:20))
+    }
+    private var appearanceSettings: some View {
+        VStack(alignment:.leading,spacing:14) {
+            Text("Appearance").font(.title2.bold())
+            Text("Tema dan mode hanya berlaku di HP ini.").font(.caption).foregroundStyle(.secondary)
+            themeChoice(false,"Default","Rumah hangat · sage & krem")
+            themeChoice(true,"In Relationship","Dua karakter · hati · rose & lilac")
+            Picker("Mode tampilan",selection:$dark) { Text("Terang").tag(false); Text("Gelap").tag(true) }.pickerStyle(.segmented).accessibilityIdentifier("appearance-mode")
+            Text("Suasana pixel otomatis: pagi 05–11, siang 11–15, sore 15–18, malam 18–05. Mode terang/gelap tetap pilihanmu.").font(.caption).foregroundStyle(.secondary)
+            Text("Jam & negara mengikuti zona waktu HP. Aktifkan zona waktu otomatis saat bepergian; tidak membutuhkan izin GPS.").font(.caption).foregroundStyle(.secondary)
+        }.onChange(of:together) { _ in WidgetCenter.shared.reloadAllTimelines() }.onChange(of:dark) { _ in WidgetCenter.shared.reloadAllTimelines() }
+    }
+    private func themeChoice(_ value: Bool,_ name: String,_ detail: String) -> some View {
+        Button { together = value } label: {
+            VStack(alignment:.leading,spacing:8) {
+                DayScene(together:value).frame(height:72)
+                Text((together == value ? "✓  ":"")+name).font(.headline)
+                Text(detail).font(.caption)
+            }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(together == value ? palette.tint:palette.surface,in:RoundedRectangle(cornerRadius:18))
+        }.buttonStyle(.plain).accessibilityIdentifier(value ? "theme-relationship":"theme-default").accessibilityAddTraits(together == value ? .isSelected:[])
     }
     private var actionRow: some View { HStack(alignment:.top,spacing:10) { actions }.fixedSize(horizontal:true,vertical:false) }
     @ViewBuilder private var actions: some View {
         action(model.state.outside,"outside","figure.walk"); action(model.state.home,"home","house.fill"); action(model.state.meal,"meal","fork.knife")
     }
     private func action(_ label: String,_ kind: String,_ icon: String) -> some View {
-        Button { draft = StatusDraft(kind:kind) } label: { VStack(spacing:10) { Image(systemName:icon).font(.title2); Text(label).font(.headline).multilineTextAlignment(.center) }.frame(minWidth:68,minHeight:80).padding(12).frame(maxWidth:.infinity).background(Color(red:0.88,green:0.91,blue:0.83),in:RoundedRectangle(cornerRadius:18)) }.foregroundStyle(sage).disabled(model.locating).accessibilityIdentifier(kind)
+        Button { draft = StatusDraft(kind:kind) } label: { VStack(spacing:10) { Image(systemName:icon).font(.title2); Text(label).font(.headline).multilineTextAlignment(.center) }.frame(minWidth:68,minHeight:80).padding(12).frame(maxWidth:.infinity).background(palette.tint,in:RoundedRectangle(cornerRadius:18)) }.foregroundStyle(sage).disabled(model.locating).accessibilityIdentifier(kind)
     }
-    private func pointTime(_ point: GpsPoint) -> String { var state = model.state; state.zone = point.zone; return state.when(point.at)+" · "+point.zone }
-    private func eventTime(_ event: KabarEvent) -> String { var state = model.state; state.zone = event.zone ?? state.zone; return state.when(event.at)+" · "+state.zone }
+    private func pointTime(_ point: GpsPoint) -> String { LocalClock.when(point.at) }
+    private func eventTime(_ event: KabarEvent) -> String { LocalClock.when(event.at) }
     private func mapLink(_ point: GpsPoint) -> some View { Link("Lihat di peta",destination:URL(string:"https://maps.apple.com/?ll=\(point.lat),\(point.lon)&q=Kabar")!).buttonStyle(.bordered).tint(sage) }
     private var gpsCard: some View {
         VStack(alignment:.leading,spacing:12) {
@@ -102,20 +138,21 @@ struct KabarView: View {
             } else { Text("Pengirim belum membagikan lokasi HP.").font(.subheadline).foregroundStyle(.secondary) }
             if model.role == "sender" { Button(model.locating ? "Mengambil lokasi…" : "Perbarui lokasi") { confirm = "Bagikan lokasi HP" }.buttonStyle(.bordered).disabled(model.locating) }
             Text("Lokasi diambil saat memberi kabar. Bukan pelacakan otomatis.").font(.caption).foregroundStyle(.secondary)
-        }.padding(20).frame(maxWidth:.infinity,alignment:.leading).background(.white,in:RoundedRectangle(cornerRadius:20))
+        }.padding(20).frame(maxWidth:.infinity,alignment:.leading).background(palette.surface,in:RoundedRectangle(cornerRadius:20))
     }
     private var history: some View {
         page {
             Text("Riwayat kabar").font(.largeTitle.bold())
             if model.state.events.isEmpty { Text("Belum ada kabar. Status baru akan muncul di sini.").foregroundStyle(.secondary) }
             ForEach(Array(model.state.events.enumerated()),id:\.offset) { _, event in
-                VStack(alignment:.leading,spacing:8) { Text(event.label).font(.headline); Text(eventTime(event)).font(.subheadline).foregroundStyle(.secondary); if let point = event.gps { Text("Diambil "+pointTime(point)).font(.caption).foregroundStyle(.secondary); mapLink(point) } }.padding(18).frame(maxWidth:.infinity,alignment:.leading).background(.white,in:RoundedRectangle(cornerRadius:18))
+                VStack(alignment:.leading,spacing:8) { Text(event.label).font(.headline); Text(eventTime(event)).font(.subheadline).foregroundStyle(.secondary); if let point = event.gps { Text("Diambil "+pointTime(point)).font(.caption).foregroundStyle(.secondary); mapLink(point) } }.padding(18).frame(maxWidth:.infinity,alignment:.leading).background(palette.surface,in:RoundedRectangle(cornerRadius:18))
             }
         }
     }
     private var settings: some View {
         page {
             Text("Pengaturan").font(.largeTitle.bold())
+            appearanceSettings
             if model.role == "sender" {
                 Button("Edit nama, tombol & jam makan") { editing = true }.buttonStyle(.bordered)
                 Button("Hapus lokasi yang dibagikan",role:.destructive) { confirm = "Hapus lokasi HP" }
@@ -140,7 +177,7 @@ struct KabarView: View {
             Divider()
             Button("Putuskan hubungan HP ini",role:.destructive) { confirm = "Putuskan hubungan HP ini" }
             Text("Menghapus data lokal dan kode pasangan. Untuk menghapus aplikasi, tahan ikon Kabar > Hapus App. iOS mengatur penghapusan aplikasi.").font(.caption).foregroundStyle(.secondary)
-            Text("Kabar 0.3.0 · lokasi opsional · maksimal 3 titik pada riwayat terbaru").font(.caption).foregroundStyle(.secondary)
+            Text("Kabar 0.4.0 · lokasi opsional · maksimal 3 titik pada riwayat terbaru").font(.caption).foregroundStyle(.secondary)
         }
     }
 }
@@ -183,7 +220,7 @@ private struct StatusConfirmView: View {
             Form {
                 Section("Kabar yang akan dikirim") {
                     Text(draft.kind == "home" ? "Di "+state.home.lowercased() : draft.kind == "outside" ? state.outside : draft.category ?? state.meal).font(.title2.bold())
-                    Text("Waktu sekarang · "+TimeZone.current.identifier).font(.subheadline)
+                    Text(LocalClock.clock()).font(.subheadline)
                     if draft.kind == "meal", draft.category == nil { Picker("Waktu makan",selection:$selected) { ForEach(["Otomatis","Sarapan","Makan siang","Makan malam","Makan lainnya"],id:\.self) { Text($0) } } }
                     if draft.kind == "meal" { Text("Kategori terpilih diperbarui dengan waktu sekarang. Status tempat tinggal tetap.").font(.caption) }
                 }

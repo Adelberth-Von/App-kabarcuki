@@ -13,11 +13,12 @@ final class KabarDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCe
 }
 @main struct KabarApp: App {
     @UIApplicationDelegateAdaptor(KabarDelegate.self) var delegate
+    @AppStorage("appearanceDark",store:SharedStore.defaults) private var dark = false
     @StateObject private var model = KabarModel()
     @Environment(\.scenePhase) private var phase
     var body: some Scene {
         WindowGroup {
-            KabarView().environmentObject(model).preferredColorScheme(.light)
+            KabarView().environmentObject(model).preferredColorScheme(dark ? .dark:.light)
                 .onAppear { model.start() }
                 .onChange(of: phase) { phase in if phase == .active { model.start() } else if phase == .background { model.cancelLocation(); model.stop() } }
                 .onReceive(NotificationCenter.default.publisher(for: .init("KabarToken"))) { _ in model.registerPush() }

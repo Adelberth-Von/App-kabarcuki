@@ -17,9 +17,25 @@ public class DomainTests {
     public static void main(String[] args)throws Exception{
         if(args.length>0&&args[0].equals("device-publisher")){devicePublisher(args[1]);return;}
         if(args.length>0&&args[0].equals("device-subscriber")){deviceSubscriber(args[1]);System.out.println("PASS device sender interoperability: "+checks+" assertions");return;}
-        mealRules();stateRules();locationAndManualMealRules();cryptoRules();
+        mealRules();clockRules();stateRules();locationAndManualMealRules();cryptoRules();
         if(args.length>0&&args[0].equals("live")){liveRelay();liveStream();}
         System.out.println("PASS "+checks+" assertions");
+    }
+    private static void clockRules(){
+        eq(StatusLogic.clock(at(2,12,0),TZ),"12.00 WIB - Indonesia","local WIB clock");
+        eq(StatusLogic.clock(at(2,12,0),TimeZone.getTimeZone("Asia/Makassar")),"13.00 WITA - Indonesia","WITA clock");
+        eq(StatusLogic.clock(at(2,12,0),TimeZone.getTimeZone("Asia/Jayapura")),"14.00 WIT - Indonesia","WIT clock");
+        eq(StatusLogic.country(TimeZone.getTimeZone("Asia/Tokyo")),"Jepang","Japan label");
+        eq(StatusLogic.country(TimeZone.getTimeZone("Europe/Brussels")),"Belgia","same clock rules do not merge countries");
+        eq(StatusLogic.country(TimeZone.getTimeZone("US/Eastern")),"Amerika Serikat","legacy zone alias");
+        eq(StatusLogic.country(TimeZone.getTimeZone("GMT+07:00")),"Zona waktu HP","fixed offset does not guess country");
+        TimeZone ny=TimeZone.getTimeZone("America/New_York");
+        eq(StatusLogic.shortZone(ny,java.time.Instant.parse("2026-01-02T12:00:00Z").toEpochMilli()),"EST","winter abbreviation");
+        eq(StatusLogic.shortZone(ny,java.time.Instant.parse("2026-07-02T12:00:00Z").toEpochMilli()),"EDT","summer abbreviation");
+        int[][] edges={{4,59,3},{5,0,0},{10,59,0},{11,0,1},{14,59,1},{15,0,2},{17,59,2},{18,0,3},{23,59,3},{0,0,3}};
+        for(int[] edge:edges)eq(StatusLogic.phase(at(2,edge[0],edge[1]),TZ),edge[2],"day scene phase boundary");
+        eq(StatusLogic.phase(at(2,12,0),ny),3,"viewer time drives scene");
+        eq(StatusLogic.localWhen(at(2,0,30),at(2,12,0),ny),"Kemarin · 13.30 EDT - Amerika Serikat","date conversion across midnight");
     }
     private static void mealRules(){
         int[] w=StatusLogic.DEFAULT_WINDOWS;

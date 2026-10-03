@@ -45,7 +45,9 @@ enum SharedStore {
     static func save(_ state: KabarState) throws { try state.validate(); defaults.set(try JSONEncoder().encode(state), forKey: "state") }
     static func reset() {
         for key in ["code", "private"] { SecItemDelete(self.key(key) as CFDictionary) }
+        let dark = defaults.bool(forKey:"appearanceDark"), together = defaults.bool(forKey:"appearanceRelationship")
         defaults.removePersistentDomain(forName: group)
+        defaults.set(dark,forKey:"appearanceDark");defaults.set(together,forKey:"appearanceRelationship")
     }
     static func receive(_ packet: Packet, topic: String) throws -> Bool {
         guard pairing()?.topic == topic, packet.state.revision > state().revision else { return false }

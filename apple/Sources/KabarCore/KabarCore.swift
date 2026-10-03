@@ -181,5 +181,5 @@ public struct Packet: Codable {
         guard text.utf8.count <= 4096 else { throw KabarError.invalid("Kabar terlalu panjang untuk dikirim") }
         return text
     }
-    public var notificationBody: String { (state.events.first?.label ?? state.locationText) + " · " + state.when(state.events.first?.at ?? state.locationAt) }
+    public var notificationBody: String { (state.events.first?.label ?? state.locationText) + " · " + LocalClock.when(state.events.first?.at ?? state.locationAt) }
 }
