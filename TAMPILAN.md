@@ -10,6 +10,8 @@ Screenshot dari aplikasi Flutter yang berjalan pada emulator Android, dengan nam
 
 Panggilan dipilih sebelum masuk dan hanya dipakai pada HP itu. Format waktu ada di **Pengaturan → Format jam**; tersedia 24 jam dan 12 jam AM/PM. Bahasa dibatasi Indonesia, English, dan Deutsch.
 
+<img src="screenshots/abc-time-format.png" width="280" alt="Pilihan 24 jam dan 12 jam AM/PM dengan contoh waktu lokal">
+
 ## Konfirmasi dan Detail
 
 | Periksa sebelum mengirim | Detail suatu kejadian |
@@ -39,5 +41,13 @@ Pagi 05–11 · Siang 11–15 · Sore 15–18 · Malam 18–05. Batas ini mengik
 ## Ikon aplikasi
 
 <img src="screenshots/abc-icon.png" width="128" alt="Ikon abc berupa gelembung pesan pixel ungu dengan tiga titik">
+
+## Tampilan yang sama pada iPhone
+
+Screenshot simulator iPhone dari QA yang lulus. Jam mengikuti GMT/UTC yang dipakai simulator CI. Aplikasi iPhone fisik tetap memerlukan signing Apple/TestFlight.
+
+| Beranda iPhone | Pengaturan iPhone |
+|---|---|
+| <img src="screenshots/abc-iphone-home.png" width="280" alt="Beranda abc Flutter pada simulator iPhone"> | <img src="screenshots/abc-iphone-settings.png" width="280" alt="Pengaturan AM/PM dan tema pada simulator iPhone"> |
 
 [Unduh abc.apk](abc.apk) · [Panduan](README.md) · [Hasil QA](QA.md)

@@ -25,10 +25,10 @@ flutter build ios --simulator --debug --config-only --no-codesign
 cd ios
 xcodegen generate
 cd ..
-flutter build ios --simulator --debug --no-codesign
+flutter build ios --simulator --debug
 ```
 
-XcodeGen menggabungkan host Flutter, KabarCore, widget dan ekstensi notifikasi. Buka `ios/Runner.xcworkspace` untuk penandatanganan. Isi Apple Team; aktifkan App Groups `group.id.kabar.shared`, shared Keychain `id.kabar.shared`, serta Push Notifications pada profil yang sesuai. iPhone fisik memerlukan signing Apple/TestFlight. Backend APNs belum dideploy.
+XcodeGen menggabungkan host Flutter, KabarCore, widget dan ekstensi notifikasi. Build simulator memakai penandatanganan ad hoc Xcode agar Keychain dapat menyimpan pasangan. Buka `ios/Runner.xcworkspace` untuk penandatanganan perangkat fisik. Isi Apple Team; aktifkan App Groups `group.id.kabar.shared`, shared Keychain `id.kabar.shared`, serta Push Notifications pada profil yang sesuai. iPhone fisik memerlukan signing Apple/TestFlight. Backend APNs belum dideploy.
 
 ## QA integrasi
 

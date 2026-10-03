@@ -1,4 +1,6 @@
-# Kabar untuk iPhone dan iPad
+# Komponen Apple dan arsip UI native Kabar
+
+**abc 0.5.0 memakai Flutter untuk tampilan Android/iPhone.** Untuk membangun aplikasi aktif, ikuti [panduan crossplatform](../crossplatform/README.md); proyek di folder ini menyimpan KabarCore, penyimpanan, GPS, widget/ekstensi serta UI SwiftUI lama. Integrasi iOS Flutter ada di `crossplatform/ios`. Nama app baru adalah abc, dengan panggilan, Indonesia/English/Deutsch, format 24 jam/AM-PM, dan Detail riwayat.
 
 ## Pembaruan 0.4.0
 
