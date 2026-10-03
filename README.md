@@ -11,7 +11,7 @@ Antarmuka **Flutter** yang sama dipakai untuk Android dan iPhone. Desain baru me
 3. Buka **abc** dan masukkan panggilan, misalnya **Cuki**. Sapaan pada HP itu akan menjadi **Hai, Cuki**. Pada pembaruan dari Kabar, pasangan dan riwayat tetap dipertahankan.
 4. Pada HP pengirim baru, pilih **Aku membagikan kabar**. Buka **Pengaturan → Kode pasangan**, salin seluruh kode, lalu kirim secara pribadi ke HP kedua.
 5. Pada HP kedua, masukkan panggilan pemilik HP itu dan pilih **Aku menerima kabar**. Tempel kode lengkap lalu tekan **Hubungkan**.
-6. Pada pengirim, ketuk **Kost**, periksa konfirmasi, lalu **Kirim kabar**. Coba juga **Keluar** dan **Makan**. Kedua HP memerlukan internet, tetapi boleh menggunakan jaringan berbeda.
+6. Pada pengirim, ketuk **Kost**, periksa konfirmasi, lalu **Kirim status**. Coba juga **Keluar** dan **Makan**. Kedua HP memerlukan internet, tetapi boleh menggunakan jaringan berbeda.
 7. Buka **Pengaturan → Pengaturan notifikasi** pada masing-masing HP. Aktifkan notifikasi abc. Untuk mencoba latar belakang, cek pengaturan baterai aplikasi sesuai merek HP.
 8. Buka **Pengaturan → Tambahkan widget** atau tahan area kosong layar utama → Widget → abc. Tombol pada widget pengirim membuka aplikasi untuk meminta konfirmasi.
 
