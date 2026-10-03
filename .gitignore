@@ -26,3 +26,5 @@ server/data/
 **/.symlinks/
 **/ephemeral/
 crossplatform/qa-screenshots/
+__pycache__/
+*.pyc
