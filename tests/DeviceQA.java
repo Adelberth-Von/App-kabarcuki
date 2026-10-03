@@ -156,13 +156,15 @@ public class DeviceQA extends Instrumentation {
         ok(code.equals(Store.prefs(c).getString("code","")),"appearance preserves pairing");ok(revision==Store.state(c).revision,"appearance does not publish status");
         java.util.TimeZone original=java.util.TimeZone.getDefault();
         try{
-            main(()->{java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo"));Store.changed(c);});
-            // Modern Android may queue broadcasts; wait for the rendered result, not a fixed delay.
+            // Change the emulator's actual setting. A JVM-only override can be reset by
+            // Android configuration changes (e.g. large text / appearance recreation).
+            shell("cmd alarm set-timezone Asia/Tokyo");
+            // Wait for the actual system broadcast and the rendered result.
             long deadline=SystemClock.elapsedRealtime()+5000;boolean[] shown={false};
             while(!shown[0]&&SystemClock.elapsedRealtime()<deadline){main(()->shown[0]=find(activity.getWindow().getDecorView(),StatusLogic.clock(System.currentTimeMillis(),java.util.TimeZone.getTimeZone("Asia/Tokyo")))!=null);if(!shown[0])Thread.sleep(100);}
-            ok(shown[0],"local clock follows device zone on refresh");
+            ok(shown[0],"local clock follows device zone on refresh; actual zone="+java.util.TimeZone.getDefault().getID());
             ok(Store.state(c).revision==revision,"viewer zone leaves state untouched");
-        }finally{main(()->{java.util.TimeZone.setDefault(original);Store.changed(c);});}
+        }finally{shell("cmd alarm set-timezone "+original.getID());}
     }
     private void shell(String command)throws Exception {try(android.os.ParcelFileDescriptor fd=getUiAutomation().executeShellCommand(command);java.io.FileInputStream in=new java.io.FileInputStream(fd.getFileDescriptor())){while(in.read()!=-1){}}}
     private void testLocation(Context c)throws Exception {
