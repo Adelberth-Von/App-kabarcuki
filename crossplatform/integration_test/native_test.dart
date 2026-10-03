@@ -5,12 +5,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-Future<void> main() async {
+void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   // Initialize the engine accessibility client before the test records its
   // handle baseline. Keep our own handle scoped to this integration suite.
   final semantics = binding.ensureSemantics();
-  await Future<void>.delayed(const Duration(seconds: 1));
+  // Register tests synchronously. Awaiting in main can let the live runner
+  // complete an empty suite before testWidgets has been registered.
+  setUpAll(() async {await Future<void>.delayed(const Duration(seconds: 1));});
   tearDownAll(semantics.dispose);
   testWidgets(
       'native pairing, confirmations, local preferences and history survive restart',
@@ -192,5 +194,9 @@ Future<void> main() async {
       await expectLater(backend.invoke('pairCode'),throwsA(isA<PlatformException>()));
       debugPrint('QA PASS: app files, preferences, queue, history, pairing secrets and notifications cleared.');
     }
+    binding.reportData ??= <String,dynamic>{};
+    binding.reportData!['nativeCompleted']=true;
+    binding.reportData!['cleanupVerified']=cleanup;
+    debugPrint('QA PASS: native UI, preferences, history and screenshots completed.');
   });
 }
