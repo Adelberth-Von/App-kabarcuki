@@ -14,6 +14,15 @@ void main() {
     final before = await backend.invoke('snapshot');
     const cleanup=bool.fromEnvironment('QA_CLEANUP');
     if(cleanup)expect(before['role'],'',reason:'Cleanup tests require a fresh disposable simulator.');
+    if(before['role']=='') {
+      var changes=0;final subscription=backend.changes.listen((_)=>changes++);
+      await Future<void>.delayed(const Duration(milliseconds:200));
+      final initial=changes;
+      for(var i=0;i<10;i++){await backend.invoke('snapshot');}
+      await Future<void>.delayed(const Duration(milliseconds:200));
+      expect(changes-initial,lessThanOrEqualTo(2),reason:'Read-only snapshots must not produce an update feedback loop.');
+      await subscription.cancel();
+    }
     final originalCode = (before['role'] == 'sender')
         ? (await backend.invoke('pairCode'))['code']
         : null;
@@ -98,7 +107,12 @@ void main() {
       await backend.invoke('qaSurfaceProbe',{'seed':true});
       for(final twelve in [false,true,false,true]) {
         await model.prefs({'clock12':twelve});
-        final surfaces=await backend.invoke('qaSurfaceProbe');
+        var surfaces=await backend.invoke('qaSurfaceProbe');
+        // NotificationManager posts through the system service asynchronously.
+        for(var i=0;i<20 && surfaces.containsKey('notification') && RegExp(r'\b(AM|PM)\b').hasMatch(surfaces['notification'] as String)!=twelve;i++) {
+          await Future<void>.delayed(const Duration(milliseconds:100));
+          surfaces=await backend.invoke('qaSurfaceProbe');
+        }
         final texts=surfaces.entries.where((e)=>e.key.startsWith('widget')||e.key=='notification');
         expect(texts.length,greaterThanOrEqualTo(3));
         for(final text in texts)expect(RegExp(r'\b(AM|PM)\b').hasMatch(text.value as String),twelve,reason:text.key);

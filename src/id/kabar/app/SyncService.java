@@ -189,7 +189,8 @@ public class SyncService extends Service {
                 .setOnlyAlertOnce(true).setSound(null).setVibrate(null).setDefaults(0);
             if(delivered.getId()==2) {
                 Bundle data=old.extras;
-                if(!data.containsKey("abcAt")){
+                if(data.containsKey("abcAt"))data=alertData(data.getString("abcName",""),data.getString("abcLabel",""),data.getLong("abcAt"));
+                else {
                     KabarState s=Store.state(c);JSONObject last=s.events.optJSONObject(0);
                     if(last==null)continue;data=alertData(s.name,last.optString("label"),last.optLong("at"));
                 }

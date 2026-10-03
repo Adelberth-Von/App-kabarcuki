@@ -61,12 +61,14 @@ import Combine
     func handle(_ call:FlutterMethodCall,_ result:@escaping FlutterResult) {
         let a=call.arguments as? [String:Any] ?? [:]
         do {
+            // Snapshot reads must not publish changes: that would feed the event
+            // listener back into another snapshot read indefinitely.
+            if call.method=="snapshot" {result(try encoded(snapshot()));return}
             model.error=nil
             switch call.method {
             #if DEBUG
             case "qaCleanupProbe":result(try encoded(CleanupProbe.inspect(seed:a["seed"] as? Bool ?? false)));return
             #endif
-            case "snapshot": result(try encoded(snapshot()));return
             case "preferences":
                 var p=profile
                 if let name=a["nickname"] as? String {guard validName(name) else {result(FlutterError(code:"invalid_name",message:"Invalid nickname",details:nil));return};p["nickname"]=name.trimmingCharacters(in:.whitespacesAndNewlines)}
