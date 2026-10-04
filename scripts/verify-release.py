@@ -42,7 +42,10 @@ def verify(apk):
         for name in archive.namelist():
             if name.startswith('classes') and name.endswith('.dex'):
                 classes.update(class_definitions(archive.read(name)))
-        assert not classes.intersection({'Lid/kabar/app/QaProbe;', 'Lid/kabar/app/DeviceQA;'})
+        forbidden = ('Lid/kabar/app/QaProbe', 'Lid/kabar/app/SeiramaProbe',
+                     'Lid/kabar/app/DeviceQA')
+        leaked = sorted(name for name in classes if name.startswith(forbidden))
+        assert not leaked, f'Debug-only QA classes must be absent: {leaked}'
     print(json.dumps({'release_assets_verified': True, 'sound_resource_file': matches[0],
                       'sound_duration_seconds': duration, 'debug_classes_absent': True,
                       'apk_sha256': hashlib.sha256(Path(apk).read_bytes()).hexdigest()}))

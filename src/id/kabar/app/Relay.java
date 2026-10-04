@@ -17,8 +17,13 @@ public final class Relay {
         publish(topic,payload,"");
     }
     public static void publish(String topic,String payload,String alertProof) throws IOException {
+        publish(topic,payload,alertProof,null);
+    }
+    public interface PublishControl {boolean open(HttpURLConnection connection);void close(HttpURLConnection connection);}
+    public static void publish(String topic,String payload,String alertProof,PublishControl control) throws IOException {
         HttpURLConnection c=open("/"+topic);
         try {
+            if(control!=null&&!control.open(c))throw new IOException("Pengiriman dihentikan");
             c.setRequestMethod("POST");c.setDoOutput(true);
             c.setRequestProperty("Content-Type","text/plain; charset=utf-8");
             if(!alertProof.isEmpty())c.setRequestProperty("Title",alertProof);
@@ -28,6 +33,6 @@ public final class Relay {
             int status=c.getResponseCode();
             if(status!=200)throw new IOException("Relay HTTP "+status);
             try(InputStream in=c.getInputStream()){while(in.read()!=-1){}}
-        }finally{c.disconnect();}
+        }finally{c.disconnect();if(control!=null)control.close(c);}
     }
 }

@@ -16,7 +16,7 @@ New-Item -ItemType Directory -Force -Path $build,(Join-Path $build 'classes'),(J
 '@ | Set-Content -LiteralPath (Join-Path $build 'AndroidManifest.xml') -Encoding utf8NoBOM
 function Run([string]$exe,[string[]]$arguments){& $exe @arguments;if($LASTEXITCODE -ne 0){throw "QA build failed: $exe"}}
 Run (Join-Path $bt 'aapt2.exe') @('link','-o',(Join-Path $build 'base.apk'),'--manifest',(Join-Path $build 'AndroidManifest.xml'),'-I',$android)
-Run $javac @('-encoding','UTF-8','--release','8','-cp',"$android;$appClasses",'-d',(Join-Path $build 'classes'),(Join-Path $PSScriptRoot 'DeviceQA.java'))
+Run $javac @('-encoding','UTF-8','--release','8','-cp',"$android;$appClasses",'-d',(Join-Path $build 'classes'),(Join-Path $PSScriptRoot 'DeviceQA.java'),(Join-Path $PSScriptRoot 'WidgetAssertions.java'))
 Run $jar @('cf',(Join-Path $build 'classes.jar'),'-C',(Join-Path $build 'classes'),'.')
 Run $java @('-cp',(Join-Path $bt 'lib\d8.jar'),'com.android.tools.r8.D8','--lib',$android,'--classpath',$appClasses,'--min-api','26','--output',(Join-Path $build 'dex'),(Join-Path $build 'classes.jar'))
 Run $jar @('uf',(Join-Path $build 'base.apk'),'-C',(Join-Path $build 'dex'),'classes.dex')

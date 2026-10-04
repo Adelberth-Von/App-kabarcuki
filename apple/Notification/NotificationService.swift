@@ -11,7 +11,7 @@ final class NotificationService: UNNotificationServiceExtension {
         content.title = "abc"; content.body = PhoneText.text("Ada kabar baru. Buka aplikasi untuk melihatnya.","There is a new update. Open the app to see it.","Es gibt ein neues Update. Öffne die App, um es zu sehen."); content.sound=UNNotificationSound(named:UNNotificationSoundName("abc_chime.wav")); fallback = content
         work = Task {
             do {
-                guard SharedStore.defaults.object(forKey:"enabled") as? Bool ?? true, let pair = SharedStore.pairing(), request.content.userInfo["topic"] as? String == pair.topic else { finish(content); return }
+                guard SharedStore.defaults.object(forKey:"enabled") as? Bool ?? true, let pair = SharedStore.incomingPairing(), request.content.userInfo["topic"] as? String == pair.topic else { finish(content); return }
                 var envelope = request.content.userInfo["envelope"] as? String
                 if envelope == nil, let id = request.content.userInfo["messageId"] as? String,
                    id.range(of:"^[a-f0-9]{32}$",options:.regularExpression) != nil,
@@ -24,11 +24,12 @@ final class NotificationService: UNNotificationServiceExtension {
                 }
                 guard let envelope, !Task.isCancelled else { finish(content); return }
                 let packet = try Packet.decode(envelope,pairing:pair)
-                guard SharedStore.pairing()?.topic == pair.topic else { finish(content); return }
+                guard SharedStore.incomingPairing()?.topic == pair.topic else { finish(content); return }
                 _ = try SharedStore.receive(packet,topic:pair.topic)
                 content.title = "abc · \(packet.state.name)"; content.body = PhoneText.notification(packet)
-                content.subtitle=SharedStore.defaults.bool(forKey:"appearanceRelationship") ? "Seirama":PhoneText.text("Kabar baru","New update","Neues Update");content.threadIdentifier="abc-updates"
+                content.subtitle=SharedStore.isTwoWay ? "Seirama":PhoneText.text("Kabar baru","New update","Neues Update");content.threadIdentifier="abc-updates"
                 for (key,value) in PhoneText.notificationData(packet) {content.userInfo[key]=value}
+                content.userInfo["abcPeer"]=SharedStore.isTwoWay
                 WidgetCenter.shared.reloadAllTimelines(); finish(content)
             } catch { finish(content) }
         }

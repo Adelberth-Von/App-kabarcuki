@@ -13,8 +13,8 @@ import java.security.GeneralSecurityException;
 public class SyncService extends Service {
     public static final String UPDATES_CHANNEL="updates_pixel_v1";
     private volatile boolean running=false;
-    private Thread worker;
-    private volatile HttpURLConnection connection;
+    private Thread worker, incomingWorker;
+    private volatile HttpURLConnection connection,outgoingConnection;
     private String session;
     private final BroadcastReceiver widgetPower=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){KabarWidget.updateAll(c);}};
     public static void start(Context c) {
@@ -41,13 +41,15 @@ public class SyncService extends Service {
             Store.prefs(this).edit().putBoolean("enabled",false).apply();stopSelf();return START_NOT_STICKY;
         }
         if(Store.role(this).isEmpty()||!Store.prefs(this).getBoolean("enabled",true)){stopSelf();return START_NOT_STICKY;}
-        String nextSession=Store.prefs(this).getString("code","");
+        String nextSession=Store.session(this);
         if(running&&!nextSession.equals(session)) {
-            running=false;if(connection!=null)connection.disconnect();if(worker!=null)worker.interrupt();
+            running=false;if(connection!=null)connection.disconnect();if(outgoingConnection!=null)outgoingConnection.disconnect();if(worker!=null)worker.interrupt();if(incomingWorker!=null)incomingWorker.interrupt();incomingWorker=null;
         }
         if(!running) {
-            running=true;session=Store.prefs(this).getString("code","");
-            worker=new Thread(()->runSync(),"KabarSync");worker.start();
+            running=true;session=Store.session(this);
+            boolean outgoing=Store.canSend(this);
+            worker=new Thread(()->runSync(!outgoing),"KabarSync");worker.start();
+            if(outgoing&&Store.isTwoWay(this)&&!Store.prefs(this).getString("peerCode","").isEmpty()){incomingWorker=new Thread(()->runSync(true),"KabarPeerSync");incomingWorker.start();}
         }
         return START_STICKY;
     }
@@ -70,10 +72,10 @@ public class SyncService extends Service {
         PendingIntent open=PendingIntent.getActivity(this,0,AppEntry.open(this),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent stop=PendingIntent.getService(this,1,new Intent(this,SyncService.class).setAction("STOP").putExtra("stopSession",Store.prefs(this).getString("code","")),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         return new Notification.Builder(this,"connection").setSmallIcon(R.drawable.notification_icon).setContentTitle(LocalProfile.text(this,"abc aktif","abc is active","abc ist aktiv"))
-            .setContentText(Store.role(this).equals("sender")?LocalProfile.text(this,"Siap mengirim kabar","Ready to send updates","Bereit für Updates"):LocalProfile.text(this,"Menunggu kabar","Waiting for updates","Warten auf Updates"))
+            .setContentText(Store.isTwoWay(this)?LocalProfile.text(this,"Saling berbagi kabar","Sharing updates both ways","Updates in beide Richtungen"):Store.canSend(this)?LocalProfile.text(this,"Siap mengirim kabar","Ready to send updates","Bereit für Updates"):LocalProfile.text(this,"Menunggu kabar","Waiting for updates","Warten auf Updates"))
             .setContentIntent(open).setOngoing(true).addAction(new Notification.Action.Builder(null,LocalProfile.text(this,"Jeda","Pause","Pausieren"),stop).build()).build();
     }
-    private boolean current() {return running&&Thread.currentThread()==worker&&Store.prefs(this).getBoolean("enabled",true)&&session.equals(Store.prefs(this).getString("code",""));}
+    private boolean current() {return running&&(Thread.currentThread()==worker||Thread.currentThread()==incomingWorker)&&Store.prefs(this).getBoolean("enabled",true)&&session.equals(Store.session(this));}
     private void status(String text) {
         synchronized(Store.LOCK) {
         if(!current())return;
@@ -84,12 +86,14 @@ public class SyncService extends Service {
         }
         }
     }
-    private void runSync() {
+    private void runSync(boolean incoming) {
         int failures=0;
         while(current()) {
             try {
-                Pairing p=Store.pairing(this);
-                if(Store.role(this).equals("sender")) sendLoop(p);else receive(p);
+                if(Thread.currentThread()==worker)drainRetired();
+                Pairing p=incoming?Store.incomingPairing(this):Store.pairing(this);
+                if(p==null)return;
+                if(incoming)receive(p);else sendLoop(p);
                 failures=0;
             }catch(Exception e) {
                 if(!current())break;
@@ -97,6 +101,19 @@ public class SyncService extends Service {
                 failures++;
                 try{Thread.sleep(Math.min(60000,2000L*(1L<<Math.min(failures,5))));}catch(InterruptedException ignored){}
             }
+        }
+    }
+    private void publish(String topic,String body,String proof)throws IOException {
+        Relay.publish(topic,body,proof,new Relay.PublishControl(){
+            @Override public boolean open(HttpURLConnection active){synchronized(Store.LOCK){if(!current())return false;outgoingConnection=active;return true;}}
+            @Override public void close(HttpURLConnection active){if(outgoingConnection==active)outgoingConnection=null;}
+        });
+    }
+    private void drainRetired()throws Exception {
+        while(current()){
+            JSONObject item;synchronized(Store.LOCK){JSONArray q=new JSONArray(Store.prefs(this).getString("retiredQueue","[]"));if(q.length()==0)return;item=q.getJSONObject(0);}
+            publish(item.getString("topic"),item.getString("body"),"");
+            synchronized(Store.LOCK){if(!current())return;JSONArray q=new JSONArray(Store.prefs(this).getString("retiredQueue","[]")),next=new JSONArray();if(q.length()>0&&q.getJSONObject(0).getString("body").equals(item.getString("body"))){for(int i=1;i<q.length();i++)next.put(q.getJSONObject(i));Store.prefs(this).edit().putString("retiredQueue",next.toString()).commit();}}
         }
     }
     private void sendLoop(Pairing p) throws Exception {
@@ -109,7 +126,7 @@ public class SyncService extends Service {
             }
             if(item!=null) {
                 status("Mengirim kabar…");
-                Relay.publish(p.topic(),item.getString("body"),item.optString("alertProof",""));
+                publish(p.topic(),item.getString("body"),item.optString("alertProof",""));
                 if(!current())return;
                 synchronized(Store.LOCK) {
                     if(!current())return;
@@ -122,8 +139,8 @@ public class SyncService extends Service {
                 heartbeat=System.currentTimeMillis();
                 status("Kabar terkirim ke relay");Store.changed(this);
             }else if(System.currentTimeMillis()-heartbeat>4L*60*60*1000) {
-                String body=new JSONObject().put("state",Store.state(this).json()).put("notify",false).toString();
-                Relay.publish(p.topic(),p.encrypt(body));
+                String body=Seirama.packet(Store.state(this),false,Store.isTwoWay(this)?Store.incomingPairing(this):null).toString();
+                publish(p.topic(),p.encrypt(body),"");
                 synchronized(Store.LOCK) {
                 if(!current())return;
                 heartbeat=System.currentTimeMillis();
@@ -160,12 +177,9 @@ public class SyncService extends Service {
                         boolean alreadyPaired;
                         synchronized(Store.LOCK) {
                             if(!current())return;
-                            KabarState old=Store.state(this);
-                            alreadyPaired=old.revision>0;
-                            if(next.revision<=old.revision){Store.prefs(this).edit().putString("cursor",message.getString("id")).apply();continue;}
-                            boolean saved=Store.prefs(this).edit().putString("state",next.json().toString()).putString("cursor",message.getString("id"))
-                                .putLong("receivedAt",System.currentTimeMillis()).putString("connection","Terhubung ke relay").commit();
-                            if(!saved)throw new IOException("Penyimpanan penuh");
+                            KabarState old=Store.isTwoWay(this)?Store.peerState(this):Store.state(this);
+                            alreadyPaired=old!=null&&old.revision>0;
+                            if(!Store.receive(this,packet,p.topic(),message.getString("id"))){Store.prefs(this).edit().putString("cursor",message.getString("id")).apply();continue;}
                         }
                         Store.changed(this);
                         if(packet.optBoolean("notify") && (alreadyPaired||message.optLong("time")*1000>=started-2000))alert(next);
@@ -182,15 +196,15 @@ public class SyncService extends Service {
         if(!current())return;
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)return;
         JSONObject last=s.events.optJSONObject(0);if(last==null)return;
-        PendingIntent open=PendingIntent.getActivity(this,2,AppEntry.open(this),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent open=PendingIntent.getActivity(this,2,AppEntry.open(this).putExtra("showPeer",Store.isTwoWay(this)),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         Notification n=new Notification.Builder(this,UPDATES_CHANNEL).setSmallIcon(R.drawable.notification_icon)
             .setContentTitle(s.name+" · "+LocalProfile.label(this,last.optString("label")))
             .setContentText(LocalProfile.stamp(this,last.optLong("at")))
             .setContentIntent(open).setAutoCancel(true)
-            .setLargeIcon(KabarWidget.art(this,s,0)).setColor(new Appearance(this).accent)
+            .setLargeIcon(KabarWidget.art(this,s,0)).setColor(new Appearance(Store.isTwoWay(this),new Appearance(this).dark).accent)
             .setStyle(new Notification.BigTextStyle().bigText(notificationDetail(this,last)))
             .setCategory(Notification.CATEGORY_SOCIAL).setVisibility(Notification.VISIBILITY_PRIVATE)
-            .setSubText(new Appearance(this).relationship?"Seirama":"abc")
+            .setSubText(Store.isTwoWay(this)?"Seirama":"abc")
             .addAction(new Notification.Action.Builder(null,LocalProfile.text(this,"Lihat kabar","View update","Update ansehen"),open).build())
             .addExtras(alertData(s.name,last.optString("label"),last.optLong("at"),last.optJSONObject("gps")==null?"":last.optJSONObject("gps").optString("city"))).build();
         getSystemService(NotificationManager.class).notify(2,n);
@@ -225,17 +239,17 @@ public class SyncService extends Service {
                     .setContentText(LocalProfile.stamp(c,data.getLong("abcAt"))).addExtras(data);
                 String expanded=LocalProfile.label(c,data.getString("abcLabel",""))+"\n"+LocalProfile.stamp(c,data.getLong("abcAt"));
                 if(!data.getString("abcCity","").isEmpty())expanded+="\n"+LocalProfile.text(c,"Lokasi terakhir · ","Last location · ","Letzter Standort · ")+data.getString("abcCity");
-                b.setStyle(new Notification.BigTextStyle().bigText(expanded)).setSubText(new Appearance(c).relationship?"Seirama":"abc").setColor(new Appearance(c).accent);
+                b.setStyle(new Notification.BigTextStyle().bigText(expanded)).setSubText(Store.isTwoWay(c)?"Seirama":"abc").setColor(new Appearance(Store.isTwoWay(c),new Appearance(c).dark).accent);
             } else if(delivered.getId()==1) {
                 b.setContentTitle(LocalProfile.text(c,"abc aktif","abc is active","abc ist aktiv"))
-                    .setContentText(Store.role(c).equals("sender")?LocalProfile.text(c,"Siap mengirim kabar","Ready to send updates","Bereit für Updates"):LocalProfile.text(c,"Menunggu kabar","Waiting for updates","Warten auf Updates"));
+                    .setContentText(Store.isTwoWay(c)?LocalProfile.text(c,"Saling berbagi kabar","Sharing updates both ways","Updates in beide Richtungen"):Store.canSend(c)?LocalProfile.text(c,"Siap mengirim kabar","Ready to send updates","Bereit für Updates"):LocalProfile.text(c,"Menunggu kabar","Waiting for updates","Warten auf Updates"));
             } else continue;
             nm.notify(delivered.getTag(),delivered.getId(),b.build());
         }
     }
     @Override public void onDestroy() {
         unregisterReceiver(widgetPower);
-        running=false;if(connection!=null)connection.disconnect();if(worker!=null)worker.interrupt();
+        running=false;if(connection!=null)connection.disconnect();if(outgoingConnection!=null)outgoingConnection.disconnect();if(worker!=null)worker.interrupt();if(incomingWorker!=null)incomingWorker.interrupt();
         Store.wakeSync();
         if(!Store.role(this).isEmpty())Store.prefs(this).edit().putString("connection","Koneksi dijeda · buka aplikasi untuk melanjutkan").apply();
         Store.changed(this);super.onDestroy();

@@ -27,7 +27,7 @@ val prepareManifest by tasks.registering {
     }
 }
 val prepareQa by tasks.registering(Sync::class) {
-    from(rootProject.file("tests/DeviceQA.java"))
+    from(rootProject.file("tests/DeviceQA.java"),rootProject.file("tests/WidgetAssertions.java"))
     into(layout.buildDirectory.dir("generated-qa"))
 }
 tasks.named("preBuild") { dependsOn(prepareManifest, prepareQa) }

@@ -36,7 +36,21 @@ enum SharedStore {
     }
     static func pairing() -> Pairing? {
         guard let data = secret("code"), let code = String(data: data, encoding: .utf8) else { return nil }
-        return try? Pairing(code: code, privateRaw: defaults.string(forKey: "role") == "sender" ? secret("private") : nil)
+        return try? Pairing(code: code, privateRaw: canSend ? secret("private") : nil)
+    }
+    static var isTwoWay: Bool {defaults.string(forKey:"role") == "duplex"}
+    static var isDuplex: Bool {isTwoWay}
+    static var mode: String {isTwoWay ? "seirama":"oneWay"}
+    static var canSend: Bool {["sender","duplex"].contains(defaults.string(forKey:"role") ?? "")}
+    static var reciprocity: String {!isTwoWay ? "none":incomingPairing()==nil ? "unlinked":defaults.bool(forKey:"peerRevoked") ? "inactive":defaults.bool(forKey:"peerConfirmed") ? "active":"waiting"}
+    static func incomingPairing() -> Pairing? {
+        if isTwoWay {guard let data=secret("peerCode"),let code=String(data:data,encoding:.utf8) else {return nil};return try? Pairing(code:code)}
+        return defaults.string(forKey:"role")=="receiver" ? pairing():nil
+    }
+    static func selfState() -> KabarState {state()}
+    static func peerState() -> KabarState? {
+        guard isTwoWay,incomingPairing() != nil else {return nil}
+        guard let data=defaults.data(forKey:"peerState"),let state=try? JSONDecoder().decode(KabarState.self,from:data),(try? state.validate()) != nil else {return KabarState()};return state
     }
     static func state() -> KabarState {
         guard let data = defaults.data(forKey: "state"), let state = try? JSONDecoder().decode(KabarState.self, from: data), (try? state.validate()) != nil else { return KabarState() }
@@ -44,7 +58,7 @@ enum SharedStore {
     }
     static func save(_ state: KabarState) throws { try state.validate(); defaults.set(try JSONEncoder().encode(state), forKey: "state") }
     static func reset() {
-        for key in ["code", "private"] { SecItemDelete(self.key(key) as CFDictionary) }
+        for key in ["code", "private", "peerCode", "oneWayCode"] { SecItemDelete(self.key(key) as CFDictionary) }
         let dark = defaults.bool(forKey:"appearanceDark"), together = defaults.bool(forKey:"appearanceRelationship")
         let profile = defaults.dictionary(forKey:"abcProfile")
         defaults.removePersistentDomain(forName: group)
@@ -53,7 +67,7 @@ enum SharedStore {
     }
     static func eraseAll() throws {
         // Two abc accounts in one service; never erase other Keychain items.
-        for name in ["code","private"] {
+        for name in ["code","private","peerCode","oneWayCode"] {
             let status=SecItemDelete(key(name) as CFDictionary)
             guard status==errSecSuccess || status==errSecItemNotFound else {throw KabarError.invalid("Kunci abc belum dapat dihapus")}
         }
@@ -79,8 +93,14 @@ enum SharedStore {
         }
     }
     static func receive(_ packet: Packet, topic: String) throws -> Bool {
-        guard pairing()?.topic == topic, packet.state.revision > state().revision else { return false }
-        try save(packet.state); return true
+        guard incomingPairing()?.topic == topic,packet.state.revision > (isTwoWay ? peerState()?.revision ?? 0:state().revision) else {return false}
+        try packet.state.validate()
+        if isTwoWay {
+            defaults.set(try JSONEncoder().encode(packet.state),forKey:"peerState")
+            defaults.set(pairing().map{packet.reciprocates($0)} ?? false,forKey:"peerConfirmed")
+            defaults.set(packet.seirama == false,forKey:"peerRevoked")
+        } else {try save(packet.state)}
+        return true
     }
 }
 struct RelayMessage: Decodable { let id: String?; let event: String; let message: String?; let time: Int64? }

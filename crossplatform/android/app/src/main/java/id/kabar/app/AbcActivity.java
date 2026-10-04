@@ -21,6 +21,7 @@ public final class AbcActivity extends FlutterActivity {
     private LocationCapture capture;
     private Runnable permitted;
     private String quickAction="";
+    private boolean quickPeer;
     private EventChannel.EventSink updates;
     private boolean watching=false;
     private MethodChannel.Result locationSettingsResult;
@@ -46,17 +47,17 @@ public final class AbcActivity extends FlutterActivity {
             }
             @Override public void onCancel(Object args){stopWatching();}
         });
-        quickAction=getIntent().getStringExtra("quickAction");
+        quickAction=getIntent().getStringExtra("quickAction");quickPeer=getIntent().getBooleanExtra("showPeer",false);
         SyncService.start(this);
     }
-    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);quickAction=intent.getStringExtra("quickAction");emitUpdate();}
+    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);quickAction=intent.getStringExtra("quickAction");quickPeer=intent.getBooleanExtra("showPeer",false);emitUpdate();}
     @Override protected void onPause(){super.onPause();if(capture!=null)capture.cancel();}
     @Override protected void onDestroy(){stopWatching();if(capture!=null)capture.cancel();io.shutdown();super.onDestroy();}
     private interface Job{JSONObject run()throws Exception;}
-    private void background(MethodChannel.Result result,Job job){io.execute(()->{try{String value=job.run().toString();main.post(()->result.success(value));}catch(Exception e){main.post(()->fail(result,e));}});}
+    private void background(MethodChannel.Result result,Job job){io.execute(()->{try{JSONObject answer=job.run();if(answer==null)return;String value=answer.toString();main.post(()->result.success(value));}catch(Exception e){main.post(()->fail(result,e));}});}
     private void fail(MethodChannel.Result result,Exception e){if((getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)android.util.Log.e("abc-QA","Native action failed",e);String code=e.getMessage()!=null&&e.getMessage().contains("25 kabar")?"queue_full":"error";result.error(code,"Action could not be completed",null);}
     private JSONObject answer(String note)throws Exception{JSONObject j=new JSONObject().put("snapshot",snapshot());if(note!=null&&!note.isEmpty())j.put("note",note);return j;}
-    private boolean isSender(){return "sender".equals(Store.role(this));}
+    private boolean isSender(){return Store.canSend(this);}
     private void requireSender(){if(!isSender())throw new SecurityException("Sender required");}
     private JSONObject snapshot()throws Exception{
         TimeZone.setDefault(null);TimeZone z=TimeZone.getDefault();long now=System.currentTimeMillis();
@@ -75,15 +76,29 @@ public final class AbcActivity extends FlutterActivity {
         JSONObject profile=new JSONObject().put("nickname",pref.getString("nickname","")).put("language",LocalProfile.language(this)).put("dark",pref.getBoolean("dark",false)).put("relationship",pref.getBoolean("relationship",false)).put("clock12",pref.getBoolean("clock12",false)).put("animations",pref.getBoolean("animations",true));
         String old=Store.prefs(this).getString("connection","");boolean enabled=Store.prefs(this).getBoolean("enabled",true);
         String connection=!enabled?"paused":old.startsWith("Terhubung")?"online":old.startsWith("Kabar terkirim")?"sent":old.startsWith("Mengirim")?"sending":old.contains("terputus")?"offline":"connecting";
-        JSONObject j=new JSONObject().put("state",state).put("profile",profile).put("role",Store.role(this)).put("enabled",enabled).put("pending",Store.pending(this)).put("connection",connection).put("shareLocation",Store.prefs(this).getBoolean("shareLocation",false)).put("zone",LocalProfile.zone(this,z,now,false)).put("localTimes",localTimes).put("platform","android").put("mealsToday",new JSONArray(Arrays.asList(s.hasMealToday("Sarapan",now),s.hasMealToday("Makan siang",now),s.hasMealToday("Makan malam",now))));
+        JSONObject j=new JSONObject().put("mode",Store.mode(this)).put("reciprocity",Store.reciprocity(this)).put("modeUpgradeSuggested",!Store.isTwoWay(this)&&pref.getBoolean("relationship",false)).put("state",state).put("profile",profile).put("role",Store.role(this)).put("enabled",enabled).put("pending",Store.pending(this)).put("connection",connection).put("shareLocation",Store.prefs(this).getBoolean("shareLocation",false)).put("zone",LocalProfile.zone(this,z,now,false)).put("localTimes",localTimes).put("platform","android").put("mealsToday",new JSONArray(Arrays.asList(s.hasMealToday("Sarapan",now),s.hasMealToday("Makan siang",now),s.hasMealToday("Makan malam",now))));
+        KabarState peer=Store.peerState(this);
+        if(peer!=null){JSONObject peerTimes=new JSONObject(),peerJson=decorate(peer,peerTimes,z);j.put("peerState",peerJson).put("peerLocalTimes",peerTimes).put("peerZone",LocalProfile.zone(this,TimeZone.getTimeZone(peer.zone),now,true)).put("peerMealsToday",new JSONArray(Arrays.asList(peer.hasMealToday("Sarapan",now),peer.hasMealToday("Makan siang",now),peer.hasMealToday("Makan malam",now))));}
         if(quickAction!=null&&!quickAction.isEmpty()){j.put("quickAction",quickAction);quickAction="";}
+        if(quickPeer&&Store.isTwoWay(this)&&Store.peerState(this)!=null){j.put("quickPeer",true);quickPeer=false;}
         j.put("energySaver",getSystemService(PowerManager.class).isPowerSaveMode());
         return j;
     }
+    private JSONObject decorate(KabarState s,JSONObject times,TimeZone viewer)throws Exception {
+        JSONObject j=s.json();
+        for(String key:new String[]{"locationAt","homeAt","mealAt","breakfastAt","lunchAt","dinnerAt"}){long at=j.optLong(key);if(at>0)times.put(Long.toString(at),LocalProfile.zone(this,viewer,at,false));}
+        JSONArray events=j.getJSONArray("events");
+        for(int i=0;i<events.length();i++){JSONObject e=events.getJSONObject(i);long at=e.getLong("at");times.put(Long.toString(at),LocalProfile.zone(this,viewer,at,false));e.put("originInfo",LocalProfile.zone(this,TimeZone.getTimeZone(e.optString("zone",s.zone)),at,true));if(e.optJSONObject("gps")!=null){long g=e.getJSONObject("gps").getLong("at");times.put(Long.toString(g),LocalProfile.zone(this,viewer,g,false));}}
+        if(s.gps!=null)times.put(Long.toString(s.gps.at),LocalProfile.zone(this,viewer,s.gps.at,false));return j;
+    }
+    private void consent(Map<String,Object> args){if(!Boolean.TRUE.equals(args.get("confirmed")))throw new SecurityException("Explicit confirmation required");}
     @SuppressWarnings("unchecked") private void handle(MethodCall call,MethodChannel.Result result){
         try {
             Map<String,Object> args=call.arguments instanceof Map?(Map<String,Object>)call.arguments:Collections.emptyMap();
             switch(call.method){
+            case "qaSeiramaProbe":
+                if((getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)==0){result.notImplemented();return;}
+                result.success(Class.forName("id.kabar.app.SeiramaProbe").getMethod("run",Context.class,boolean.class).invoke(null,this,false).toString());return;
             case "qaCleanupProbe":case "qaSurfaceProbe":
                 if((getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)==0){result.notImplemented();return;}
                 Object probe=Class.forName("id.kabar.app.QaProbe").getMethod(call.method.equals("qaCleanupProbe")?"cleanup":"surfaces",Context.class,boolean.class).invoke(null,this,Boolean.TRUE.equals(args.get("seed")));
@@ -109,6 +124,42 @@ public final class AbcActivity extends FlutterActivity {
                 Pairing p;try{p=Pairing.parse((String)args.get("code"));}catch(Exception e){result.error("invalid_code","Invalid pairing code",null);return;}
                 if(!Store.role(this).isEmpty())throw new IllegalStateException();Store.prefs(this).edit().clear().putString("role","receiver").putString("code",p.code()).putBoolean("enabled",true).commit();SyncService.start(this);Store.changed(this);if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},45);result.success(answer(null).toString());return;
             }
+            case "enableSeirama":background(result,()->{
+                consent(args);if(Store.isTwoWay(this))return answer(null);
+                synchronized(Store.LOCK){
+                    String oldRole=Store.role(this);boolean oldSender=oldRole.equals("sender");
+                    if(oldSender&&Store.pending(this)>=25)throw new IllegalStateException("25 kabar masih menunggu");
+                    KabarState original=Store.state(this),own=oldSender?original:new KabarState();
+                    Pairing ownPair=oldSender?Store.pairing(this):Pairing.create();
+                    if(!oldSender){own.name=LocalProfile.prefs(this).getString("nickname","Aku");own.revision=0;}
+                    SharedPreferences.Editor edit=Store.prefs(this).edit().putString("oneWayRole",oldRole.equals("receiver")?"receiver":"sender").putString("role","duplex").putString("code",ownPair.code()).putString("private",Pairing.encode(ownPair.privateKey.getEncoded())).putBoolean("enabled",true).putBoolean("peerConfirmed",false).putBoolean("peerRevoked",false);
+                    if(oldRole.equals("receiver")){String incoming=Store.prefs(this).getString("code","");edit.putString("peerCode",incoming).putString("peerState",original.json().toString()).putString("oneWayCode",incoming).putString("oneWayState",original.json().toString()).putString("queue","[]");}
+                    if(!edit.commit())throw new IllegalStateException();own.revision++;Store.saveAndQueue(this,own,false);
+                }
+                LocalProfile.prefs(this).edit().putBoolean("relationship",true).commit();main.post(()->{SyncService.start(this);if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},45);});return answer(null);
+            });return;
+            case "joinSeirama":background(result,()->{
+                consent(args);if(!Store.isTwoWay(this))throw new SecurityException("Enable Seirama first");
+                Pairing incoming;try{incoming=Seirama.parseInvite((String)args.get("code"));}catch(Exception e){main.post(()->result.error("invalid_code","Invalid Seirama code",null));return null;}
+                if(incoming.topic().equals(Store.pairing(this).topic())){main.post(()->result.error("own_code","Use your partner's code",null));return null;}
+                synchronized(Store.LOCK){
+                    if(Store.pending(this)>=25)throw new IllegalStateException("25 kabar masih menunggu");
+                    boolean same=incoming.code().equals(Store.prefs(this).getString("peerCode",""));
+                    SharedPreferences.Editor edit=Store.prefs(this).edit().putString("peerCode",incoming.code()).putBoolean("peerConfirmed",false).putBoolean("peerRevoked",false).remove("cursor");if(!same)edit.putString("peerState",new KabarState().json().toString());
+                    if(!edit.commit())throw new IllegalStateException();KabarState own=Store.state(this);own.revision++;Store.saveAndQueue(this,own,false);
+                }
+                main.post(()->SyncService.start(this));return answer(null);
+            });return;
+            case "disableSeirama":background(result,()->{
+                consent(args);if(!Store.isTwoWay(this))return answer(null);
+                synchronized(Store.LOCK){
+                    String previous=Store.prefs(this).getString("oneWayRole","sender");if(previous.equals("sender")&&Store.pending(this)>=25)throw new IllegalStateException("25 kabar masih menunggu");SharedPreferences.Editor edit=Store.prefs(this).edit();
+                    if(previous.equals("receiver")){Store.retire(this,Store.pairing(this),Store.state(this));String code=Store.prefs(this).getString("oneWayCode","");KabarState old=code.equals(Store.prefs(this).getString("peerCode",""))?Store.peerState(this):KabarState.parse(Store.prefs(this).getString("oneWayState",""));edit.putString("code",code).putString("state",old.json().toString()).remove("private").putString("queue","[]");}
+                    edit.putString("role",previous).remove("peerCode").remove("peerState").remove("peerConfirmed").remove("peerRevoked").remove("oneWayRole").remove("oneWayCode").remove("oneWayState").remove("cursor").remove("publishedAt").commit();
+                    if(previous.equals("sender"))Store.revokeOwn(this);
+                }
+                LocalProfile.prefs(this).edit().putBoolean("relationship",false).commit();Store.changed(this);main.post(()->SyncService.start(this));return answer(null);
+            });return;
             case "record":{
                 requireSender();if(Store.pending(this)>=25){result.error("queue_full","Queue full",null);return;}
                 String kind=(String)args.getOrDefault("kind","");String category=(String)args.get("category");boolean share=Boolean.TRUE.equals(args.get("shareLocation"));String session=Store.prefs(this).getString("code","");
@@ -127,8 +178,8 @@ public final class AbcActivity extends FlutterActivity {
             case "edit":background(result,()->{requireSender();synchronized(Store.LOCK){KabarState s=Store.state(this);for(String k:new String[]{"name","outside","home","meal"})if(args.containsKey(k)){String v=(String)args.get(k);if(!LocalProfile.validName(v))throw new IllegalArgumentException();switch(k){case "name":s.name=v.trim();break;case "outside":s.outside=v.trim();break;case "home":s.home=v.trim();break;case "meal":s.meal=v.trim();}}
                 if(args.containsKey("windows")){List<Number> list=(List<Number>)args.get("windows");int[] windows=new int[list.size()];for(int i=0;i<windows.length;i++)windows[i]=list.get(i).intValue();if(!StatusLogic.validWindows(windows))throw new IllegalArgumentException();s.windows=windows;}
                 s.revision++;Store.saveAndQueue(this,s,false);}return answer(null);});return;
-            case "pairCode":requireSender();result.success(new JSONObject().put("code",Store.pairing(this).code()).toString());return;
-            case "shareCode":requireSender();startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,Store.pairing(this).code()),"abc"));break;
+            case "pairCode":requireSender();result.success(new JSONObject().put("code",Store.isTwoWay(this)?Seirama.invite(Store.pairing(this)):Store.pairing(this).code()).toString());return;
+            case "shareCode":requireSender();startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,Store.isTwoWay(this)?Seirama.invite(Store.pairing(this)):Store.pairing(this).code()),"abc"));break;
             case "openMap":{
                 double lat=((Number)args.get("lat")).doubleValue(),lon=((Number)args.get("lon")).doubleValue();if(!Double.isFinite(lat)||!Double.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)throw new IllegalArgumentException();
                 String coords=Double.toString(lat)+","+Double.toString(lon);try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("geo:"+coords+"?q="+coords)));}catch(ActivityNotFoundException e){startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://maps.google.com/?q="+coords)));}break;
@@ -138,7 +189,7 @@ public final class AbcActivity extends FlutterActivity {
             case "appSettings":startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName())));break;
             case "pinWidget":AppWidgetManager wm=AppWidgetManager.getInstance(this);if(wm.isRequestPinAppWidgetSupported())wm.requestPinAppWidget(new ComponentName(this,KabarWidget.class),null,null);break;
             case "clearGps":case "clearHistory":background(result,()->{requireSender();synchronized(Store.LOCK){KabarState s=Store.state(this);s.gps=null;for(int i=0;i<s.events.length();i++)s.events.getJSONObject(i).remove("gps");if(call.method.equals("clearHistory")){s.events=new JSONArray();s.location="";s.locationAt=s.homeAt=s.mealAt=s.breakfastAt=s.lunchAt=s.dinnerAt=0;s.mealCategory="";}s.revision++;Store.saveAndQueue(this,s,false);Store.prefs(this).edit().putBoolean("shareLocation",false).apply();}return answer(null);});return;
-            case "rotate":background(result,()->{requireSender();Pairing p=Pairing.create();synchronized(Store.LOCK){KabarState s=Store.state(this);s.revision++;Store.prefs(this).edit().putString("code",p.code()).putString("private",Pairing.encode(p.privateKey.getEncoded())).putString("queue","[]").remove("cursor").remove("publishedAt").commit();Store.saveAndQueue(this,s,false);}main.post(()->SyncService.start(this));return answer(null);});return;
+            case "rotate":background(result,()->{requireSender();if(Store.isTwoWay(this))throw new SecurityException("Disable Seirama before rotating a one-way code");Pairing p=Pairing.create();synchronized(Store.LOCK){KabarState s=Store.state(this);s.revision++;Store.prefs(this).edit().putString("code",p.code()).putString("private",Pairing.encode(p.privateKey.getEncoded())).putString("queue","[]").remove("cursor").remove("publishedAt").commit();Store.saveAndQueue(this,s,false);}main.post(()->SyncService.start(this));return answer(null);});return;
             case "disconnect":stopService(new Intent(this,SyncService.class));Store.prefs(this).edit().clear().commit();Store.changed(this);break;
             case "prepareUninstall":
                 if(capture!=null)capture.cancel();permitted=null;

@@ -12,6 +12,16 @@ import CoreLocation
     private var observation:AnyCancellable?
     private var notifications:[NSObjectProtocol]=[]
     private var settingsObserver:NSObjectProtocol?
+    private var quickAction=""
+    private var quickPeer=false
+    func open(_ url: URL) -> Bool {
+        guard url.scheme=="kabar",let parts=URLComponents(url:url,resolvingAgainstBaseURL:false) else {return false}
+        let query=parts.queryItems ?? []
+        if url.host=="home",query.contains(where:{$0.name=="peer" && $0.value=="1"}),SharedStore.isTwoWay,SharedStore.peerState() != nil {quickPeer=true}
+        else if url.host=="action",model.canSend,let kind=query.first(where:{$0.name=="kind"})?.value,["outside","home","meal"].contains(kind){quickAction=kind}
+        else if url.host != "home" {return false}
+        updates?(nil);return true
+    }
     var profile: [String:Any] { SharedStore.defaults.dictionary(forKey:"abcProfile") ?? [:] }
     func attach(_ messenger: FlutterBinaryMessenger) {
         #if DEBUG
@@ -64,11 +74,24 @@ import CoreLocation
         var p=profile;p["dark"]=SharedStore.defaults.bool(forKey:"appearanceDark");p["relationship"]=SharedStore.defaults.bool(forKey:"appearanceRelationship")
         let old=model.connection
         let connection = !model.enabled ? "paused" : old.hasPrefix("Terhubung") ? "online" : old.hasPrefix("Kabar terkirim") ? "sent" : old.hasPrefix("Menunggu") ? "offline" : "connecting"
-        return ["state":s,"profile":p,"role":model.role,"enabled":model.enabled,"pending":model.queue.count,"connection":connection,"shareLocation":SharedStore.defaults.bool(forKey:"shareLocation"),"zone":zone(.current,KabarState.now,offset:false),"localTimes":local,"platform":"ios","energySaver":ProcessInfo.processInfo.isLowPowerModeEnabled,"pushEndpoint":model.pushEndpoint,"mealsToday":["Sarapan","Makan siang","Makan malam"].map{model.state.hasMealToday($0)}]
+        var output:[String:Any]=["mode":SharedStore.mode,"reciprocity":SharedStore.reciprocity,"modeUpgradeSuggested":!SharedStore.isTwoWay && SharedStore.defaults.bool(forKey:"appearanceRelationship"),"state":s,"profile":p,"role":model.role,"enabled":model.enabled,"pending":model.queue.count,"connection":connection,"shareLocation":SharedStore.defaults.bool(forKey:"shareLocation"),"zone":zone(.current,KabarState.now,offset:false),"localTimes":local,"platform":"ios","energySaver":ProcessInfo.processInfo.isLowPowerModeEnabled,"pushEndpoint":model.pushEndpoint,"mealsToday":["Sarapan","Makan siang","Makan malam"].map{model.state.hasMealToday($0)}]
+        if let peer=SharedStore.peerState() {
+            var times:[String:Any]=[:];output["peerState"]=try decorate(peer,local:&times)
+            output["peerLocalTimes"]=times;output["peerZone"]=zone(peer.timeZone,KabarState.now,offset:true);output["peerMealsToday"]=["Sarapan","Makan siang","Makan malam"].map{peer.hasMealToday($0)}
+        }
+        if !quickAction.isEmpty {output["quickAction"]=quickAction;quickAction=""};if quickPeer {output["quickPeer"]=true;quickPeer=false}
+        return output
+    }
+    private func decorate(_ state: KabarState,local: inout [String:Any]) throws -> [String:Any] {
+        var json=try JSONSerialization.jsonObject(with:JSONEncoder().encode(state)) as! [String:Any]
+        for at in [state.locationAt,state.homeAt,state.mealAt,state.breakfastAt,state.lunchAt,state.dinnerAt] where at>0 {local[String(at)]=zone(.current,at,offset:false)}
+        var events=json["events"] as? [[String:Any]] ?? []
+        for i in events.indices {let at=(events[i]["at"] as! NSNumber).int64Value;local[String(at)]=zone(.current,at,offset:false);events[i]["originInfo"]=zone(TimeZone(identifier:events[i]["zone"] as? String ?? state.zone) ?? .gmt,at,offset:true);if let point=events[i]["gps"] as? [String:Any],let g=(point["at"] as? NSNumber)?.int64Value{local[String(g)]=zone(.current,g,offset:false)}}
+        json["events"]=events;if let point=state.gps {local[String(point.at)]=zone(.current,point.at,offset:false)};return json
     }
     func encoded(_ value:[String:Any]) throws->String {String(decoding:try JSONSerialization.data(withJSONObject:value),as:UTF8.self)}
     func answer(_ result:FlutterResult,note:String?=nil){do {var v:[String:Any]=["snapshot":try snapshot()];if let note {v["note"]=note};result(try encoded(v))}catch{result(FlutterError(code:"error",message:"Unable to complete action",details:nil))}}
-    func requireSender() throws {if model.role != "sender" {throw KabarError.invalid("Sender required")}}
+    func requireSender() throws {if !model.canSend || SharedStore.pairing()?.privateKey == nil {throw KabarError.invalid("Sender required")}}
     func handle(_ call:FlutterMethodCall,_ result:@escaping FlutterResult) {
         let a=call.arguments as? [String:Any] ?? [:]
         do {
@@ -101,6 +124,12 @@ import CoreLocation
             case "setupReceiver":
                 guard model.role.isEmpty else {throw KabarError.invalid("Already paired")}
                 guard let code=a["code"] as? String,(try? Pairing(code:code)) != nil else {result(FlutterError(code:"invalid_code",message:"Invalid code",details:nil));return};model.join(code)
+            case "enableSeirama":try model.enableSeirama(confirmed:a["confirmed"] as? Bool ?? false)
+            case "joinSeirama":
+                guard let invite=a["code"] as? String,let incoming=try? Seirama.parseInvite(invite) else {result(FlutterError(code:"invalid_code",message:"Invalid Seirama code",details:nil));return}
+                guard incoming.topic != SharedStore.pairing()?.topic else {result(FlutterError(code:"own_code",message:"Use your partner's code",details:nil));return}
+                try model.joinSeirama(invite,confirmed:a["confirmed"] as? Bool ?? false)
+            case "disableSeirama":try model.disableSeirama(confirmed:a["confirmed"] as? Bool ?? false)
             case "record":
                 try requireSender();guard model.pending<25 else {result(FlutterError(code:"queue_full",message:"Queue full",details:nil));return}
                 let kind=a["kind"] as? String ?? "",share=a["shareLocation"] as? Bool ?? false
@@ -114,9 +143,9 @@ import CoreLocation
                 try requireSender();var s=model.state
                 for k in ["name","outside","home","meal"] {if let v=a[k] as? String {guard validName(v) else {throw KabarError.invalid("Name")};let clean=v.trimmingCharacters(in:.whitespacesAndNewlines);switch k {case "name":s.name=clean;case "outside":s.outside=clean;case "home":s.home=clean;default:s.meal=clean}}}
                 if let w=a["windows"] as? [Int] {guard KabarState.validWindows(w) else {throw KabarError.invalid("Schedule")};s.windows=w};s.revision+=1;try model.enqueue(s,notify:false)
-            case "pairCode":try requireSender();result(try encoded(["code":model.code]));return
+            case "pairCode":try requireSender();result(try encoded(["code":SharedStore.isTwoWay ? Seirama.invite(SharedStore.pairing()!):model.code]));return
             case "shareCode":
-                try requireSender();let vc=UIActivityViewController(activityItems:[model.code],applicationActivities:nil)
+                try requireSender();let vc=UIActivityViewController(activityItems:[SharedStore.isTwoWay ? Seirama.invite(SharedStore.pairing()!):model.code],applicationActivities:nil)
                 if let root=UIApplication.shared.connectedScenes.compactMap({($0 as? UIWindowScene)?.keyWindow?.rootViewController}).first {vc.popoverPresentationController?.sourceView=root.view;root.present(vc,animated:true)}
             case "openMap":
                 guard let lat=a["lat"] as? Double,let lon=a["lon"] as? Double,lat.isFinite,lon.isFinite,abs(lat)<=90,abs(lon)<=180 else {throw KabarError.invalid("Location")}

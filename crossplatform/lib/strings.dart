@@ -24,19 +24,205 @@ class Copy {
 }
 
 const messages = <String, List<String>>{
+  'mode': ['Mode berbagi', 'Sharing mode', 'Teilen-Modus'],
+  'oneWay': ['Satu arah', 'One way', 'Einseitig'],
+  'oneWayDescription': [
+    'Satu orang berbagi, keluarga menerima kabar.',
+    'One person shares; family receives updates.',
+    'Eine Person teilt; die Familie erhält Updates.'
+  ],
+  'seirama': ['Seirama', 'Seirama', 'Seirama'],
+  'seiramaDescription': [
+    'Dua orang, dua cerita. Saling berbagi kabar.',
+    'Two people, two stories. Share updates both ways.',
+    'Zwei Menschen, zwei Geschichten. Updates in beide Richtungen.'
+  ],
+  'seiramaConsentTitle': [
+    'Seirama, saling berbagi',
+    'Seirama, share both ways',
+    'Seirama, gegenseitig teilen'
+  ],
+  'seiramaConsentBody': [
+    'HP ini bisa mengirim kabarmu sekaligus menerima kabar pasangan. Status dan riwayat kalian tetap terpisah. Tukar kode Seirama dan konfirmasi di kedua HP untuk menghubungkannya. Lokasi tetap hanya dibagikan saat kamu memilihnya.',
+    'This phone can send your updates and receive your partner’s. Your statuses and histories stay separate. Exchange Seirama codes and confirm on both phones to connect. Location is shared only when you choose it.',
+    'Dieses Handy kann deine Updates senden und die deines Partners empfangen. Status und Verlauf bleiben getrennt. Tauscht Seirama-Codes aus und bestätigt auf beiden Handys. Dein Standort wird nur geteilt, wenn du es auswählst.'
+  ],
+  'activateSeirama': [
+    'Aktifkan Seirama',
+    'Enable Seirama',
+    'Seirama aktivieren'
+  ],
+  'modeUpgrade': [
+    'Seirama kini menjadi mode dua arah. Aktifkan dengan konfirmasi untuk mulai saling berbagi.',
+    'Seirama is now a two-way mode. Confirm to start sharing with each other.',
+    'Seirama ist jetzt ein gegenseitiger Modus. Bestätige, um miteinander zu teilen.'
+  ],
+  'linkPartner': [
+    'Hubungkan pasangan',
+    'Connect your partner',
+    'Partner verbinden'
+  ],
+  'exchangeCodes': [
+    'Tukar kode Seirama',
+    'Exchange Seirama codes',
+    'Seirama-Codes austauschen'
+  ],
+  'exchangeBody': [
+    '1. Kirim kode milikmu secara pribadi.\n2. Masukkan kode dari HP pasangan di sini.\n3. Pasangan melakukan hal yang sama dan mengonfirmasi.',
+    '1. Share your code privately.\n2. Enter the code from your partner’s phone here.\n3. Your partner does the same and confirms.',
+    '1. Teile deinen Code privat.\n2. Gib hier den Code vom anderen Handy ein.\n3. Dein Partner macht dasselbe und bestätigt.'
+  ],
+  'yourCode': ['Kode milikmu', 'Your code', 'Dein Code'],
+  'partnerCode': [
+    'Kode dari pasangan',
+    'Your partner’s code',
+    'Code deines Partners'
+  ],
+  'joinSeiramaTitle': [
+    'Hubungkan kedua cerita?',
+    'Connect both stories?',
+    'Beide Geschichten verbinden?'
+  ],
+  'joinSeiramaBody': [
+    'Kamu akan menerima kabar pemilik kode ini. Kode milikmu perlu dikonfirmasi di HP mereka agar mereka juga menerima kabarmu. Pastikan kode berasal dari orang yang kamu percaya.',
+    'You’ll receive updates from this code’s owner. They must confirm your code on their phone to receive your updates too. Only use a code from someone you trust.',
+    'Du erhältst Updates vom Besitzer dieses Codes. Die andere Person muss deinen Code bestätigen, um deine Updates zu erhalten. Verwende nur den Code einer vertrauten Person.'
+  ],
+  'ownCodeError': [
+    'Itu kode milik HP ini. Masukkan kode dari HP pasangan.',
+    'That is this phone’s code. Enter the code from your partner’s phone.',
+    'Das ist der Code dieses Handys. Gib den Code des anderen Handys ein.'
+  ],
+  'seiramaUnlinked': [
+    'Tukar kode untuk mulai saling berbagi.',
+    'Exchange codes to start sharing both ways.',
+    'Tauscht Codes aus, um gegenseitig zu teilen.'
+  ],
+  'seiramaWaiting': [
+    'Menunggu konfirmasi di HP pasangan.',
+    'Waiting for confirmation on your partner’s phone.',
+    'Warte auf die Bestätigung am anderen Handy.'
+  ],
+  'seiramaActive': [
+    'Kalian terhubung dua arah',
+    'Connected both ways',
+    'In beide Richtungen verbunden'
+  ],
+  'seiramaInactive': [
+    'Pasangan kembali ke mode satu arah.',
+    'Your partner returned to one-way mode.',
+    'Dein Partner ist zum einseitigen Modus zurückgekehrt.'
+  ],
+  'existingRecipients': [
+    'Pemilik kode lamamu tetap dapat menerima kabarmu. Ganti kode jika ingin membatasi penerima.',
+    'Holders of your previous code can still receive your updates. Change the code if you want to limit recipients.',
+    'Besitzer deines bisherigen Codes können deine Updates weiter empfangen. Ändere den Code, wenn du Empfänger begrenzen möchtest.'
+  ],
+  'leaveSeirama': [
+    'Kembali ke satu arah',
+    'Return to one way',
+    'Zurück zu einseitig'
+  ],
+  'leaveSeiramaBody': [
+    'Sambungan Seirama di HP ini dihentikan dan peran satu arah sebelumnya dipulihkan. Salinan kabar yang sudah diterima di HP lain tidak ikut terhapus.',
+    'Stop Seirama on this phone and restore its previous one-way role. Copies already received on another phone are not erased.',
+    'Seirama auf diesem Handy beenden und die vorherige einseitige Rolle wiederherstellen. Bereits empfangene Kopien auf dem anderen Handy werden nicht gelöscht.'
+  ],
+  'ourUpdates': ['Kabar kita', 'Our updates', 'Unsere Updates'],
+  'myUpdates': ['Kabarku', 'My updates', 'Meine Updates'],
+  'partnerUpdates': [
+    'Kabar pasangan',
+    'Partner’s updates',
+    'Updates meines Partners'
+  ],
+  'yourPartner': ['Pasanganmu', 'Your partner', 'Dein Partner'],
+  'fromThisPhone': ['Dari HP ini', 'From this phone', 'Von diesem Handy'],
+  'readOnly': ['Hanya lihat', 'View only', 'Nur ansehen'],
+  'viewPartner': ['Lihat kabarnya', 'View their updates', 'Updates ansehen'],
+  'peerNoUpdate': [
+    'Belum ada kabar pasangan. Setelah kedua HP terhubung, kabarnya akan muncul di sini.',
+    'No partner update yet. Their updates appear here once both phones are connected.',
+    'Noch kein Partner-Update. Nach der Verbindung beider Handys erscheinen die Updates hier.'
+  ],
+  'sharingWith': ['Dibagikan kepada {x}', 'Shared with {x}', 'Geteilt mit {x}'],
+  'modeVisualNote': [
+    'Warna dan karakter mengikuti mode berbagi. Terang atau gelap tetap pilihanmu.',
+    'Colors and characters follow your sharing mode. Light or dark remains your choice.',
+    'Farben und Figuren folgen dem Teilen-Modus. Hell oder Dunkel bleibt deine Wahl.'
+  ],
+  'dailyRhythm': ['Ritme harimu', 'Your daily rhythm', 'Dein Tagesrhythmus'],
+  'smallMoment': [
+    'Satu kabar kecil hari ini',
+    'A small moment today',
+    'Ein kleiner Moment heute'
+  ],
+  'latestPlace': ['Lokasi status', 'Whereabouts', 'Aufenthaltsstatus'],
+  'settingsNote': [
+    'Atur ruang kabarmu, dengan caramu.',
+    'Make this little space your own.',
+    'Gestalte diesen kleinen Raum auf deine Weise.'
+  ],
   'city': ['Kota', 'City', 'Stadt'],
-  'placeUnknown': ['Nama daerah belum tersedia', 'Area name unavailable', 'Ortsname nicht verfügbar'],
-  'cityUnknown': ['Kota belum diketahui', 'City not available', 'Stadt noch unbekannt'],
-  'enableLocation': ['Aktifkan lokasi HP', 'Enable device location', 'Gerätestandort aktivieren'],
-  'enableLocationBody': ['Aktifkan layanan lokasi di pengaturan sistem, lalu kembali ke abc untuk melanjutkan. Lokasi hanya diambil saat kamu membagikannya.', 'Enable Location Services in system settings, then return to abc to continue. Location is only captured when you share it.', 'Aktiviere die Ortungsdienste in den Systemeinstellungen und kehre zu abc zurück. Dein Standort wird nur beim Teilen erfasst.'],
-  'mealScheduled': ['Dicatat sebagai {x}, sesuai jam lokal saat dikirim.', 'Recorded as {x}, based on your local time when sent.', 'Wird entsprechend der Ortszeit beim Senden als {x} erfasst.'],
-  'mealAutomatic': ['Centang mengikuti jadwal makanmu. Di luar jadwal, masuk Makan lainnya.', 'Your meal schedule decides the checkmark. Outside a window, it becomes Other meal.', 'Dein Zeitplan bestimmt die Mahlzeit. Außerhalb der Zeiten zählt es als Sonstige Mahlzeit.'],
-  'sceneOutside': ['Langkah kecil, kabar sampai.', 'Off you go. Stay connected.', 'Unterwegs und verbunden.'],
-  'sceneHome': ['Sudah pulang. Saatnya nyaman.', 'Home again. Time to unwind.', 'Wieder daheim. Zeit zum Entspannen.'],
-  'sceneMeal': ['Isi energi, lanjutkan hari.', 'A little fuel for your day.', 'Neue Energie für deinen Tag.'],
-  'sceneTogetherOutside': ['Satu pergi, satu menanti kabar.', 'A wave goodbye, an update away.', 'Ein Winken, ein kleines Update.'],
-  'sceneTogetherHome': ['Pulang terasa lebih hangat.', 'A warmer welcome home.', 'Ein herzliches Willkommen daheim.'],
-  'sceneTogetherMeal': ['Jauh dekat, tetap satu meja.', 'One table, even from afar.', 'Ein Tisch, auch aus der Ferne.'],
+  'placeUnknown': [
+    'Nama daerah belum tersedia',
+    'Area name unavailable',
+    'Ortsname nicht verfügbar'
+  ],
+  'cityUnknown': [
+    'Kota belum diketahui',
+    'City not available',
+    'Stadt noch unbekannt'
+  ],
+  'enableLocation': [
+    'Aktifkan lokasi HP',
+    'Enable device location',
+    'Gerätestandort aktivieren'
+  ],
+  'enableLocationBody': [
+    'Aktifkan layanan lokasi di pengaturan sistem, lalu kembali ke abc untuk melanjutkan. Lokasi hanya diambil saat kamu membagikannya.',
+    'Enable Location Services in system settings, then return to abc to continue. Location is only captured when you share it.',
+    'Aktiviere die Ortungsdienste in den Systemeinstellungen und kehre zu abc zurück. Dein Standort wird nur beim Teilen erfasst.'
+  ],
+  'mealScheduled': [
+    'Dicatat sebagai {x}, sesuai jam lokal saat dikirim.',
+    'Recorded as {x}, based on your local time when sent.',
+    'Wird entsprechend der Ortszeit beim Senden als {x} erfasst.'
+  ],
+  'mealAutomatic': [
+    'Centang mengikuti jadwal makanmu. Di luar jadwal, masuk Makan lainnya.',
+    'Your meal schedule decides the checkmark. Outside a window, it becomes Other meal.',
+    'Dein Zeitplan bestimmt die Mahlzeit. Außerhalb der Zeiten zählt es als Sonstige Mahlzeit.'
+  ],
+  'sceneOutside': [
+    'Langkah kecil, kabar sampai.',
+    'Off you go. Stay connected.',
+    'Unterwegs und verbunden.'
+  ],
+  'sceneHome': [
+    'Sudah pulang. Saatnya nyaman.',
+    'Home again. Time to unwind.',
+    'Wieder daheim. Zeit zum Entspannen.'
+  ],
+  'sceneMeal': [
+    'Isi energi, lanjutkan hari.',
+    'A little fuel for your day.',
+    'Neue Energie für deinen Tag.'
+  ],
+  'sceneTogetherOutside': [
+    'Satu pergi, satu menanti kabar.',
+    'A wave goodbye, an update away.',
+    'Ein Winken, ein kleines Update.'
+  ],
+  'sceneTogetherHome': [
+    'Pulang terasa lebih hangat.',
+    'A warmer welcome home.',
+    'Ein herzliches Willkommen daheim.'
+  ],
+  'sceneTogetherMeal': [
+    'Jauh dekat, tetap satu meja.',
+    'One table, even from afar.',
+    'Ein Tisch, auch aus der Ferne.'
+  ],
   'hello': ['Hai, {x}', 'Hi, {x}', 'Hallo, {x}'],
   'locating': [
     'Mengambil lokasi HP…',
@@ -277,11 +463,7 @@ const messages = <String, List<String>>{
   'save': ['Simpan', 'Save', 'Speichern'],
   'appearance': ['Tampilan', 'Appearance', 'Darstellung'],
   'defaultTheme': ['Default', 'Default', 'Standard'],
-  'relationshipTheme': [
-    'Seirama',
-    'Seirama',
-    'In einer Beziehung'
-  ],
+  'relationshipTheme': ['Seirama', 'Seirama', 'In einer Beziehung'],
   'defaultDescription': [
     'Tenang, hangat, dan sederhana.',
     'Calm, warm, and simple.',
@@ -471,9 +653,9 @@ const messages = <String, List<String>>{
   ],
   'saved': ['Perubahan disimpan', 'Changes saved', 'Änderungen gespeichert'],
   'version': [
-    'abc 0.6.0 · versi uji',
-    'abc 0.6.0 · test version',
-    'abc 0.6.0 · Testversion'
+    'abc 0.8.0 · versi uji',
+    'abc 0.8.0 · test version',
+    'abc 0.8.0 · Testversion'
   ],
   'iosWidget': [
     'Tahan layar utama → Tambah Widget → abc. Pembaruan mengikuti iOS.',

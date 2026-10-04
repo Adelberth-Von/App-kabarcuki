@@ -20,6 +20,20 @@ public class DeviceQA extends Instrumentation {
     @Override public void onCreate(Bundle arguments){args=arguments;start();}
     private void ok(boolean value,String label){assertions++;if(!value)throw new AssertionError(label);}
     private void main(Runnable run){runOnMainSync(run);waitForIdleSync();}
+    private void testWidgetLayouts(Context c)throws Exception {
+        ok("disposable".equals(args.getString("fixture","")),"widget assertions require an explicitly disposable emulator fixture");
+        main(()->c.stopService(new Intent(c,SyncService.class)));
+        long deadline=SystemClock.elapsedRealtime()+8000;boolean stopped=false;
+        while(SystemClock.elapsedRealtime()<deadline){
+            stopped=true;for(Thread thread:Thread.getAllStackTraces().keySet())if(thread.isAlive()&&(thread.getName().equals("KabarSync")||thread.getName().equals("KabarPeerSync"))){stopped=false;break;}
+            if(stopped)break;Thread.sleep(50);
+        }
+        ok(stopped,"sync threads stopped before changing widget-only fixture state");
+        Throwable[] failure={null};int[] widgetChecks={0};
+        main(()->{try{widgetChecks[0]=WidgetAssertions.run(c);}catch(Throwable error){failure[0]=error;}});
+        if(failure[0]!=null)throw new AssertionError("Adaptive widget assertions failed",failure[0]);
+        assertions+=widgetChecks[0];android.util.Log.i("KabarQA","PASS Widget adaptive UI: "+widgetChecks[0]+" assertions");
+    }
     private View find(View view,String label) {
         if(view instanceof TextView && ((TextView)view).getText().toString().equals(label))return view;
         if(label.equals(view.getContentDescription()))return view;
@@ -46,6 +60,7 @@ public class DeviceQA extends Instrumentation {
         try {
             Context c=getTargetContext();String mode=args.getString("mode","ui");
             if(mode.equals("ui")){
+                testWidgetLayouts(c);
                 c.stopService(new Intent(c,SyncService.class));Store.prefs(c).edit().clear().commit();Appearance.prefs(c).edit().clear().commit();
                 Intent launch=new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 activity=(MainActivity)startActivitySync(launch);waitForIdleSync();
@@ -113,6 +128,9 @@ public class DeviceQA extends Instrumentation {
                 try{KabarState extra=Store.state(c);extra.record("outside",System.currentTimeMillis());Store.saveAndQueue(c,extra,true);}catch(IllegalStateException full){rejected=true;}
                 ok(rejected,"full offline queue rejects additional action");ok(Store.pending(c)==25,"offline queue stays bounded");ok(Store.state(c).revision==lastSaved,"rejected action does not overwrite saved state");
                 result.putString("stream","PASS Device UI, offline queue, edited buttons, persistence, widget: "+assertions+" assertions");
+            }else if(mode.equals("widget")){
+                testWidgetLayouts(c);
+                result.putString("stream","PASS Device widget adaptation, duplex status, typography, motion and parcel budget: "+assertions+" assertions");
             }else if(mode.equals("sender")){
                 c.stopService(new Intent(c,SyncService.class));Pairing p=Pairing.create();
                 Store.prefs(c).edit().clear().putString("role","sender").putString("code",p.code()).putString("private",Pairing.encode(p.privateKey.getEncoded())).putBoolean("enabled",true).commit();

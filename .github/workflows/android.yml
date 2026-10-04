@@ -48,16 +48,17 @@ jobs:
             adb install -r apk/debug/android-debug.apk
             adb install -r apk/androidTest/debug/android-debug-androidTest.apk
             if [ ${{ matrix.api }} -ge 33 ]; then adb shell pm grant id.kabar.app android.permission.POST_NOTIFICATIONS; fi
-            adb shell am instrument -w -e mode ui id.kabar.qa/id.kabar.app.DeviceQA | tee result.txt
+            adb shell am instrument -w -e mode ui -e fixture disposable id.kabar.qa/id.kabar.app.DeviceQA | tee result.txt
             adb logcat -d -s AndroidRuntime | tee crash-log.txt
             adb shell screencap -p /sdcard/kabar.png
             adb pull /sdcard/kabar.png screenshot.png
             adb exec-out run-as id.kabar.app cat cache/ui-home.png > ui-home.png || true
             adb exec-out run-as id.kabar.app cat cache/ui-confirm.png > ui-confirm.png || true
             for theme in relationship-dark relationship-light default-dark appearance-dark; do adb exec-out run-as id.kabar.app cat cache/ui-$theme.png > ui-$theme.png || true; done
+            for mode in oneway duplex; do for height in 235 360 560; do for font in 1 15; do name=widget-$mode-$height-font$font.png; adb exec-out run-as id.kabar.app cat cache/$name > $name || true; done; done; done
             grep -q 'PASS Device UI' result.txt
             if grep -q 'FAIL' result.txt; then exit 1; fi
-            if [ ${{ matrix.api }} -eq 35 ]; then adb shell settings put system font_scale 1.5; adb shell am instrument -w -e mode ui id.kabar.qa/id.kabar.app.DeviceQA | tee large-font.txt; grep -q 'PASS Device UI' large-font.txt; fi
+            if [ ${{ matrix.api }} -eq 35 ]; then adb shell settings put system font_scale 1.5; adb shell am instrument -w -e mode ui -e fixture disposable id.kabar.qa/id.kabar.app.DeviceQA | tee large-font.txt; grep -q 'PASS Device UI' large-font.txt; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -73,4 +74,5 @@ jobs:
             ui-relationship-light.png
             ui-default-dark.png
             ui-appearance-dark.png
+            widget-*.png
           if-no-files-found: ignore

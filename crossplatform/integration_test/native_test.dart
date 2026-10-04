@@ -1,6 +1,7 @@
 import 'package:abc/main.dart';
 import 'package:abc/model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -12,22 +13,31 @@ void main() {
   final semantics = binding.ensureSemantics();
   // Register tests synchronously. Awaiting in main can let the live runner
   // complete an empty suite before testWidgets has been registered.
-  setUpAll(() async {await Future<void>.delayed(const Duration(seconds: 1));});
+  setUpAll(() async {
+    await Future<void>.delayed(const Duration(seconds: 1));
+  });
   tearDownAll(semantics.dispose);
   testWidgets(
       'native pairing, confirmations, local preferences and history survive restart',
       (tester) async {
     final backend = NativeBackend();
     final before = await backend.invoke('snapshot');
-    const cleanup=bool.fromEnvironment('QA_CLEANUP');
-    if(cleanup)expect(before['role'],'',reason:'Cleanup tests require a fresh disposable simulator.');
-    if(before['role']=='') {
-      var changes=0;final subscription=backend.changes.listen((_)=>changes++);
-      await Future<void>.delayed(const Duration(milliseconds:200));
-      final initial=changes;
-      for(var i=0;i<10;i++){await backend.invoke('snapshot');}
-      await Future<void>.delayed(const Duration(milliseconds:200));
-      expect(changes-initial,lessThanOrEqualTo(2),reason:'Read-only snapshots must not produce an update feedback loop.');
+    const cleanup = bool.fromEnvironment('QA_CLEANUP');
+    if (cleanup)
+      expect(before['role'], '',
+          reason: 'Cleanup tests require a fresh disposable simulator.');
+    if (before['role'] == '') {
+      var changes = 0;
+      final subscription = backend.changes.listen((_) => changes++);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      final initial = changes;
+      for (var i = 0; i < 10; i++) {
+        await backend.invoke('snapshot');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(changes - initial, lessThanOrEqualTo(2),
+          reason:
+              'Read-only snapshots must not produce an update feedback loop.');
       await subscription.cancel();
     }
     final originalCode = (before['role'] == 'sender')
@@ -40,7 +50,8 @@ void main() {
       'language': 'id',
       'clock12': false,
       'dark': false,
-      'relationship': false
+      'relationship': false,
+      'animations': false
     });
     // This test never deletes an existing pairing. Use a fresh simulator for a full queue.
     expect(number(before['pending']), lessThan(23),
@@ -82,7 +93,7 @@ void main() {
     await tap(find.byKey(const ValueKey('confirm-status')));
     expect(number(model.state['revision']), revision + 1);
     expect(model.events.first['kind'], 'outside');
-    final expectedMeal=model.mealNow();
+    final expectedMeal = model.mealNow();
     await tap(find.byKey(const ValueKey('meal-0')));
     await tap(find.byKey(const ValueKey('confirm-status')));
     expect(model.events.first['label'], expectedMeal);
@@ -110,30 +121,55 @@ void main() {
     await tap(find.byKey(const ValueKey('time-format')));
     await tap(find.byKey(const ValueKey('clock-12')));
     expect(model.clock12, true);
-    if (model.snapshot['platform']=='android') {
-      await model.prefs({'animations':false});
-      expect((await backend.invoke('qaSurfaceProbe'))['widgetAnimated'],false);
-      await model.prefs({'animations':true});
-      await model.command('record',{'kind':'home','shareLocation':false});
-      await backend.invoke('qaSurfaceProbe',{'seed':true});
-      for(final twelve in [false,true,false,true]) {
-        await model.prefs({'clock12':twelve});
-        var surfaces=await backend.invoke('qaSurfaceProbe');
+    if (model.snapshot['platform'] == 'android') {
+      await model.prefs({'animations': false});
+      expect((await backend.invoke('qaSurfaceProbe'))['widgetAnimated'], false);
+      await model.prefs({'animations': true});
+      await model.command('record', {'kind': 'home', 'shareLocation': false});
+      await backend.invoke('qaSurfaceProbe', {'seed': true});
+      for (final twelve in [false, true, false, true]) {
+        await model.prefs({'clock12': twelve});
+        var surfaces = await backend.invoke('qaSurfaceProbe');
         // NotificationManager posts through the system service asynchronously.
-        for(var i=0;i<20 && surfaces.containsKey('notification') && RegExp(r'\b(AM|PM)\b').hasMatch(surfaces['notification'] as String)!=twelve;i++) {
-          await Future<void>.delayed(const Duration(milliseconds:100));
-          surfaces=await backend.invoke('qaSurfaceProbe');
+        for (var i = 0;
+            i < 20 &&
+                surfaces.containsKey('notification') &&
+                RegExp(r'\b(AM|PM)\b')
+                        .hasMatch(surfaces['notification'] as String) !=
+                    twelve;
+            i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          surfaces = await backend.invoke('qaSurfaceProbe');
         }
-        final texts=surfaces.entries.where((e)=>e.value is String && (e.key.startsWith('widget')||e.key=='notification'||e.key=='notificationExpanded'));
-        expect(texts.length,greaterThanOrEqualTo(3));
-        for(final text in texts)expect(RegExp(r'\b(AM|PM)\b').hasMatch(text.value as String),twelve,reason:text.key);
-        if(surfaces.containsKey('notification'))expect(surfaces['onlyAlertOnce'],true);
-        expect(number(surfaces['chimeDurationMs']),inInclusiveRange(900,1200),reason:'The packaged chime must decode on this Android version.');
-        expect(surfaces['notificationChannel'],'updates_pixel_v1');
-        if(cleanup)expect(surfaces['chimeSound'],endsWith('/raw/abc_chime'));
+        final texts = surfaces.entries.where((e) =>
+            e.value is String &&
+            (e.key.startsWith('widget') ||
+                e.key == 'notification' ||
+                e.key == 'notificationExpanded'));
+        expect(texts.length, greaterThanOrEqualTo(3));
+        for (final text in texts)
+          expect(RegExp(r'\b(AM|PM)\b').hasMatch(text.value as String), twelve,
+              reason: text.key);
+        if (surfaces.containsKey('notification'))
+          expect(surfaces['onlyAlertOnce'], true);
+        expect(number(surfaces['chimeDurationMs']), inInclusiveRange(900, 1200),
+            reason: 'The packaged chime must decode on this Android version.');
+        expect(surfaces['notificationChannel'], 'updates_pixel_v1');
+        if (cleanup) expect(surfaces['chimeSound'], endsWith('/raw/abc_chime'));
       }
     }
-    await tap(find.byKey(const ValueKey('theme-relationship')));
+    await model.prefs({'animations': false});
+    await tap(find.byKey(const ValueKey('mode-seirama')));
+    expect(model.together, false);
+    await tap(find.byKey(const ValueKey('confirm-mode')));
+    expect(model.together, true);
+    expect(model.sender, true);
+    expect(model.role, 'duplex');
+    final modeInvite = (await backend.invoke('pairCode'))['code'] as String;
+    expect(modeInvite.startsWith('KB2.'), true);
+    // Pairing capabilities are private; never capture this sheet.
+    await tap(find.byTooltip('Tutup'));
+    await tap(find.text('Pengaturan').last);
     await backend.invoke('preferences', {'dark': true});
     await model.refresh();
     await tester.pumpAndSettle();
@@ -179,24 +215,37 @@ void main() {
       'dark': false,
       'relationship': false
     });
-    if(cleanup) {
-      final seeded=await backend.invoke('qaCleanupProbe',{'seed':true});
-      expect(seeded['secretsClear'],false);expect(seeded['filesClear'],false);
-      await backend.invoke('prepareUninstall');
-      await Future<void>.delayed(const Duration(milliseconds:500));
-      final cleaned=await backend.invoke('qaCleanupProbe');
-      for(final check in cleaned.entries)expect(check.value,true,reason:check.key);
-      final empty=await backend.invoke('snapshot');
-      expect(empty['role'],'');expect(empty['pending'],0);
-      expect((empty['state'] as Map)['events'],isEmpty);
-      expect((empty['profile'] as Map)['nickname']??'','');
-      expect((empty['profile'] as Map)['clock12']??false,false);
-      await expectLater(backend.invoke('pairCode'),throwsA(isA<PlatformException>()));
-      debugPrint('QA PASS: app files, preferences, queue, history, pairing secrets and notifications cleared.');
+    await backend.invoke('disableSeirama', {'confirmed': true});
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final reciprocal = await backend.invoke('qaSeiramaProbe');
+      for (final check in reciprocal.entries) {
+        expect(check.value, true, reason: 'Seirama: ${check.key}');
+      }
     }
-    binding.reportData ??= <String,dynamic>{};
-    binding.reportData!['nativeCompleted']=true;
-    binding.reportData!['cleanupVerified']=cleanup;
-    debugPrint('QA PASS: native UI, preferences, history and screenshots completed.');
+    if (cleanup) {
+      final seeded = await backend.invoke('qaCleanupProbe', {'seed': true});
+      expect(seeded['secretsClear'], false);
+      expect(seeded['filesClear'], false);
+      await backend.invoke('prepareUninstall');
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      final cleaned = await backend.invoke('qaCleanupProbe');
+      for (final check in cleaned.entries)
+        expect(check.value, true, reason: check.key);
+      final empty = await backend.invoke('snapshot');
+      expect(empty['role'], '');
+      expect(empty['pending'], 0);
+      expect((empty['state'] as Map)['events'], isEmpty);
+      expect((empty['profile'] as Map)['nickname'] ?? '', '');
+      expect((empty['profile'] as Map)['clock12'] ?? false, false);
+      await expectLater(
+          backend.invoke('pairCode'), throwsA(isA<PlatformException>()));
+      debugPrint(
+          'QA PASS: app files, preferences, queue, history, pairing secrets and notifications cleared.');
+    }
+    binding.reportData ??= <String, dynamic>{};
+    binding.reportData!['nativeCompleted'] = true;
+    binding.reportData!['cleanupVerified'] = cleanup;
+    debugPrint(
+        'QA PASS: native UI, preferences, history and screenshots completed.');
   });
 }

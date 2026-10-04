@@ -66,6 +66,18 @@ public struct Pairing {
         return publicKey.isValidSignature(signature, for: Data(("kabar-alert-v1:"+envelope).utf8))
     }
 }
+public enum Seirama {
+    public static func invite(_ own: Pairing) -> String { "KB2." + Encoding.b64(Data(own.code.utf8)) }
+    public static func parseInvite(_ raw: String) throws -> Pairing {
+        let clean=raw.filter{ !$0.isWhitespace }
+        guard clean.hasPrefix("KB2."),clean.utf8.count<=560,
+              let code=String(data:try Encoding.data(String(clean.dropFirst(4))),encoding:.utf8) else {throw KabarError.invalid("Kode Seirama tidak valid")}
+        return try Pairing(code:code)
+    }
+    public static func requireDifferent(_ own: Pairing,_ peer: Pairing) throws {
+        guard own.topic != peer.topic else {throw KabarError.invalid("Gunakan kode dari perangkat pasangan")}
+    }
+}
 public struct GpsPoint: Codable, Equatable {
     public var lat: Double, lon: Double, accuracy: Double
     public var at: Int64
@@ -178,11 +190,16 @@ public struct KabarState: Codable, Equatable {
 public struct Packet: Codable {
     public var state: KabarState
     public var notify: Bool
-    public init(state: KabarState, notify: Bool) { self.state = state; self.notify = notify }
+    public var peerTopic: String? = nil
+    public var seirama: Bool? = nil
+    public init(state: KabarState, notify: Bool, peerTopic: String? = nil, seirama: Bool? = nil) { self.state = state; self.notify = notify; self.peerTopic=peerTopic; self.seirama=seirama }
+    public func reciprocates(_ own: Pairing) -> Bool {seirama != false && peerTopic == own.topic}
     public static func decode(_ envelope: String, pairing: Pairing) throws -> Packet {
         let data = try pairing.decrypt(envelope)
         guard data.count <= 6000 else { throw KabarError.invalid("Data terlalu besar") }
-        let packet = try JSONDecoder().decode(Packet.self, from: data); try packet.state.validate(); return packet
+        let packet = try JSONDecoder().decode(Packet.self, from: data); try packet.state.validate()
+        if let topic=packet.peerTopic {guard topic.range(of:"^kabar-[A-Za-z0-9_-]{43}$",options:.regularExpression) != nil else {throw KabarError.invalid("Pasangan kabar tidak valid")}}
+        return packet
     }
     public func envelope(pairing: Pairing) throws -> String {
         try state.validate()

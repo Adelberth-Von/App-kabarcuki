@@ -94,4 +94,39 @@ final class KabarCoreTests: XCTestCase {
         var events = object["events"] as! [[String:Any]];for i in events.indices { events[i].removeValue(forKey:"gps");events[i].removeValue(forKey:"zone") };object["events"] = events
         let legacy = try JSONDecoder().decode(KabarState.self,from:JSONSerialization.data(withJSONObject:object));XCTAssertNil(legacy.gps);try legacy.validate()
     }
+    func testSeiramaIndependentStreamsAndSignedReciprocalConsent() throws {
+        let alice=Pairing(),bob=Pairing()
+        let aliceRead=try Seirama.parseInvite(Seirama.invite(alice)),bobRead=try Seirama.parseInvite(Seirama.invite(bob))
+        XCTAssertEqual(aliceRead.topic,alice.topic);XCTAssertNil(bobRead.privateKey)
+        XCTAssertThrowsError(try bobRead.encrypt(Data("{}".utf8)))
+        XCTAssertThrowsError(try Seirama.requireDifferent(alice,aliceRead))
+        XCTAssertThrowsError(try Seirama.parseInvite(alice.code))
+        XCTAssertThrowsError(try Seirama.parseInvite("KB2.invalid"))
+        var own=KabarState(),peer=KabarState();own.zone="Asia/Jakarta";peer.zone="Europe/Berlin";own.name="Alice";peer.name="Bob"
+        for i in 0..<25 {try own.record("home",at:at(2,8)+Int64(i))}
+        try peer.record("outside",at:at(2,18))
+        let before=own
+        let packet=Packet(state:peer,notify:true,peerTopic:aliceRead.topic)
+        let envelope=try packet.envelope(pairing:bob),received=try Packet.decode(envelope,pairing:bobRead)
+        XCTAssertEqual(own,before);XCTAssertLessThan(received.state.revision,own.revision)
+        XCTAssertTrue(received.reciprocates(alice));XCTAssertFalse(received.reciprocates(bob))
+        XCTAssertThrowsError(try Packet.decode(envelope,pairing:aliceRead))
+        let legacy=try Packet.decode(Packet(state:peer,notify:false).envelope(pairing:bob),pairing:bobRead)
+        XCTAssertNil(legacy.peerTopic);XCTAssertFalse(legacy.reciprocates(alice))
+        try peer.record("meal",at:at(2,18,1));XCTAssertEqual(peer.mealCategory,"Makan siang")
+        let label=String(repeating:"界",count:24),place=String(repeating:"界",count:32)
+        own.name=label;own.home=label;own.outside=label;own.meal=label
+        for i in 0..<12 {var point=try GpsPoint(lat:-7.7956,lon:110.3695,accuracy:12,at:at(2,18)+Int64(i),zone:own.zone);point.city=place;point.place=place;try own.record("home",at:point.at,point:point)}
+        try own.fitRelay()
+        let full=try Packet(state:own,notify:true,peerTopic:bobRead.topic).envelope(pairing:alice)
+        XCTAssertLessThanOrEqual(full.utf8.count,4096);XCTAssertEqual(try Packet.decode(full,pairing:aliceRead).state.gps?.city,place)
+        let invalid=try Packet(state:peer,notify:false,peerTopic:"invalid").envelope(pairing:bob)
+        XCTAssertThrowsError(try Packet.decode(invalid,pairing:bobRead))
+        peer.revision+=1
+        let stopped=try Packet.decode(Packet(state:peer,notify:false,seirama:false).envelope(pairing:bob),pairing:bobRead)
+        XCTAssertGreaterThan(stopped.state.revision,received.state.revision)
+        XCTAssertFalse(stopped.reciprocates(alice));XCTAssertFalse(stopped.notify)
+        XCTAssertLessThan(received.state.revision,stopped.state.revision)
+        XCTAssertFalse(Packet(state:peer,notify:false,peerTopic:alice.topic,seirama:false).reciprocates(alice))
+    }
 }

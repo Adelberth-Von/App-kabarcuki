@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -29,4 +30,12 @@ import UIKit
     bridge.model.registerPush()
     super.application(application,didRegisterForRemoteNotificationsWithDeviceToken:deviceToken)
   }
+  override func application(_ application: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey:Any] = [:]) -> Bool {
+    if bridge.open(url) {return true};return super.application(application,open:url,options:options)
+  }
+  override func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    if response.notification.request.content.userInfo["abcPeer"] as? Bool == true {_=bridge.open(URL(string:"kabar://home?peer=1")!)}
+    super.userNotificationCenter(center,didReceive:response,withCompletionHandler:completionHandler)
+  }
+
 }

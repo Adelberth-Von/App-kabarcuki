@@ -53,11 +53,27 @@ class AppModel extends ChangeNotifier {
   String get nickname => profile['nickname'] as String? ?? '';
   String get role => snapshot['role'] as String? ?? '';
   bool get dark => profile['dark'] == true;
-  bool get together => profile['relationship'] == true;
+  String get mode => snapshot['mode'] as String? ?? 'oneWay';
+  bool get together => mode == 'seirama';
+  bool get twoWay => together;
+  bool get modeUpgradeSuggested => snapshot['modeUpgradeSuggested'] == true;
+  String get reciprocity => snapshot['reciprocity'] as String? ?? 'none';
+  Map<String, dynamic>? get peerState => snapshot['peerState'] is Map
+      ? Map<String, dynamic>.from(snapshot['peerState'] as Map)
+      : null;
+  bool get hasPeer => peerState != null;
+  String get peerName => peerState?['name'] as String? ?? '';
+  List<Map<String, dynamic>> get peerEvents =>
+      (peerState?['events'] as List? ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  Map<String, dynamic> get peerZone => Map<String, dynamic>.from(
+      snapshot['peerZone'] as Map? ?? {});
+  List<bool> get peerMealsToday => (snapshot['peerMealsToday'] as List? ??
+      [false, false, false]).map((e) => e == true).toList();
   bool get clock12 => profile['clock12'] == true;
   bool get animations => profile['animations'] != false;
   bool get energySaver => snapshot['energySaver'] == true;
-  bool get sender => role == 'sender';
+  bool get sender => role == 'sender' || role == 'duplex';
   bool get enabled => snapshot['enabled'] != false;
   List<Map<String, dynamic>> get events => (state['events'] as List? ?? [])
       .map((e) => Map<String, dynamic>.from(e as Map))
@@ -121,6 +137,7 @@ class AppModel extends ChangeNotifier {
     } on PlatformException catch (e) {
       error = switch (e.code) {
         'invalid_code' => 'invalidCode',
+        'own_code' => 'ownCodeError',
         'queue_full' => 'queueFull',
         'invalid_name' => 'nameError',
         'invalid_schedule' => 'scheduleInvalid',
@@ -144,6 +161,12 @@ class AppModel extends ChangeNotifier {
 
   Future<bool> prefs(Map<String, dynamic> values) =>
       command('preferences', values);
+  Future<bool> enableSeirama({required bool confirmed}) =>
+      command('enableSeirama', {'confirmed': confirmed});
+  Future<bool> joinSeirama(String code, {required bool confirmed}) =>
+      command('joinSeirama', {'code': code, 'confirmed': confirmed});
+  Future<bool> disableSeirama({required bool confirmed}) =>
+      command('disableSeirama', {'confirmed': confirmed});
   String actionLabel(String kind) => copy.label((state[kind] ??
       switch (kind) {
         'outside' => 'Keluar',
@@ -173,6 +196,12 @@ class AppModel extends ChangeNotifier {
       formatClock(at, clock12: clock12, zone: inZone ?? localZone(at));
   String stamp(int at, {Map<String, dynamic>? inZone}) =>
       formatStamp(at, copy, clock12: clock12, zone: inZone ?? localZone(at));
+  Map<String, dynamic> peerLocalZone(int at) => Map<String, dynamic>.from(
+      (snapshot['peerLocalTimes'] as Map? ?? {})['$at'] as Map? ?? zone);
+  String peerTime(int at, {Map<String, dynamic>? inZone}) =>
+      formatClock(at, clock12: clock12, zone: inZone ?? peerLocalZone(at));
+  String peerStamp(int at, {Map<String, dynamic>? inZone}) =>
+      formatStamp(at, copy, clock12: clock12, zone: inZone ?? peerLocalZone(at));
   String get connection {
     final pending = (snapshot['pending'] as num? ?? 0).toInt();
     return pending > 0

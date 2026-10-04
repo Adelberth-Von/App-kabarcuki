@@ -17,7 +17,7 @@ public class DomainTests {
     public static void main(String[] args)throws Exception{
         if(args.length>0&&args[0].equals("device-publisher")){devicePublisher(args[1]);return;}
         if(args.length>0&&args[0].equals("device-subscriber")){deviceSubscriber(args[1]);System.out.println("PASS device sender interoperability: "+checks+" assertions");return;}
-        mealRules();clockRules();stateRules();locationAndManualMealRules();namedLocationBudget();cryptoRules();cleanupScopeRules();
+        mealRules();clockRules();stateRules();locationAndManualMealRules();namedLocationBudget();cryptoRules();seiramaRules();cleanupScopeRules();
         if(args.length>0&&args[0].equals("live")){liveRelay();liveStream();}
         System.out.println("PASS "+checks+" assertions");
     }
@@ -185,6 +185,50 @@ public class DomainTests {
         ok(payload.getBytes(StandardCharsets.UTF_8).length<=4096,"snapshot within relay size limit");
         KabarState received=KabarState.parse(new JSONObject(receiver.decrypt(payload)).getJSONObject("state").toString());
         eq(received.revision,s.revision,"full state encryption roundtrip");
+    }
+    private static void seiramaRules()throws Exception {
+        Pairing alice=Pairing.create(),bob=Pairing.create();
+        Pairing aliceRead=Seirama.parseInvite(Seirama.invite(alice)),bobRead=Seirama.parseInvite(Seirama.invite(bob));
+        eq(aliceRead.topic(),alice.topic(),"Seirama invitation points to independent Alice stream");
+        eq(bobRead.privateKey,null,"Seirama invitation never includes writer private key");
+        rejects(()->bobRead.encrypt("{}"),"peer cannot write partner stream");
+        rejects(()->Seirama.requireDifferent(alice,aliceRead),"cannot pair own stream to itself");
+        rejects(()->Seirama.parseInvite(alice.code()),"legacy one-way code does not silently consent to Seirama");
+        rejects(()->Seirama.parseInvite("KB2.bad"),"malformed reciprocal invite rejected");
+        rejects(()->aliceRead.withPrivate(Pairing.encode(bob.privateKey.getEncoded())),"foreign signing key rejected on restore");
+        KabarState a=new KabarState(),b=new KabarState();a.zone=TZ.getID();b.zone="Europe/Berlin";a.name="Alice";b.name="Bob";
+        for(int i=0;i<25;i++)a.record("home",at(2,8,0)+i);
+        b.record("outside",at(2,18,0));
+        String before=a.json().toString();
+        JSONObject alicePacket=Seirama.packet(a,false,bobRead),bobPacket=Seirama.packet(b,true,aliceRead);
+        String bobEnvelope=bob.encrypt(bobPacket.toString());
+        JSONObject verifiedBob=new JSONObject(bobRead.decrypt(bobEnvelope));
+        KabarState peer=Seirama.next(verifiedBob,new KabarState());
+        eq(peer.name,"Bob","low revision peer accepted independently from high revision own state");
+        eq(a.json().toString(),before,"partner reception does not overwrite own status/history");
+        ok(Seirama.reciprocates(verifiedBob,alice),"partner signed recipient binding proves reciprocal consent");
+        ok(!Seirama.reciprocates(alicePacket,alice),"own outgoing consent cannot stand in for partner consent");
+        eq(Seirama.next(verifiedBob,peer),null,"replayed peer revision ignored");
+        rejects(()->aliceRead.decrypt(bobEnvelope),"wrong stream signature and secret rejected");
+        JSONObject legacy=Seirama.packet(b,false,null);ok(!Seirama.reciprocates(legacy,alice),"one-way packets remain compatible without reciprocal consent");
+        b.record("meal",at(2,18,1));
+        KabarState newest=Seirama.next(new JSONObject(bobRead.decrypt(bob.encrypt(Seirama.packet(b,true,aliceRead).toString()))),peer);
+        eq(newest.mealCategory,"Makan siang","partner local timezone governs own meal classification");
+        eq(Seirama.next(verifiedBob,newest),null,"older peer snapshot cannot roll back history");
+        String label=String.join("",Collections.nCopies(24,"界")),place=String.join("",Collections.nCopies(32,"界"));
+        a.name=a.home=a.meal=a.outside=label;
+        for(int i=0;i<12;i++)a.record("home",at(2,18,0)+i,null,new GpsPoint(-7.7956,110.3695,12,at(2,18,0)+i,a.zone,place,place));
+        String full=alice.encrypt(Seirama.packet(a,true,bobRead).toString());
+        ok(full.getBytes(StandardCharsets.UTF_8).length<=4096,"reciprocal signature/recipient hint with multibyte GPS fits relay budget");
+        eq(new JSONObject(aliceRead.decrypt(full)).getJSONObject("state").getJSONObject("gps").getString("city"),place,"reciprocal budget keeps latest exact GPS and city");
+        rejects(()->Seirama.next(Seirama.packet(a,false,bobRead).put("peerTopic","invalid"),new KabarState()),"malformed signed recipient topic rejected");
+        KabarState stopped=KabarState.parse(b.json().toString());stopped.revision++;
+        String shutdown=bob.encrypt(Seirama.revocation(stopped).toString());JSONObject verifiedShutdown=new JSONObject(bobRead.decrypt(shutdown));
+        KabarState retired=Seirama.next(verifiedShutdown,newest);ok(retired!=null,"signed newer revocation accepted on peer stream");
+        ok(!Seirama.reciprocates(verifiedShutdown,alice),"revocation removes reciprocal consent");
+        eq(Seirama.next(verifiedBob,retired),null,"old active proof cannot reactivate after revocation");
+        ok(!verifiedShutdown.optBoolean("notify",true),"mode revocation is silent");
+        ok(!Seirama.reciprocates(verifiedShutdown.put("peerTopic",alice.topic()),alice),"explicit revocation wins over contradictory recipient binding");
     }
     private static void liveRelay()throws Exception{
         Pairing sender=Pairing.create(),receiver=Pairing.parse(sender.code());

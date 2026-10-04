@@ -18,13 +18,15 @@ public final class QaProbe {
         if(seed) {
             if(Store.role(c).isEmpty())throw new IllegalStateException("Seed only after fresh QA pairing");
             c.getSharedPreferences("abc_qa_extra",0).edit().putString("personal","fixture").commit();
+            Store.prefs(c).edit().putString("peerCode","abc-qa-unused").putString("oneWayCode","abc-qa-unused").putString("peerState","fixture").putString("retiredQueue","[{\"topic\":\"fixture\",\"body\":\"encrypted-fixture\"}]").commit();
             c.openOrCreateDatabase("abc_qa.db",0,null).close();
             for(File root:roots(c))if(root!=null){root.mkdirs();try(FileOutputStream out=new FileOutputStream(new File(root,"abc-qa-cleanup.txt"))){out.write(1);}}
         }
         boolean filesClear=true;for(File root:roots(c))if(root!=null&&new File(root,"abc-qa-cleanup.txt").exists())filesClear=false;
         return new JSONObject().put("filesClear",filesClear).put("databaseClear",!c.getDatabasePath("abc_qa.db").exists())
             .put("extraPreferencesClear",c.getSharedPreferences("abc_qa_extra",0).getAll().isEmpty())
-            .put("secretsClear",!Store.prefs(c).contains("code")&&!Store.prefs(c).contains("private"))
+            .put("secretsClear",!Store.prefs(c).contains("code")&&!Store.prefs(c).contains("private")&&!Store.prefs(c).contains("peerCode")&&!Store.prefs(c).contains("oneWayCode"))
+            .put("twoWayStateClear",!Store.prefs(c).contains("peerState")&&!Store.prefs(c).contains("retiredQueue"))
             .put("notificationsClear",c.getSystemService(NotificationManager.class).getActiveNotifications().length==0);
     }
     public static JSONObject surfaces(Context c,boolean seed)throws Exception {

@@ -39,6 +39,9 @@ public final class Pairing {
     }
     public Pairing withPrivate(String encoded) throws Exception {
         PrivateKey key=KeyFactory.getInstance("EC").generatePrivate(new PKCS8EncodedKeySpec(decode(encoded)));
+        byte[] challenge="kabar-key-match-v1".getBytes(StandardCharsets.UTF_8);
+        Signature check=Signature.getInstance("SHA256withECDSA");check.initSign(key);check.update(challenge);byte[] proof=check.sign();
+        check.initVerify(publicKey);check.update(challenge);if(!check.verify(proof))throw new SecurityException("Kunci pengirim tidak cocok");
         return new Pairing(secret,publicKey,key);
     }
     public String topic() throws Exception {
