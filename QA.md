@@ -1,3 +1,17 @@
+# Laporan QA — abc 0.9.0 Cozy Pixel Art
+
+Tanggal: **4 Oktober 2026**. APK terbaru dibangun dari perombakan Flutter dengan Shadcn, Pixelify dan pixelarticons.
+
+- Build release berhasil; versionName **0.9.0**, versionCode **9**, paket `id.kabar.app`.
+- Minimum Android **10/API 29**, target **36**, ABI ARM32, ARM64 dan x86_64.
+- Ukuran **54,314,470 byte**; SHA-256 `bf1e524f2a8e96c60c8e72e76cea3f1a490cfee1b1c966bf22696074bf5804f8`.
+- Signature v2 valid; sertifikat sama dengan 0.8.0 sehingga APK dapat dipasang sebagai pembaruan. ZIP alignment 16 KB lulus.
+- Guard release lulus: ZIP utuh, nada notifikasi asli 1,08 detik, kelas debug QA tidak dibundel.
+- Pada tahap perombakan UI, analyzer bersih dan **43 tes unit/widget lulus**. Pratinjau 14 gambar memakai renderer Flutter lokal.
+- APK 0.9.0 belum diuji di emulator atau HP fisik. Hasil perangkat di bawah merupakan arsip versi 0.8.0.
+
+---
+
 # Laporan QA — abc 0.8.0
 
 Tanggal: **4 Oktober 2026**. Fokus: UI dan adegan pixel baru, widget adaptif, Seirama sebagai mode dua arah dengan konfirmasi, serta kredit **develop by terrence**. Nama dan lokasi pada [preview](TAMPILAN.md) merupakan data simulasi pengujian.

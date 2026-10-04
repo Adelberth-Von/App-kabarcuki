@@ -1,8 +1,8 @@
-# abc 0.8.0 — dua cerita, satu dunia pixel
+# abc 0.9.0 — Cozy Pixel Art dengan Shadcn
 
 Antarmuka **Flutter** yang sama dipakai untuk Android dan iPhone. Beranda memiliki dunia pixel berlapis, tiga tombol tindakan, serta kartu kabar dengan nama dan waktu yang jelas. **Seirama sekarang menjadi mode berbagi dua arah**: masing-masing orang dapat mengirim kabar sendiri dan melihat kabar pasangan. Sinkronisasi, enkripsi, lokasi, notifikasi, dan widget menggunakan kemampuan native masing-masing perangkat.
 
-**Unduh Android:** [abc.apk](https://raw.githubusercontent.com/Adelberth-Von/App-kabarcuki/refs/heads/main/abc.apk?v=0.8.0). Minimal Android 10. APK lama Kabar disimpan sebagai arsip. **APK tidak dapat dipasang di iPhone**; proyek iOS tersedia, tetapi instalasi pada iPhone fisik memerlukan penandatanganan Apple/TestFlight. Lihat [QA](QA.md) dan [pratinjau](TAMPILAN.md).
+**Unduh Android:** [abc.apk](https://raw.githubusercontent.com/Adelberth-Von/App-kabarcuki/refs/heads/main/abc.apk?v=0.9.0). Minimal Android 10. APK lama Kabar disimpan sebagai arsip. **APK tidak dapat dipasang di iPhone**; proyek iOS tersedia, tetapi instalasi pada iPhone fisik memerlukan penandatanganan Apple/TestFlight. Lihat [QA](QA.md) dan [pratinjau](TAMPILAN.md).
 
 ## Cara memasang dan mencoba mode satu arah
 
@@ -19,7 +19,7 @@ APK ini memakai identitas `id.kabar.app` dan kunci pengembangan yang sama dengan
 
 ## Seirama: saling berkabar dari dua HP
 
-Pasang **abc 0.8.0 di kedua HP**. Seirama dipilih melalui **Mode berbagi**, lalu meminta konfirmasi sebelum mengaktifkan kemampuan mengirim sekaligus menerima. Saat memperbarui tampilan Seirama versi lama, aplikasi menawarkan perpindahan ini; membatalkan konfirmasi mempertahankan peran satu arah.
+Pasang **abc 0.9.0 di kedua HP**. Seirama dipilih melalui **Mode berbagi**, lalu meminta konfirmasi sebelum mengaktifkan kemampuan mengirim sekaligus menerima. Saat memperbarui tampilan Seirama versi lama, aplikasi menawarkan perpindahan ini; membatalkan konfirmasi mempertahankan peran satu arah.
 
 1. Pada HP A dan HP B, masukkan panggilan masing-masing. Untuk pemasangan baru, pilih **Aktifkan Seirama**. Untuk perangkat yang sudah terhubung, buka **Pengaturan → Mode berbagi → Seirama**.
 2. Baca konfirmasi lalu tekan **Aktifkan Seirama** pada masing-masing HP.

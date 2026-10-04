@@ -65,8 +65,8 @@ Daftar berikut mencatat perubahan tahap perombakan ini.
 
 Salinan 14 PNG dan dua galeri untuk GitHub disimpan di
 `../screenshots/cozy-redesign/`. Sumber render lokal tetap di
-`qa-screenshots/cozy-redesign/` (diabaikan Git). APK untuk desain ini belum
-dibangun; APK 0.8 yang tersedia masih memakai desain sebelumnya.
+`qa-screenshots/cozy-redesign/` (diabaikan Git). APK **0.9.0** sudah dibangun dari desain ini dan tersedia sebagai `../abc.apk`.
+Signature, minimum Android 10, tiga ABI dan aset suara release sudah diverifikasi.
 
 ## Pemeriksaan yang selesai
 

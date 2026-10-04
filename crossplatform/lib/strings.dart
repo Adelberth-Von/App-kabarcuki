@@ -685,9 +685,9 @@ const messages = <String, List<String>>{
   ],
   'saved': ['Perubahan disimpan', 'Changes saved', 'Änderungen gespeichert'],
   'version': [
-    'abc 0.8.0 · versi uji',
-    'abc 0.8.0 · test version',
-    'abc 0.8.0 · Testversion',
+    'abc 0.9.0 · versi uji',
+    'abc 0.9.0 · test version',
+    'abc 0.9.0 · Testversion',
   ],
   'iosWidget': [
     'Tahan layar utama → Tambah Widget → abc. Pembaruan mengikuti iOS.',

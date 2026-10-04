@@ -4,15 +4,15 @@ Desain Flutter terbaru memadukan komponen Shadcn, judul Pixelify dan ikon pixela
 
 [Galeri setiap halaman dan daftar perubahan](crossplatform/PREVIEW_LOKAL.md)
 
-Gambar berikut dirender dari halaman Flutter yang sebenarnya dengan data simulasi Nara/Yogyakarta. **Ini pratinjau renderer lokal, belum screenshot emulator atau HP fisik.** Pemeriksaan statis bersih dan 43 tes unit/widget lulus. QA emulator/perangkat untuk desain baru masih menunggu instruksi; APK 0.8 di bawah masih memakai desain sebelumnya.
+Gambar berikut dirender dari halaman Flutter yang sebenarnya dengan data simulasi Nara/Yogyakarta. **Ini pratinjau renderer lokal, belum screenshot emulator atau HP fisik.** Pemeriksaan statis bersih dan 43 tes unit/widget lulus. QA emulator/perangkat untuk desain baru masih menunggu instruksi; APK **0.9.0** sudah memuat desain baru ini; build release, signature dan aset suara sudah diverifikasi.
 
 ![Pembuka, pilihan peran, Beranda terang dan gelap, Riwayat serta Pengaturan](screenshots/cozy-redesign/overview-pages.png)
 
 ![Makan, konfirmasi status, detail lokasi, penampilan terang dan gelap serta Seirama](screenshots/cozy-redesign/overview-details.png)
 
-## Arsip rilis abc 0.8.0 — dua cerita, satu dunia pixel
+## Arsip tampilan rilis abc 0.8.0 — dua cerita, satu dunia pixel
 
-[Unduh APK Android 10 ke atas](https://raw.githubusercontent.com/Adelberth-Von/App-kabarcuki/refs/heads/main/abc.apk?v=0.8.0) · [Panduan pemasangan dan mode dua arah](README.md) · [Hasil QA](QA.md)
+[Unduh APK Android 10 ke atas](https://raw.githubusercontent.com/Adelberth-Von/App-kabarcuki/refs/heads/main/abc.apk?v=0.9.0) · [Panduan pemasangan dan mode dua arah](README.md) · [Hasil QA](QA.md)
 
 Seirama kini menjadi **mode berbagi dua arah** dengan persetujuan pada kedua HP. Beranda, widget, kartu status dan dunia pixel disusun ulang. Contoh menggunakan nama, jam dan data simulasi; bukan lokasi pengguna nyata. Rincian pengujian perangkat dan keterbatasannya ada pada laporan QA.
 
@@ -87,7 +87,7 @@ Contoh ini memperlihatkan mode Seirama sebelum kode pasangan dipasang; kartu pas
 
 ### abc 0.7.0 — pixel art yang mengikuti kabar
 
-[Unduh APK Android 10 ke atas](https://raw.githubusercontent.com/Adelberth-Von/App-kabarcuki/refs/heads/main/abc.apk?v=0.8.0) · [Panduan](README.md) · [Hasil QA](QA.md)
+[Unduh APK Android 10 ke atas](https://raw.githubusercontent.com/Adelberth-Von/App-kabarcuki/refs/heads/main/abc.apk?v=0.9.0) · [Panduan](README.md) · [Hasil QA](QA.md)
 
 Gambar Android berasal dari APK release yang berjalan pada dua emulator khusus uji. Nama, jam dan titik GPS merupakan data simulasi; tidak menunjukkan lokasi pengguna nyata. Gambar iPhone berasal dari rangkaian QA simulator yang lulus.
 
