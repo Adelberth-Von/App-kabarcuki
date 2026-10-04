@@ -5,9 +5,11 @@ import java.io.*;
 
 public final class AppDataCleaner {
     public static void clear(Context c)throws IOException {
+        synchronized(Store.LOCK) {if(!Store.prefs(c).edit().putBoolean("enabled",false).commit())throw new IOException("Cannot pause application service");}
+        // Lifecycle/notification shutdown must run outside Store.LOCK: the main
+        // service thread also acquires that lock while stopping its workers.
+        SyncService.stopForRemoval(c);
         synchronized(Store.LOCK) {
-            Store.prefs(c).edit().putBoolean("enabled",false).commit();
-            c.stopService(new Intent(c,SyncService.class));
             Store.wakeSync();
             File[] preferences=new File(c.getDataDir(),"shared_prefs").listFiles();
             if(preferences!=null)for(File file:preferences) {

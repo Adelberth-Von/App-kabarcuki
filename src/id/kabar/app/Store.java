@@ -22,6 +22,15 @@ public final class Store {
     }
     public static String reciprocity(Context c){return !isTwoWay(c)?"none":prefs(c).getString("peerCode","").isEmpty()?"unlinked":prefs(c).getBoolean("peerRevoked",false)?"inactive":prefs(c).getBoolean("peerConfirmed",false)?"active":"waiting";}
     public static String session(Context c){return role(c)+":"+prefs(c).getString("code","")+":"+prefs(c).getString("peerCode","");}
+    public static boolean linkPeer(Context c,Pairing incoming)throws Exception {
+        synchronized(LOCK){
+            if(!isTwoWay(c))throw new SecurityException("Enable Seirama first");Seirama.requireDifferent(pairing(c),incoming);
+            boolean same=incoming.code().equals(prefs(c).getString("peerCode",""));
+            android.content.SharedPreferences.Editor edit=prefs(c).edit().putString("peerCode",incoming.code());
+            if(!same)edit.putBoolean("peerConfirmed",false).putBoolean("peerRevoked",false).remove("cursor").putString("peerState",new KabarState().json().toString());
+            if(!edit.commit())throw new java.io.IOException("Penyimpanan penuh");return same;
+        }
+    }
     public static KabarState state(Context c) {
         synchronized(LOCK) { try {return KabarState.parse(prefs(c).getString("state",""));}catch(Exception e){return new KabarState();} }
     }

@@ -12,6 +12,7 @@ import java.security.GeneralSecurityException;
 
 public class SyncService extends Service {
     public static final String UPDATES_CHANNEL="updates_pixel_v1";
+    private static volatile SyncService live;
     private volatile boolean running=false;
     private Thread worker, incomingWorker;
     private volatile HttpURLConnection connection,outgoingConnection;
@@ -24,23 +25,39 @@ public class SyncService extends Service {
     public static void stop(Context c) {
         c.startForegroundService(new Intent(c,SyncService.class).setAction("STOP").putExtra("stopSession",Store.prefs(c).getString("code","")));
     }
+    /** Stop foreground ownership on the service's main thread before deleting preferences. */
+    public static void stopForRemoval(Context c)throws IOException {
+        java.util.concurrent.CountDownLatch done=new java.util.concurrent.CountDownLatch(1);
+        Runnable remove=()->{try{SyncService service=live;if(service!=null)service.stopRuntime();c.stopService(new Intent(c,SyncService.class));c.getSystemService(NotificationManager.class).cancelAll();}finally{done.countDown();}};
+        if(Looper.myLooper()==Looper.getMainLooper())remove.run();
+        else {
+            if(!new Handler(Looper.getMainLooper()).post(remove))throw new IOException("Cannot stop application service");
+            try{if(!done.await(5,java.util.concurrent.TimeUnit.SECONDS))throw new IOException("Application service did not stop");}catch(InterruptedException e){Thread.currentThread().interrupt();throw new IOException("Application cleanup interrupted",e);}
+        }
+    }
+    private void promote() {
+        if(Build.VERSION.SDK_INT>=34)startForeground(1,persistent(),ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        else startForeground(1,persistent());
+    }
+    private void stopRuntime() {
+        running=false;if(connection!=null)connection.disconnect();if(outgoingConnection!=null)outgoingConnection.disconnect();if(worker!=null)worker.interrupt();if(incomingWorker!=null)incomingWorker.interrupt();
+        Store.wakeSync();stopForeground(STOP_FOREGROUND_REMOVE);
+    }
     @Override public void onCreate() {
-        super.onCreate();channels(this);
+        super.onCreate();live=this;channels(this);
         IntentFilter power=new IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
         if(Build.VERSION.SDK_INT>=33)registerReceiver(widgetPower,power,Context.RECEIVER_NOT_EXPORTED);else registerReceiver(widgetPower,power);
         // Promote before checking a pause: startForegroundService may still be in flight.
-        if(Build.VERSION.SDK_INT>=34)startForeground(1,persistent(),ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
-        else startForeground(1,persistent());
+        promote();
     }
     @Override public IBinder onBind(Intent intent){return null;}
     @Override public int onStartCommand(Intent intent,int flags,int startId) {
         // Every pending start must be promoted, including a stop queued during startup.
-        if(Build.VERSION.SDK_INT>=34)startForeground(1,persistent(),ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
-        else startForeground(1,persistent());
+        promote();
         if(intent!=null&&"STOP".equals(intent.getAction())&&intent.getStringExtra("stopSession")!=null&&intent.getStringExtra("stopSession").equals(Store.prefs(this).getString("code",""))) {
-            Store.prefs(this).edit().putBoolean("enabled",false).apply();stopSelf();return START_NOT_STICKY;
+            Store.prefs(this).edit().putBoolean("enabled",false).apply();stopRuntime();stopSelf();return START_NOT_STICKY;
         }
-        if(Store.role(this).isEmpty()||!Store.prefs(this).getBoolean("enabled",true)){stopSelf();return START_NOT_STICKY;}
+        if(Store.role(this).isEmpty()||!Store.prefs(this).getBoolean("enabled",true)){stopRuntime();stopSelf();return START_NOT_STICKY;}
         String nextSession=Store.session(this);
         if(running&&!nextSession.equals(session)) {
             running=false;if(connection!=null)connection.disconnect();if(outgoingConnection!=null)outgoingConnection.disconnect();if(worker!=null)worker.interrupt();if(incomingWorker!=null)incomingWorker.interrupt();incomingWorker=null;
@@ -224,6 +241,8 @@ public class SyncService extends Service {
     public static void refreshNotifications(Context c) {
         java.util.TimeZone.setDefault(null);
         NotificationManager nm=c.getSystemService(NotificationManager.class);
+        synchronized(Store.LOCK) {
+        if(Store.role(c).isEmpty())return;
         for(android.service.notification.StatusBarNotification delivered:nm.getActiveNotifications()) {
             Notification old=delivered.getNotification();
             Notification.Builder b=Notification.Builder.recoverBuilder(c,old)
@@ -241,16 +260,19 @@ public class SyncService extends Service {
                 if(!data.getString("abcCity","").isEmpty())expanded+="\n"+LocalProfile.text(c,"Lokasi terakhir · ","Last location · ","Letzter Standort · ")+data.getString("abcCity");
                 b.setStyle(new Notification.BigTextStyle().bigText(expanded)).setSubText(Store.isTwoWay(c)?"Seirama":"abc").setColor(new Appearance(Store.isTwoWay(c),new Appearance(c).dark).accent);
             } else if(delivered.getId()==1) {
-                b.setContentTitle(LocalProfile.text(c,"abc aktif","abc is active","abc ist aktiv"))
-                    .setContentText(Store.isTwoWay(c)?LocalProfile.text(c,"Saling berbagi kabar","Sharing updates both ways","Updates in beide Richtungen"):Store.canSend(c)?LocalProfile.text(c,"Siap mengirim kabar","Ready to send updates","Bereit für Updates"):LocalProfile.text(c,"Menunggu kabar","Waiting for updates","Warten auf Updates"));
+                // NotificationManager must never recreate an orphan FGS notification.
+                // Only its live service may update foreground ownership.
+                SyncService service=live;
+                if(service!=null&&service.running&&Store.prefs(c).getBoolean("enabled",true))service.promote();
+                continue;
             } else continue;
             nm.notify(delivered.getTag(),delivered.getId(),b.build());
+        }
         }
     }
     @Override public void onDestroy() {
         unregisterReceiver(widgetPower);
-        running=false;if(connection!=null)connection.disconnect();if(outgoingConnection!=null)outgoingConnection.disconnect();if(worker!=null)worker.interrupt();if(incomingWorker!=null)incomingWorker.interrupt();
-        Store.wakeSync();
+        stopRuntime();if(live==this)live=null;
         if(!Store.role(this).isEmpty())Store.prefs(this).edit().putString("connection","Koneksi dijeda · buka aplikasi untuk melanjutkan").apply();
         Store.changed(this);super.onDestroy();
     }

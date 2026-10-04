@@ -48,6 +48,13 @@ enum SharedStore {
         return defaults.string(forKey:"role")=="receiver" ? pairing():nil
     }
     static func selfState() -> KabarState {state()}
+    static func linkPeer(_ incoming: Pairing) throws -> Bool {
+        guard isTwoWay,let own=pairing() else {throw KabarError.invalid("Enable Seirama first")};try Seirama.requireDifferent(own,incoming)
+        let same=incomingPairing()?.code==incoming.code
+        try saveSecret(Data(incoming.code.utf8),name:"peerCode")
+        if !same {for key in ["peerState","cursor","peerConfirmed","peerRevoked"] {defaults.removeObject(forKey:key)};defaults.set(false,forKey:"pushRegistered")}
+        return same
+    }
     static func peerState() -> KabarState? {
         guard isTwoWay,incomingPairing() != nil else {return nil}
         guard let data=defaults.data(forKey:"peerState"),let state=try? JSONDecoder().decode(KabarState.self,from:data),(try? state.validate()) != nil else {return KabarState()};return state

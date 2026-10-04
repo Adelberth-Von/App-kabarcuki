@@ -144,9 +144,7 @@ public final class AbcActivity extends FlutterActivity {
                 if(Seirama.isOwn(Store.pairing(this),incoming)){main.post(()->result.error("own_code","Use your partner's code",null));return null;}
                 synchronized(Store.LOCK){
                     if(Store.pending(this)>=25)throw new IllegalStateException("25 kabar masih menunggu");
-                    boolean same=incoming.code().equals(Store.prefs(this).getString("peerCode",""));
-                    SharedPreferences.Editor edit=Store.prefs(this).edit().putString("peerCode",incoming.code()).putBoolean("peerConfirmed",false).putBoolean("peerRevoked",false).remove("cursor");if(!same)edit.putString("peerState",new KabarState().json().toString());
-                    if(!edit.commit())throw new IllegalStateException();KabarState own=Store.state(this);own.revision++;Store.saveAndQueue(this,own,false);
+                    Store.linkPeer(this,incoming);KabarState own=Store.state(this);own.revision++;Store.saveAndQueue(this,own,false);
                 }
                 main.post(()->SyncService.start(this));return answer(null);
             });return;

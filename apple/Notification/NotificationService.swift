@@ -41,7 +41,11 @@ final class NotificationService: UNNotificationServiceExtension {
         // Recheck when fetches fail or the extension deadline arrives: the app
         // may have paused, left Seirama or disconnected while this request ran.
         if (!(SharedStore.defaults.object(forKey:"enabled") as? Bool ?? true) || expectedTopic==nil || SharedStore.incomingPairing()?.topic != expectedTopic),let quiet=content.mutableCopy() as? UNMutableNotificationContent {
-            quiet.sound=nil;quiet.interruptionLevel = .passive;quiet.badge=nil;handler(quiet)
+            quiet.sound=nil;quiet.interruptionLevel = .passive;quiet.badge=nil
+            quiet.title="abc";quiet.subtitle=""
+            quiet.body=PhoneText.text("Sambungan ini tidak aktif. Buka abc untuk melihat sambungan saat ini.","This connection is inactive. Open abc to view your current connection.","Diese Verbindung ist inaktiv. Öffne abc für deine aktuelle Verbindung.")
+            for key in ["abcAt","abcLabel","abcCity","abcName","abcPeer"] {quiet.userInfo.removeValue(forKey:key)}
+            handler(quiet)
         } else {handler(content)}
     }
     private func finishQuietly(_ content: UNMutableNotificationContent) {

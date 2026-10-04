@@ -84,9 +84,7 @@ import KabarCore
         let incoming=try Seirama.parseInvite(invite);try Seirama.requireDifferent(own,incoming)
         let previous=SharedStore.incomingPairing();stop()
         if let previous,previous.topic != incoming.topic,let token=SharedStore.defaults.string(forKey:"deviceToken"),let endpoint=validPushURL(){Task{try? await sendRegistration(endpoint:endpoint,pair:previous,token:token,remove:true)}}
-        try SharedStore.saveSecret(Data(incoming.code.utf8),name:"peerCode")
-        if previous?.topic != incoming.topic {SharedStore.defaults.removeObject(forKey:"peerState")}
-        SharedStore.defaults.removeObject(forKey:"cursor");SharedStore.defaults.set(false,forKey:"peerConfirmed");SharedStore.defaults.set(false,forKey:"peerRevoked");SharedStore.defaults.set(false,forKey:"pushRegistered")
+        _=try SharedStore.linkPeer(incoming)
         state.revision+=1;try enqueue(state,notify:false);start()
     }
     func disableSeirama(confirmed: Bool) throws {

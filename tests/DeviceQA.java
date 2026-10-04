@@ -12,11 +12,13 @@ public class DeviceQA extends Instrumentation {
     private Bundle args;
     private int assertions=0;
     private MainActivity activity;
+    private MainActivity resumedActivity;
     @Override public void callActivityOnResume(Activity resumed) {
         super.callActivityOnResume(resumed);
         // Configuration changes can replace the Activity during a large-font run.
-        if(resumed instanceof MainActivity)activity=(MainActivity)resumed;
+        if(resumed instanceof MainActivity){activity=(MainActivity)resumed;resumedActivity=(MainActivity)resumed;}
     }
+    @Override public void callActivityOnPause(Activity paused){super.callActivityOnPause(paused);if(paused==resumedActivity)resumedActivity=null;}
     @Override public void onCreate(Bundle arguments){args=arguments;start();}
     private void ok(boolean value,String label){assertions++;if(!value)throw new AssertionError(label);}
     private void main(Runnable run){runOnMainSync(run);waitForIdleSync();}
@@ -163,9 +165,35 @@ public class DeviceQA extends Instrumentation {
         for(int i=0;i<n.getChildCount();i++)collectEditable(n.getChild(i),out);
     }
     private void appearanceClick(String control)throws Exception{
+        MainActivity[] previous={null};main(()->previous[0]=resumedActivity);
         ActivityMonitor monitor=addMonitor(MainActivity.class.getName(),null,false);
         click(control);Activity next=waitForMonitorWithTimeout(monitor,8000);removeMonitor(monitor);
-        ok(next instanceof MainActivity,"appearance recreation completes");activity=(MainActivity)next;waitForIdleSync();
+        ok(next instanceof MainActivity,"appearance recreation begins");
+        // A monitor can return a created instance before it resumes, including an
+        // instance replaced by an overlapping font/configuration recreation.
+        // Select the live window from lifecycle callbacks rather than retaining it.
+        long deadline=SystemClock.elapsedRealtime()+8000;boolean[] live={false};
+        while(!live[0]&&SystemClock.elapsedRealtime()<deadline){main(()->{MainActivity active=resumedActivity;live[0]=active!=null&&active!=previous[0]&&!active.isDestroyed()&&!active.isFinishing();if(live[0])activity=active;});if(!live[0])Thread.sleep(50);}
+        ok(live[0],"appearance recreation resumes a live activity");
+    }
+    private String renderedClocks(View view){
+        StringBuilder out=new StringBuilder();
+        if(view instanceof TextView){String value=((TextView)view).getText().toString();if(value.matches("^\\d{2}\\.\\d{2} .* - .*$"))out.append(value).append(" | ");}
+        if(view instanceof ViewGroup)for(int i=0;i<((ViewGroup)view).getChildCount();i++)out.append(renderedClocks(((ViewGroup)view).getChildAt(i)));
+        return out.toString();
+    }
+    private boolean awaitLiveClock(java.util.TimeZone zone,long changeAt,long millis)throws Exception {
+        long deadline=SystemClock.elapsedRealtime()+millis;boolean[] shown={false};
+        while(!shown[0]&&SystemClock.elapsedRealtime()<deadline){main(()->{
+            MainActivity live=resumedActivity;
+            if(live!=null&&!live.isDestroyed()&&!live.isFinishing()){
+                activity=live;View decor=live.getWindow().getDecorView();
+                // Accept the moment of this change as well as now, avoiding a
+                // minute-boundary race without accepting a clock in the old zone.
+                shown[0]=find(decor,StatusLogic.clock(System.currentTimeMillis(),zone))!=null||find(decor,StatusLogic.clock(changeAt,zone))!=null;
+            }
+        });if(!shown[0])Thread.sleep(100);}
+        return shown[0];
     }
     private void testAppearance(Context c)throws Exception{
         String code=Store.prefs(c).getString("code","");long revision=Store.state(c).revision;
@@ -189,15 +217,13 @@ public class DeviceQA extends Instrumentation {
             // Android configuration changes (e.g. large text / appearance recreation).
             // The previous run may already have left Tokyo active while a broadcast
             // was in flight. Force a real change so this tests a system notification.
-            shell("cmd alarm set-timezone UTC");
-            long utcDeadline=SystemClock.elapsedRealtime()+8000;boolean[] utcShown={false};
-            while(!utcShown[0]&&SystemClock.elapsedRealtime()<utcDeadline){main(()->utcShown[0]=find(activity.getWindow().getDecorView(),StatusLogic.clock(System.currentTimeMillis(),java.util.TimeZone.getTimeZone("UTC")))!=null);if(!utcShown[0])Thread.sleep(100);}
-            ok(utcShown[0],"UTC clock rendered before changing to Tokyo");
-            shell("cmd alarm set-timezone Asia/Tokyo");
+            long utcChangeAt=System.currentTimeMillis();shell("cmd alarm set-timezone UTC");
+            ok(awaitLiveClock(java.util.TimeZone.getTimeZone("UTC"),utcChangeAt,8000),"UTC clock rendered before changing to Tokyo");
+            long tokyoChangeAt=System.currentTimeMillis();shell("cmd alarm set-timezone Asia/Tokyo");
             // Wait for the actual system broadcast and the rendered result.
-            long deadline=SystemClock.elapsedRealtime()+5000;boolean[] shown={false};
-            while(!shown[0]&&SystemClock.elapsedRealtime()<deadline){main(()->shown[0]=find(activity.getWindow().getDecorView(),StatusLogic.clock(System.currentTimeMillis(),java.util.TimeZone.getTimeZone("Asia/Tokyo")))!=null);if(!shown[0])Thread.sleep(100);}
-            ok(shown[0],"local clock follows device zone on refresh; actual zone="+java.util.TimeZone.getDefault().getID());
+            boolean shown=awaitLiveClock(java.util.TimeZone.getTimeZone("Asia/Tokyo"),tokyoChangeAt,8000);String[] clocks={"no resumed activity"};
+            main(()->{if(resumedActivity!=null)clocks[0]=renderedClocks(resumedActivity.getWindow().getDecorView());});
+            ok(shown,"local clock follows device zone on refresh; actual zone="+java.util.TimeZone.getDefault().getID()+"; rendered="+clocks[0]);
             ok(Store.state(c).revision==revision,"viewer zone leaves state untouched");
         }finally{shell("cmd alarm set-timezone "+original.getID());}
     }
