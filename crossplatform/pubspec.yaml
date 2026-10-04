@@ -3,12 +3,24 @@ description: Private family updates with a shared pixel-art interface.
 publish_to: none
 version: 0.8.0+8
 environment:
-  sdk: '>=3.6.0 <4.0.0'
+  sdk: '>=3.9.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  shadcn_ui: ^0.57.1
+  pixelify_flutter: ^0.0.1
+  pixelarticons: ^0.4.0
+
+# Upstream 0.0.1 exports an empty wave implementation; keep the fix reproducible.
+dependency_overrides:
+  pixelify_flutter:
+    path: third_party/pixelify_flutter
+  # Keep the compatible MethodChannel implementations with the current SDK.
+  # Later path_provider versions introduce JNI/CMake and native build hooks.
+  path_provider_android: 2.2.23
+  path_provider_foundation: 2.5.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -16,3 +28,11 @@ dev_dependencies:
     sdk: flutter
 flutter:
   uses-material-design: true
+  assets:
+    - assets/fonts/silkscreen/OFL.txt
+  fonts:
+    - family: Silkscreen
+      fonts:
+        - asset: assets/fonts/silkscreen/Silkscreen-Regular.ttf
+        - asset: assets/fonts/silkscreen/Silkscreen-Bold.ttf
+          weight: 700

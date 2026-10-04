@@ -1,4 +1,16 @@
-# abc 0.8.0 — dua cerita, satu dunia pixel
+# abc — Cozy Pixel Art
+
+Desain Flutter terbaru memadukan komponen Shadcn, judul Pixelify dan ikon pixelarticons. Terang memakai cream/lavender, gelap memakai navy/slate; pembuka, pilihan peran, Beranda, Riwayat, Pengaturan dan dialog kini memakai gaya cozy yang konsisten.
+
+[Galeri setiap halaman dan daftar perubahan](crossplatform/PREVIEW_LOKAL.md)
+
+Gambar berikut dirender dari halaman Flutter yang sebenarnya dengan data simulasi Nara/Yogyakarta. **Ini pratinjau renderer lokal, belum screenshot emulator atau HP fisik.** Pemeriksaan statis bersih dan 43 tes unit/widget lulus. QA emulator/perangkat untuk desain baru masih menunggu instruksi; APK 0.8 di bawah masih memakai desain sebelumnya.
+
+![Pembuka, pilihan peran, Beranda terang dan gelap, Riwayat serta Pengaturan](screenshots/cozy-redesign/overview-pages.png)
+
+![Makan, konfirmasi status, detail lokasi, penampilan terang dan gelap serta Seirama](screenshots/cozy-redesign/overview-details.png)
+
+## Arsip rilis abc 0.8.0 — dua cerita, satu dunia pixel
 
 [Unduh APK Android 10 ke atas](https://raw.githubusercontent.com/Adelberth-Von/App-kabarcuki/refs/heads/main/abc.apk?v=0.8.0) · [Panduan pemasangan dan mode dua arah](README.md) · [Hasil QA](QA.md)
 

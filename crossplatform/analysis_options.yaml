@@ -1,7 +1,7 @@
 analyzer:
   exclude:
+    # Vendored dependency, compiled and checked by app/patch regression tests.
+    - third_party/**
     - build/**
     - android/**
     - ios/**
-linter:
-  rules: [avoid_print, use_build_context_synchronously]

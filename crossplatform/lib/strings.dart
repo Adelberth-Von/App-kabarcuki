@@ -8,132 +8,164 @@ class Copy {
       (messages[key] ?? [key, key, key])[language == 'en'
           ? 1
           : language == 'de'
-              ? 2
-              : 0];
+          ? 2
+          : 0];
   String fill(String key, String value) => this[key].replaceAll('{x}', value);
   String label(String value) => switch (value) {
-        'Keluar' => this['outside'],
-        'Kost' => this['homeStatus'],
-        'Makan' => this['meal'],
-        'Sarapan' => this['breakfast'],
-        'Makan siang' => this['lunch'],
-        'Makan malam' => this['dinner'],
-        'Di kost' => this['atHome'],
-        _ => value,
-      };
+    'Keluar' => this['outside'],
+    'Kost' => this['homeStatus'],
+    'Makan' => this['meal'],
+    'Sarapan' => this['breakfast'],
+    'Makan siang' => this['lunch'],
+    'Makan malam' => this['dinner'],
+    'Di kost' => this['atHome'],
+    _ => value,
+  };
 }
 
 const messages = <String, List<String>>{
+  'cozyWelcome': [
+    'Kabar kecil, rasa dekat.',
+    'Little updates, closer hearts.',
+    'Kleine Updates, mehr Nähe.',
+  ],
+  'yourLittleWorld': [
+    'Dunia kecilmu',
+    'Your little world',
+    'Deine kleine Welt',
+  ],
+  'journal': [
+    'Catatan kecilmu',
+    'Your little journal',
+    'Dein kleines Tagebuch',
+  ],
+  'personalSpace': [
+    'Ruang personalmu',
+    'Your personal space',
+    'Dein persönlicher Raum',
+  ],
+  'chooseRole': [
+    'Cara kamu terhubung',
+    'How you connect',
+    'So verbindest du dich',
+  ],
+  'shareMoment': [
+    'Kirim satu kabar kecil.',
+    'Share a little moment.',
+    'Teile einen kleinen Moment.',
+  ],
+  'lightPreview': ['Hangat & lembut', 'Warm & soft', 'Warm & sanft'],
+  'darkPreview': ['Tenang & nyaman', 'Quiet & cozy', 'Ruhig & gemütlich'],
   'mode': ['Mode berbagi', 'Sharing mode', 'Teilen-Modus'],
   'oneWay': ['Satu arah', 'One way', 'Einseitig'],
   'oneWayDescription': [
     'Satu orang berbagi, keluarga menerima kabar.',
     'One person shares; family receives updates.',
-    'Eine Person teilt; die Familie erhält Updates.'
+    'Eine Person teilt; die Familie erhält Updates.',
   ],
   'seirama': ['Seirama', 'Seirama', 'Seirama'],
   'seiramaDescription': [
     'Dua orang, dua cerita. Saling berbagi kabar.',
     'Two people, two stories. Share updates both ways.',
-    'Zwei Menschen, zwei Geschichten. Updates in beide Richtungen.'
+    'Zwei Menschen, zwei Geschichten. Updates in beide Richtungen.',
   ],
   'seiramaConsentTitle': [
     'Seirama, saling berbagi',
     'Seirama, share both ways',
-    'Seirama, gegenseitig teilen'
+    'Seirama, gegenseitig teilen',
   ],
   'seiramaConsentBody': [
     'HP ini bisa mengirim kabarmu sekaligus menerima kabar pasangan. Status dan riwayat kalian tetap terpisah. Tukar kode Seirama dan konfirmasi di kedua HP untuk menghubungkannya. Lokasi tetap hanya dibagikan saat kamu memilihnya.',
     'This phone can send your updates and receive your partner’s. Your statuses and histories stay separate. Exchange Seirama codes and confirm on both phones to connect. Location is shared only when you choose it.',
-    'Dieses Handy kann deine Updates senden und die deines Partners empfangen. Status und Verlauf bleiben getrennt. Tauscht Seirama-Codes aus und bestätigt auf beiden Handys. Dein Standort wird nur geteilt, wenn du es auswählst.'
+    'Dieses Handy kann deine Updates senden und die deines Partners empfangen. Status und Verlauf bleiben getrennt. Tauscht Seirama-Codes aus und bestätigt auf beiden Handys. Dein Standort wird nur geteilt, wenn du es auswählst.',
   ],
   'activateSeirama': [
     'Aktifkan Seirama',
     'Enable Seirama',
-    'Seirama aktivieren'
+    'Seirama aktivieren',
   ],
   'modeUpgrade': [
     'Seirama kini menjadi mode dua arah. Aktifkan dengan konfirmasi untuk mulai saling berbagi.',
     'Seirama is now a two-way mode. Confirm to start sharing with each other.',
-    'Seirama ist jetzt ein gegenseitiger Modus. Bestätige, um miteinander zu teilen.'
+    'Seirama ist jetzt ein gegenseitiger Modus. Bestätige, um miteinander zu teilen.',
   ],
   'linkPartner': [
     'Hubungkan pasangan',
     'Connect your partner',
-    'Partner verbinden'
+    'Partner verbinden',
   ],
   'exchangeCodes': [
     'Tukar kode Seirama',
     'Exchange Seirama codes',
-    'Seirama-Codes austauschen'
+    'Seirama-Codes austauschen',
   ],
   'exchangeBody': [
     '1. Kirim kode milikmu secara pribadi.\n2. Masukkan kode dari HP pasangan di sini.\n3. Pasangan melakukan hal yang sama dan mengonfirmasi.',
     '1. Share your code privately.\n2. Enter the code from your partner’s phone here.\n3. Your partner does the same and confirms.',
-    '1. Teile deinen Code privat.\n2. Gib hier den Code vom anderen Handy ein.\n3. Dein Partner macht dasselbe und bestätigt.'
+    '1. Teile deinen Code privat.\n2. Gib hier den Code vom anderen Handy ein.\n3. Dein Partner macht dasselbe und bestätigt.',
   ],
   'yourCode': ['Kode milikmu', 'Your code', 'Dein Code'],
   'partnerCode': [
     'Kode dari pasangan',
     'Your partner’s code',
-    'Code deines Partners'
+    'Code deines Partners',
   ],
   'joinSeiramaTitle': [
     'Hubungkan kedua cerita?',
     'Connect both stories?',
-    'Beide Geschichten verbinden?'
+    'Beide Geschichten verbinden?',
   ],
   'joinSeiramaBody': [
     'Kamu akan menerima kabar pemilik kode ini. Kode milikmu perlu dikonfirmasi di HP mereka agar mereka juga menerima kabarmu. Pastikan kode berasal dari orang yang kamu percaya.',
     'You’ll receive updates from this code’s owner. They must confirm your code on their phone to receive your updates too. Only use a code from someone you trust.',
-    'Du erhältst Updates vom Besitzer dieses Codes. Die andere Person muss deinen Code bestätigen, um deine Updates zu erhalten. Verwende nur den Code einer vertrauten Person.'
+    'Du erhältst Updates vom Besitzer dieses Codes. Die andere Person muss deinen Code bestätigen, um deine Updates zu erhalten. Verwende nur den Code einer vertrauten Person.',
   ],
   'ownCodeError': [
     'Itu kode milik HP ini. Masukkan kode dari HP pasangan.',
     'That is this phone’s code. Enter the code from your partner’s phone.',
-    'Das ist der Code dieses Handys. Gib den Code des anderen Handys ein.'
+    'Das ist der Code dieses Handys. Gib den Code des anderen Handys ein.',
   ],
   'seiramaUnlinked': [
     'Tukar kode untuk mulai saling berbagi.',
     'Exchange codes to start sharing both ways.',
-    'Tauscht Codes aus, um gegenseitig zu teilen.'
+    'Tauscht Codes aus, um gegenseitig zu teilen.',
   ],
   'seiramaWaiting': [
     'Menunggu konfirmasi di HP pasangan.',
     'Waiting for confirmation on your partner’s phone.',
-    'Warte auf die Bestätigung am anderen Handy.'
+    'Warte auf die Bestätigung am anderen Handy.',
   ],
   'seiramaActive': [
     'Kalian terhubung dua arah',
     'Connected both ways',
-    'In beide Richtungen verbunden'
+    'In beide Richtungen verbunden',
   ],
   'seiramaInactive': [
     'Pasangan kembali ke mode satu arah.',
     'Your partner returned to one-way mode.',
-    'Dein Partner ist zum einseitigen Modus zurückgekehrt.'
+    'Dein Partner ist zum einseitigen Modus zurückgekehrt.',
   ],
   'existingRecipients': [
     'Pemilik kode lamamu tetap dapat menerima kabarmu. Ganti kode jika ingin membatasi penerima.',
     'Holders of your previous code can still receive your updates. Change the code if you want to limit recipients.',
-    'Besitzer deines bisherigen Codes können deine Updates weiter empfangen. Ändere den Code, wenn du Empfänger begrenzen möchtest.'
+    'Besitzer deines bisherigen Codes können deine Updates weiter empfangen. Ändere den Code, wenn du Empfänger begrenzen möchtest.',
   ],
   'leaveSeirama': [
     'Kembali ke satu arah',
     'Return to one way',
-    'Zurück zu einseitig'
+    'Zurück zu einseitig',
   ],
   'leaveSeiramaBody': [
     'Sambungan Seirama di HP ini dihentikan dan peran satu arah sebelumnya dipulihkan. Salinan kabar yang sudah diterima di HP lain tidak ikut terhapus.',
     'Stop Seirama on this phone and restore its previous one-way role. Copies already received on another phone are not erased.',
-    'Seirama auf diesem Handy beenden und die vorherige einseitige Rolle wiederherstellen. Bereits empfangene Kopien auf dem anderen Handy werden nicht gelöscht.'
+    'Seirama auf diesem Handy beenden und die vorherige einseitige Rolle wiederherstellen. Bereits empfangene Kopien auf dem anderen Handy werden nicht gelöscht.',
   ],
   'ourUpdates': ['Kabar kita', 'Our updates', 'Unsere Updates'],
   'myUpdates': ['Kabarku', 'My updates', 'Meine Updates'],
   'partnerUpdates': [
     'Kabar pasangan',
     'Partner’s updates',
-    'Updates meines Partners'
+    'Updates meines Partners',
   ],
   'yourPartner': ['Pasanganmu', 'Your partner', 'Dein Partner'],
   'fromThisPhone': ['Dari HP ini', 'From this phone', 'Von diesem Handy'],
@@ -142,92 +174,92 @@ const messages = <String, List<String>>{
   'peerNoUpdate': [
     'Belum ada kabar pasangan. Setelah kedua HP terhubung, kabarnya akan muncul di sini.',
     'No partner update yet. Their updates appear here once both phones are connected.',
-    'Noch kein Partner-Update. Nach der Verbindung beider Handys erscheinen die Updates hier.'
+    'Noch kein Partner-Update. Nach der Verbindung beider Handys erscheinen die Updates hier.',
   ],
   'sharingWith': ['Dibagikan kepada {x}', 'Shared with {x}', 'Geteilt mit {x}'],
   'modeVisualNote': [
     'Warna dan karakter mengikuti mode berbagi. Terang atau gelap tetap pilihanmu.',
     'Colors and characters follow your sharing mode. Light or dark remains your choice.',
-    'Farben und Figuren folgen dem Teilen-Modus. Hell oder Dunkel bleibt deine Wahl.'
+    'Farben und Figuren folgen dem Teilen-Modus. Hell oder Dunkel bleibt deine Wahl.',
   ],
   'dailyRhythm': ['Ritme harimu', 'Your daily rhythm', 'Dein Tagesrhythmus'],
   'smallMoment': [
     'Satu kabar kecil hari ini',
     'A small moment today',
-    'Ein kleiner Moment heute'
+    'Ein kleiner Moment heute',
   ],
   'latestPlace': ['Lokasi status', 'Whereabouts', 'Aufenthaltsstatus'],
   'settingsNote': [
     'Atur ruang kabarmu, dengan caramu.',
     'Make this little space your own.',
-    'Gestalte diesen kleinen Raum auf deine Weise.'
+    'Gestalte diesen kleinen Raum auf deine Weise.',
   ],
   'city': ['Kota', 'City', 'Stadt'],
   'placeUnknown': [
     'Nama daerah belum tersedia',
     'Area name unavailable',
-    'Ortsname nicht verfügbar'
+    'Ortsname nicht verfügbar',
   ],
   'cityUnknown': [
     'Kota belum diketahui',
     'City not available',
-    'Stadt noch unbekannt'
+    'Stadt noch unbekannt',
   ],
   'enableLocation': [
     'Aktifkan lokasi HP',
     'Enable device location',
-    'Gerätestandort aktivieren'
+    'Gerätestandort aktivieren',
   ],
   'enableLocationBody': [
     'Aktifkan layanan lokasi di pengaturan sistem, lalu kembali ke abc untuk melanjutkan. Lokasi hanya diambil saat kamu membagikannya.',
     'Enable Location Services in system settings, then return to abc to continue. Location is only captured when you share it.',
-    'Aktiviere die Ortungsdienste in den Systemeinstellungen und kehre zu abc zurück. Dein Standort wird nur beim Teilen erfasst.'
+    'Aktiviere die Ortungsdienste in den Systemeinstellungen und kehre zu abc zurück. Dein Standort wird nur beim Teilen erfasst.',
   ],
   'mealScheduled': [
     'Dicatat sebagai {x}, sesuai jam lokal saat dikirim.',
     'Recorded as {x}, based on your local time when sent.',
-    'Wird entsprechend der Ortszeit beim Senden als {x} erfasst.'
+    'Wird entsprechend der Ortszeit beim Senden als {x} erfasst.',
   ],
   'mealAutomatic': [
     'Centang mengikuti jadwal makanmu. Di luar jadwal, masuk Makan lainnya.',
     'Your meal schedule decides the checkmark. Outside a window, it becomes Other meal.',
-    'Dein Zeitplan bestimmt die Mahlzeit. Außerhalb der Zeiten zählt es als Sonstige Mahlzeit.'
+    'Dein Zeitplan bestimmt die Mahlzeit. Außerhalb der Zeiten zählt es als Sonstige Mahlzeit.',
   ],
   'sceneOutside': [
     'Langkah kecil, kabar sampai.',
     'Off you go. Stay connected.',
-    'Unterwegs und verbunden.'
+    'Unterwegs und verbunden.',
   ],
   'sceneHome': [
     'Sudah pulang. Saatnya nyaman.',
     'Home again. Time to unwind.',
-    'Wieder daheim. Zeit zum Entspannen.'
+    'Wieder daheim. Zeit zum Entspannen.',
   ],
   'sceneMeal': [
     'Isi energi, lanjutkan hari.',
     'A little fuel for your day.',
-    'Neue Energie für deinen Tag.'
+    'Neue Energie für deinen Tag.',
   ],
   'sceneTogetherOutside': [
     'Satu pergi, satu menanti kabar.',
     'A wave goodbye, an update away.',
-    'Ein Winken, ein kleines Update.'
+    'Ein Winken, ein kleines Update.',
   ],
   'sceneTogetherHome': [
     'Pulang terasa lebih hangat.',
     'A warmer welcome home.',
-    'Ein herzliches Willkommen daheim.'
+    'Ein herzliches Willkommen daheim.',
   ],
   'sceneTogetherMeal': [
     'Jauh dekat, tetap satu meja.',
     'One table, even from afar.',
-    'Ein Tisch, auch aus der Ferne.'
+    'Ein Tisch, auch aus der Ferne.',
   ],
   'hello': ['Hai, {x}', 'Hi, {x}', 'Hallo, {x}'],
   'locating': [
     'Mengambil lokasi HP…',
     'Getting your location…',
-    'Standort wird ermittelt…'
+    'Standort wird ermittelt…',
   ],
   'saving': ['Menyimpan…', 'Saving…', 'Wird gespeichert…'],
   'morning': ['Selamat pagi', 'Good morning', 'Guten Morgen'],
@@ -237,29 +269,29 @@ const messages = <String, List<String>>{
   'tagline': [
     'Kabar kecil, bikin tenang.',
     'Little updates, peace of mind.',
-    'Kleine Updates, ein gutes Gefühl.'
+    'Kleine Updates, ein gutes Gefühl.',
   ],
   'togetherLine': [
     'Dekat dalam setiap kabar.',
     'A little closer with every update.',
-    'Mit jedem Update ein Stück näher.'
+    'Mit jedem Update ein Stück näher.',
   ],
   'welcome': [
     'Mulai dengan panggilanmu',
     'What should we call you?',
-    'Wie sollen wir dich nennen?'
+    'Wie sollen wir dich nennen?',
   ],
   'welcomeBody': [
     'Panggilan ini digunakan untuk sapaan di HP ini.',
     'We use this name to greet you on this phone.',
-    'Dieser Name wird für die Begrüßung auf diesem Handy verwendet.'
+    'Dieser Name wird für die Begrüßung auf diesem Handy verwendet.',
   ],
   'nickname': ['Panggilanmu', 'Your nickname', 'Dein Rufname'],
-  'nameHint': ['Contoh: Adel', 'For example: Alex', 'Zum Beispiel: Alex'],
+  'nameHint': ['Contoh: Nara', 'For example: Nara', 'Zum Beispiel: Nara'],
   'nameError': [
     'Isi 1–24 karakter, tanpa baris baru.',
     'Enter 1–24 characters, without line breaks.',
-    'Bitte 1–24 Zeichen ohne Zeilenumbruch eingeben.'
+    'Bitte 1–24 Zeichen ohne Zeilenumbruch eingeben.',
   ],
   'continue': ['Lanjutkan', 'Continue', 'Weiter'],
   'language': ['Bahasa', 'Language', 'Sprache'],
@@ -267,39 +299,39 @@ const messages = <String, List<String>>{
   'setupBody': [
     'Pilih peran HP ini. Tidak perlu email atau password.',
     'Choose this phone’s role. No email or password needed.',
-    'Wähle die Rolle dieses Handys. Ohne E-Mail oder Passwort.'
+    'Wähle die Rolle dieses Handys. Ohne E-Mail oder Passwort.',
   ],
   'sender': [
     'Aku membagikan kabar',
     'I share my updates',
-    'Ich teile meine Updates'
+    'Ich teile meine Updates',
   ],
   'senderBody': [
     'Kirim kabar makan, tempat tinggal, dan lokasi opsional.',
     'Share meals, whereabouts, and optional location.',
-    'Teile Mahlzeiten, Aufenthaltsstatus und optional deinen Standort.'
+    'Teile Mahlzeiten, Aufenthaltsstatus und optional deinen Standort.',
   ],
   'receiver': [
     'Aku menerima kabar',
     'I receive updates',
-    'Ich empfange Updates'
+    'Ich empfange Updates',
   ],
   'receiverBody': [
     'Pantau kabar orang tersayang dengan kode pasangan.',
     'Follow a loved one’s updates with a pairing code.',
-    'Verfolge die Updates einer vertrauten Person mit einem Kopplungscode.'
+    'Verfolge die Updates einer vertrauten Person mit einem Kopplungscode.',
   ],
   'pairCode': ['Kode pasangan', 'Pairing code', 'Kopplungscode'],
   'pairHint': [
     'Tempel kode lengkap dari HP pengirim.',
     'Paste the full code from the sender’s phone.',
-    'Füge den vollständigen Code vom sendenden Handy ein.'
+    'Füge den vollständigen Code vom sendenden Handy ein.',
   ],
   'connect': ['Hubungkan', 'Connect', 'Verbinden'],
   'invalidCode': [
     'Kode tidak valid. Periksa kode lengkapnya.',
     'Invalid code. Check that you pasted the full code.',
-    'Ungültiger Code. Bitte den vollständigen Code prüfen.'
+    'Ungültiger Code. Bitte den vollständigen Code prüfen.',
   ],
   'home': ['Beranda', 'Home', 'Start'],
   'history': ['Riwayat', 'History', 'Verlauf'],
@@ -322,12 +354,12 @@ const messages = <String, List<String>>{
   'mealCount': [
     '{x} dari 3 tercatat',
     '{x} of 3 recorded',
-    '{x} von 3 erfasst'
+    '{x} von 3 erfasst',
   ],
   'senderDay': [
     'Tanggal & jadwal mengikuti HP pengirim.',
     'The date and meal schedule follow the sender’s phone.',
-    'Datum und Essenszeiten richten sich nach dem sendenden Handy.'
+    'Datum und Essenszeiten richten sich nach dem sendenden Handy.',
   ],
   'breakfast': ['Sarapan', 'Breakfast', 'Frühstück'],
   'lunch': ['Makan siang', 'Lunch', 'Mittagessen'],
@@ -336,7 +368,7 @@ const messages = <String, List<String>>{
   'confirmStatus': [
     'Periksa sebelum mengirim',
     'Review your update',
-    'Update überprüfen'
+    'Update überprüfen',
   ],
   'send': ['Kirim status', 'Send update', 'Update senden'],
   'cancel': ['Batal', 'Cancel', 'Abbrechen'],
@@ -344,60 +376,60 @@ const messages = <String, List<String>>{
   'auto': [
     'Otomatis sesuai jam',
     'Automatic by time',
-    'Automatisch nach Uhrzeit'
+    'Automatisch nach Uhrzeit',
   ],
   'chooseMeal': ['Waktu makan', 'Meal category', 'Mahlzeit wählen'],
   'mealKeepsPlace': [
     'Mencatat makan tidak mengubah status tempat tinggal.',
     'Recording a meal keeps your whereabouts unchanged.',
-    'Eine Mahlzeit ändert deinen Aufenthaltsstatus nicht.'
+    'Eine Mahlzeit ändert deinen Aufenthaltsstatus nicht.',
   ],
   'shareLocation': [
     'Sertakan lokasi HP',
     'Include phone location',
-    'Handystandort hinzufügen'
+    'Handystandort hinzufügen',
   ],
   'locationConsent': [
     'Lokasi diambil sekali saat mengirim dan dibagikan kepada pemilik kode pasangan.',
     'Location is sampled once when sending and shared with holders of your pairing code.',
-    'Der Standort wird beim Senden einmal erfasst und mit Personen geteilt, die deinen Kopplungscode haben.'
+    'Der Standort wird beim Senden einmal erfasst und mit Personen geteilt, die deinen Kopplungscode haben.',
   ],
   'locationTitle': [
     'Lokasi terakhir',
     'Last shared location',
-    'Letzter geteilter Standort'
+    'Letzter geteilter Standort',
   ],
   'noLocation': [
     'Belum ada lokasi yang dibagikan.',
     'No location has been shared.',
-    'Noch kein Standort geteilt.'
+    'Noch kein Standort geteilt.',
   ],
   'refreshLocation': [
     'Perbarui lokasi',
     'Update location',
-    'Standort aktualisieren'
+    'Standort aktualisieren',
   ],
   'locationOld': [
     'Titik ini lebih dari 15 menit lalu; posisi sekarang bisa berbeda.',
     'This point is over 15 minutes old; the current position may differ.',
-    'Dieser Punkt ist über 15 Minuten alt; der aktuelle Standort kann abweichen.'
+    'Dieser Punkt ist über 15 Minuten alt; der aktuelle Standort kann abweichen.',
   ],
   'placeOld': [
     'Status tempat ini lebih dari 6 jam lalu.',
     'This whereabouts update is over 6 hours old.',
-    'Dieser Aufenthaltsstatus ist über 6 Stunden alt.'
+    'Dieser Aufenthaltsstatus ist über 6 Stunden alt.',
   ],
   'detail': ['Detail', 'Details', 'Details'],
   'detailTitle': ['Detail kabar', 'Update details', 'Update-Details'],
   'localTime': [
     'Waktu di HP ini',
     'Time on this phone',
-    'Zeit auf diesem Handy'
+    'Zeit auf diesem Handy',
   ],
   'senderTime': [
     'Waktu di HP pengirim',
     'Time on the sender’s phone',
-    'Zeit auf dem sendenden Handy'
+    'Zeit auf dem sendenden Handy',
   ],
   'timeZone': ['Zona waktu', 'Time zone', 'Zeitzone'],
   'recorded': ['Waktu kejadian · UTC', 'Event time · UTC', 'Zeitpunkt · UTC'],
@@ -405,59 +437,59 @@ const messages = <String, List<String>>{
   'motionNote': [
     'Animasi ringan hanya saat ilustrasi terlihat. Berhenti saat app tidak aktif atau mode hemat daya menyala.',
     'Light animation while the scene is visible. Pauses when inactive or in Low Power Mode.',
-    'Sparsame Animation bei sichtbarer Szene. Pausiert bei inaktiver App oder im Stromsparmodus.'
+    'Sparsame Animation bei sichtbarer Szene. Pausiert bei inaktiver App oder im Stromsparmodus.',
   ],
   'motionPowerSave': [
     'Animasi sedang dijeda oleh mode hemat daya HP.',
     'Animation is paused by your phone’s Low Power Mode.',
-    'Die Animation pausiert im Stromsparmodus deines Handys.'
+    'Die Animation pausiert im Stromsparmodus deines Handys.',
   ],
   'gpsTime': [
     'Waktu pengambilan lokasi',
     'Location sampled at',
-    'Standort erfasst um'
+    'Standort erfasst um',
   ],
   'coordinates': ['Koordinat', 'Coordinates', 'Koordinaten'],
   'accuracy': [
     'Perkiraan akurasi',
     'Estimated accuracy',
-    'Geschätzte Genauigkeit'
+    'Geschätzte Genauigkeit',
   ],
   'map': ['Lihat di peta', 'Open map', 'Karte öffnen'],
   'eventNoGps': [
     'Lokasi tidak disertakan pada catatan ini.',
     'No location was included with this update.',
-    'Für dieses Update wurde kein Standort erfasst.'
+    'Für dieses Update wurde kein Standort erfasst.',
   ],
   'eventGpsExpired': [
     'Koordinat catatan ini sudah tidak disimpan. Lokasi riwayat disimpan terbatas dan dapat dihapus.',
     'This update’s coordinates are no longer retained. History locations have limited retention and can be removed.',
-    'Die Koordinaten dieses Updates werden nicht mehr gespeichert. Standorte im Verlauf werden begrenzt aufbewahrt und können gelöscht werden.'
+    'Die Koordinaten dieses Updates werden nicht mehr gespeichert. Standorte im Verlauf werden begrenzt aufbewahrt und können gelöscht werden.',
   ],
   'gpsNote': [
     'Lokasi merupakan titik saat diambil, bukan pelacakan terus-menerus.',
     'This is the position when sampled, not continuous tracking.',
-    'Dies ist der Standort zum Erfassungszeitpunkt, keine laufende Ortung.'
+    'Dies ist der Standort zum Erfassungszeitpunkt, keine laufende Ortung.',
   ],
   'historyBody': [
     '12 kabar terbaru, lengkap dengan detailnya.',
     'Your 12 latest updates, with their details.',
-    'Die 12 neuesten Updates mit ihren Details.'
+    'Die 12 neuesten Updates mit ihren Details.',
   ],
   'emptyHistory': [
     'Cerita hari ini belum dimulai',
     'No updates yet',
-    'Noch keine Updates'
+    'Noch keine Updates',
   ],
   'emptyHistoryBody': [
     'Kabar yang dikonfirmasi akan muncul di sini.',
     'Confirmed updates will appear here.',
-    'Bestätigte Updates werden hier angezeigt.'
+    'Bestätigte Updates werden hier angezeigt.',
   ],
   'profile': [
     'Profil di HP ini',
     'Profile on this phone',
-    'Profil auf diesem Handy'
+    'Profil auf diesem Handy',
   ],
   'editName': ['Ubah panggilan', 'Change nickname', 'Rufnamen ändern'],
   'save': ['Simpan', 'Save', 'Speichern'],
@@ -467,12 +499,12 @@ const messages = <String, List<String>>{
   'defaultDescription': [
     'Tenang, hangat, dan sederhana.',
     'Calm, warm, and simple.',
-    'Ruhig, warm und schlicht.'
+    'Ruhig, warm und schlicht.',
   ],
   'relationshipDescription': [
     'Dua karakter, satu kabar kecil.',
     'Two characters, one little update.',
-    'Zwei Figuren, ein kleines Update.'
+    'Zwei Figuren, ein kleines Update.',
   ],
   'light': ['Terang', 'Light', 'Hell'],
   'dark': ['Gelap', 'Dark', 'Dunkel'],
@@ -482,54 +514,54 @@ const messages = <String, List<String>>{
   'appearanceNote': [
     'Tema, bahasa, dan format jam hanya berlaku di HP ini.',
     'Theme, language, and time format apply only to this phone.',
-    'Design, Sprache und Zeitformat gelten nur auf diesem Handy.'
+    'Design, Sprache und Zeitformat gelten nur auf diesem Handy.',
   ],
   'daySceneNote': [
     'Langit pixel mengikuti pagi, siang, sore, dan malam. Mode terang/gelap tetap pilihanmu.',
     'The pixel sky follows morning, afternoon, evening, and night. Light/dark mode stays your choice.',
-    'Der Pixelhimmel folgt Morgen, Tag, Abend und Nacht. Hell/dunkel bleibt deine Wahl.'
+    'Der Pixelhimmel folgt Morgen, Tag, Abend und Nacht. Hell/dunkel bleibt deine Wahl.',
   ],
   'zoneNote': [
     'Jam mengikuti zona HP. Aktifkan zona waktu otomatis saat bepergian.',
     'Time follows your phone’s zone. Enable automatic time zones when travelling.',
-    'Die Uhrzeit folgt der Handy-Zeitzone. Aktiviere auf Reisen die automatische Zeitzone.'
+    'Die Uhrzeit folgt der Handy-Zeitzone. Aktiviere auf Reisen die automatische Zeitzone.',
   ],
   'family': [
     'Hubungan & status',
     'Connection & updates',
-    'Verbindung & Updates'
+    'Verbindung & Updates',
   ],
   'editLabels': [
     'Nama & tombol status',
     'Name & status buttons',
-    'Name & Status-Tasten'
+    'Name & Status-Tasten',
   ],
   'senderName': [
     'Nama yang dibagikan',
     'Shared sender name',
-    'Geteilter Absendername'
+    'Geteilter Absendername',
   ],
   'schedule': ['Jadwal makan', 'Meal schedule', 'Essenszeiten'],
   'scheduleInvalid': [
     'Gunakan jam 0–24, berurutan tanpa tumpang tindih.',
     'Use hours 0–24, in order and without overlap.',
-    'Verwende Stunden von 0–24, aufsteigend und ohne Überschneidung.'
+    'Verwende Stunden von 0–24, aufsteigend und ohne Überschneidung.',
   ],
   'confirmChange': [
     'Simpan perubahan ini?',
     'Save these changes?',
-    'Änderungen speichern?'
+    'Änderungen speichern?',
   ],
   'sharedChange': [
     'Perubahan ini juga dikirim ke HP penerima.',
     'These changes are also sent to receiving phones.',
-    'Diese Änderungen werden auch an empfangende Handys gesendet.'
+    'Diese Änderungen werden auch an empfangende Handys gesendet.',
   ],
   'shareCode': ['Kode pasangan', 'Pairing code', 'Kopplungscode'],
   'secretCode': [
     'Siapa pun yang memiliki kode ini dapat membaca kabar dan lokasi yang dibagikan.',
     'Anyone with this code can read your updates and shared locations.',
-    'Jede Person mit diesem Code kann Updates und geteilte Standorte lesen.'
+    'Jede Person mit diesem Code kann Updates und geteilte Standorte lesen.',
   ],
   'copy': ['Salin kode', 'Copy code', 'Code kopieren'],
   'share': ['Bagikan', 'Share', 'Teilen'],
@@ -541,140 +573,140 @@ const messages = <String, List<String>>{
   'offline': [
     'Menunggu internet',
     'Waiting for internet',
-    'Warten auf Internet'
+    'Warten auf Internet',
   ],
   'paused': ['Koneksi dijeda', 'Connection paused', 'Verbindung pausiert'],
   'connecting': [
     'Menghubungkan…',
     'Connecting…',
-    'Verbindung wird hergestellt…'
+    'Verbindung wird hergestellt…',
   ],
   'queued': [
     '{x} kabar menunggu dikirim',
     '{x} updates waiting to send',
-    '{x} Updates warten auf das Senden'
+    '{x} Updates warten auf das Senden',
   ],
   'pause': ['Jeda koneksi', 'Pause connection', 'Verbindung pausieren'],
   'resume': ['Aktifkan koneksi', 'Resume connection', 'Verbindung fortsetzen'],
   'notifications': [
     'Pengaturan notifikasi',
     'Notification settings',
-    'Benachrichtigungen'
+    'Benachrichtigungen',
   ],
   'chimeNote': [
     'Nada pixel abc · mengikuti volume dan mode senyap HP.',
     'abc pixel chime · follows your phone’s volume and silent mode.',
-    'abc Pixelton · folgt Lautstärke und Lautlosmodus des Handys.'
+    'abc Pixelton · folgt Lautstärke und Lautlosmodus des Handys.',
   ],
   'widget': ['Tambahkan widget', 'Add widget', 'Widget hinzufügen'],
   'battery': [
     'Pengaturan baterai aplikasi',
     'App battery settings',
-    'Akku-Einstellungen der App'
+    'Akku-Einstellungen der App',
   ],
   'batteryNote': [
     'Pembatasan baterai HP dapat menunda kabar. Setelah paksa berhenti atau restart, buka abc lagi.',
     'Phone battery limits can delay updates. After a force-stop or restart, open abc again.',
-    'Akku-Beschränkungen können Updates verzögern. Öffne abc nach einem Neustart oder erzwungenen Stopp erneut.'
+    'Akku-Beschränkungen können Updates verzögern. Öffne abc nach einem Neustart oder erzwungenen Stopp erneut.',
   ],
   'privacy': ['Privasi & data', 'Privacy & data', 'Datenschutz & Daten'],
   'privacyBody': [
     'Kabar dan lokasi opsional dienkripsi. Kode pasangan memberikan akses membaca.',
     'Updates and optional locations are encrypted. The pairing code grants read access.',
-    'Updates und optionale Standorte sind verschlüsselt. Der Kopplungscode gewährt Lesezugriff.'
+    'Updates und optionale Standorte sind verschlüsselt. Der Kopplungscode gewährt Lesezugriff.',
   ],
   'clearGps': [
     'Hapus lokasi yang dibagikan',
     'Remove shared locations',
-    'Geteilte Standorte entfernen'
+    'Geteilte Standorte entfernen',
   ],
   'clearGpsBody': [
     'Koordinat dihapus dari kabar terbaru. Salinan lama di perangkat lain atau relay tidak dapat ditarik kembali.',
     'Coordinates are removed from the latest update. Old copies on other devices or the relay cannot be recalled.',
-    'Koordinaten werden aus dem aktuellen Update entfernt. Alte Kopien auf anderen Geräten oder im Relay können nicht zurückgerufen werden.'
+    'Koordinaten werden aus dem aktuellen Update entfernt. Alte Kopien auf anderen Geräten oder im Relay können nicht zurückgerufen werden.',
   ],
   'clearHistory': ['Hapus riwayat', 'Clear history', 'Verlauf löschen'],
   'clearHistoryBody': [
     'Status dan riwayat dikosongkan lalu dikirim ke penerima. Salinan lama dapat tetap ada.',
     'Clear your status and history and send the reset to receivers. Old copies may remain.',
-    'Status und Verlauf werden geleert und der Reset an Empfänger gesendet. Alte Kopien können bestehen bleiben.'
+    'Status und Verlauf werden geleert und der Reset an Empfänger gesendet. Alte Kopien können bestehen bleiben.',
   ],
   'rotate': [
     'Ganti kode pasangan',
     'Replace pairing code',
-    'Kopplungscode erneuern'
+    'Kopplungscode erneuern',
   ],
   'rotateBody': [
     'Kode lama berhenti menerima kabar baru. Hubungkan ulang HP dengan kode yang baru.',
     'The old code stops receiving new updates. Reconnect phones using the new code.',
-    'Der alte Code empfängt keine neuen Updates mehr. Verbinde Handys mit dem neuen Code erneut.'
+    'Der alte Code empfängt keine neuen Updates mehr. Verbinde Handys mit dem neuen Code erneut.',
   ],
   'disconnect': [
     'Putuskan HP ini',
     'Disconnect this phone',
-    'Dieses Handy trennen'
+    'Dieses Handy trennen',
   ],
   'disconnectBody': [
     'Kode dan kabar di HP ini dihapus. HP lain tetap menyimpan kabar terakhir.',
     'The code and updates on this phone are removed. Other phones keep their last update.',
-    'Code und Updates auf diesem Handy werden entfernt. Andere Handys behalten ihr letztes Update.'
+    'Code und Updates auf diesem Handy werden entfernt. Andere Handys behalten ihr letztes Update.',
   ],
   'uninstall': ['Uninstall abc', 'Uninstall abc', 'abc deinstallieren'],
   'uninstallBody': [
     'Hapus panggilan, kode pasangan, riwayat, pengaturan, dan cache abc di HP ini, lalu lanjut ke penghapusan aplikasi. File dan data aplikasi lain tidak disentuh. Jika penghapusan aplikasi dibatalkan, data abc tetap sudah dihapus. Salinan kabar di HP lain tetap ada.',
     'Erase abc’s nickname, pairing keys, history, settings and cache on this phone, then continue to app removal. Other files and apps are untouched. If app removal is cancelled, abc’s data stays erased. Copies on other phones remain.',
-    'Rufname, Kopplungsschlüssel, Verlauf, Einstellungen und Cache von abc auf diesem Handy löschen und danach die App entfernen. Andere Dateien und Apps bleiben unberührt. Bei Abbruch bleiben die abc-Daten gelöscht. Kopien auf anderen Handys bleiben bestehen.'
+    'Rufname, Kopplungsschlüssel, Verlauf, Einstellungen und Cache von abc auf diesem Handy löschen und danach die App entfernen. Andere Dateien und Apps bleiben unberührt. Bei Abbruch bleiben die abc-Daten gelöscht. Kopien auf anderen Handys bleiben bestehen.',
   ],
   'queueFull': [
     'Antrean 25 kabar penuh. Hubungkan internet sebelum menambah kabar.',
     'The 25-update queue is full. Connect to the internet before adding more.',
-    'Die Warteschlange mit 25 Updates ist voll. Verbinde dich zuerst mit dem Internet.'
+    'Die Warteschlange mit 25 Updates ist voll. Verbinde dich zuerst mit dem Internet.',
   ],
   'error': [
     'Belum berhasil. Coba lagi.',
     'That didn’t work. Please try again.',
-    'Das hat nicht geklappt. Bitte erneut versuchen.'
+    'Das hat nicht geklappt. Bitte erneut versuchen.',
   ],
   'retry': ['Coba lagi', 'Try again', 'Erneut versuchen'],
   'locationDenied': [
     'Izin lokasi belum diberikan; status tetap dicatat tanpa titik baru.',
     'Location permission was not granted; the status was saved without a new point.',
-    'Die Standortberechtigung wurde nicht erteilt; der Status wurde ohne neuen Punkt gespeichert.'
+    'Die Standortberechtigung wurde nicht erteilt; der Status wurde ohne neuen Punkt gespeichert.',
   ],
   'locationUnavailable': [
     'Lokasi belum didapat; status tetap dicatat tanpa titik baru.',
     'Location was unavailable; the status was saved without a new point.',
-    'Der Standort war nicht verfügbar; der Status wurde ohne neuen Punkt gespeichert.'
+    'Der Standort war nicht verfügbar; der Status wurde ohne neuen Punkt gespeichert.',
   ],
   'locationFailed': [
     'Lokasi belum bisa dibagikan. Aktifkan lokasi dan izinnya, lalu coba lagi.',
     'Location could not be shared. Enable location and its permission, then retry.',
-    'Der Standort konnte nicht geteilt werden. Aktiviere Ortung und Berechtigung und versuche es erneut.'
+    'Der Standort konnte nicht geteilt werden. Aktiviere Ortung und Berechtigung und versuche es erneut.',
   ],
   'saved': ['Perubahan disimpan', 'Changes saved', 'Änderungen gespeichert'],
   'version': [
     'abc 0.8.0 · versi uji',
     'abc 0.8.0 · test version',
-    'abc 0.8.0 · Testversion'
+    'abc 0.8.0 · Testversion',
   ],
   'iosWidget': [
     'Tahan layar utama → Tambah Widget → abc. Pembaruan mengikuti iOS.',
     'Hold the Home Screen → Add Widget → abc. Refresh timing is managed by iOS.',
-    'Startbildschirm gedrückt halten → Widget hinzufügen → abc. iOS steuert die Aktualisierung.'
+    'Startbildschirm gedrückt halten → Widget hinzufügen → abc. iOS steuert die Aktualisierung.',
   ],
   'iosUninstall': [
     'Data abc di HP ini sudah dihapus. Sekarang tahan ikon abc di layar utama → Hapus App → Hapus App. Pilih Hapus App untuk menghapus aplikasi sepenuhnya.',
     'abc’s data on this phone is erased. Now hold the abc icon on the Home Screen → Remove App → Delete App. Choose Delete App to remove it completely.',
-    'Die abc-Daten auf diesem Handy sind gelöscht. Halte jetzt das abc-Symbol gedrückt → App entfernen → App löschen. Wähle App löschen für die vollständige Entfernung.'
+    'Die abc-Daten auf diesem Handy sind gelöscht. Halte jetzt das abc-Symbol gedrückt → App entfernen → App löschen. Wähle App löschen für die vollständige Entfernung.',
   ],
   'pushServer': [
     'Notifikasi iPhone saat tertutup',
     'iPhone notifications while closed',
-    'iPhone-Benachrichtigungen bei geschlossener App'
+    'iPhone-Benachrichtigungen bei geschlossener App',
   ],
   'pushNote': [
     'Memerlukan server notifikasi Apple dari pengelola aplikasi.',
     'Requires an Apple notification server set up by the app owner.',
-    'Erfordert einen Apple-Benachrichtigungsserver des App-Betreibers.'
+    'Erfordert einen Apple-Benachrichtigungsserver des App-Betreibers.',
   ],
 };
