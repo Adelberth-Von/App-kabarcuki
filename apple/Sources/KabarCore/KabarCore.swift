@@ -75,8 +75,9 @@ public enum Seirama {
         return try Pairing(code:code)
     }
     public static func requireDifferent(_ own: Pairing,_ peer: Pairing) throws {
-        guard own.topic != peer.topic else {throw KabarError.invalid("Gunakan kode dari perangkat pasangan")}
+        guard !isOwn(own,peer) else {throw KabarError.invalid("Gunakan kode dari perangkat pasangan")}
     }
+    public static func isOwn(_ own: Pairing,_ peer: Pairing) -> Bool {own.publicKey.derRepresentation == peer.publicKey.derRepresentation}
 }
 public struct GpsPoint: Codable, Equatable {
     public var lat: Double, lon: Double, accuracy: Double

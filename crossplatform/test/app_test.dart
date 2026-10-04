@@ -473,6 +473,20 @@ void main() {
     expect(b.calls.where((s) => s == 'record').length, 1);
     await close(tester);
   });
+  testWidgets('repeated widget actions keep one confirmation and one update',
+      (tester) async {
+    final b = FakeBackend();
+    final model = await show(tester, b);
+    await tapVisible(tester, find.byKey(const ValueKey('status-outside')));
+    model.snapshot['quickAction'] = 'meal';
+    model.notifyListeners();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('confirm-status')), findsOneWidget);
+    await tapVisible(tester, find.byKey(const ValueKey('confirm-status')));
+    expect(b.calls.where((s) => s == 'record').length, 1);
+    expect(b.lastArguments['kind'], 'outside');
+    await close(tester);
+  });
   testWidgets(
       'daily meal control follows local schedule instead of tapped category',
       (tester) async {

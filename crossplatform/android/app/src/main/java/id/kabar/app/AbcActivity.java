@@ -141,7 +141,7 @@ public final class AbcActivity extends FlutterActivity {
             case "joinSeirama":background(result,()->{
                 consent(args);if(!Store.isTwoWay(this))throw new SecurityException("Enable Seirama first");
                 Pairing incoming;try{incoming=Seirama.parseInvite((String)args.get("code"));}catch(Exception e){main.post(()->result.error("invalid_code","Invalid Seirama code",null));return null;}
-                if(incoming.topic().equals(Store.pairing(this).topic())){main.post(()->result.error("own_code","Use your partner's code",null));return null;}
+                if(Seirama.isOwn(Store.pairing(this),incoming)){main.post(()->result.error("own_code","Use your partner's code",null));return null;}
                 synchronized(Store.LOCK){
                     if(Store.pending(this)>=25)throw new IllegalStateException("25 kabar masih menunggu");
                     boolean same=incoming.code().equals(Store.prefs(this).getString("peerCode",""));

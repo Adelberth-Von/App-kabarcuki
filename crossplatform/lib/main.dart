@@ -146,7 +146,9 @@ class _ShellState extends State<Shell> {
   Palette get p => Palette(m.dark, m.together);
   int tab = 0;
   bool receiving = false, peerHistory = false;
-  bool _migrationPrompted = false, _modeSheetOpen = false;
+  bool _migrationPrompted = false,
+      _modeSheetOpen = false,
+      _statusDialogOpen = false;
   bool get twoWay => m.snapshot['mode'] == 'seirama' || m.role == 'duplex';
   Map<String, dynamic> get peer =>
       Map<String, dynamic>.from(m.snapshot['peerState'] as Map? ?? {});
@@ -640,7 +642,11 @@ class _ShellState extends State<Shell> {
               decoration: BoxDecoration(
                   color: p.tint, borderRadius: BorderRadius.circular(17)),
               child: PixelIcon(
-                  data['location'] == 'outside' ? 'outside' : 'home',
+                  latestEvent(data)['kind'] == 'meal'
+                      ? 'meal'
+                      : data['location'] == 'outside'
+                          ? 'outside'
+                          : 'home',
                   size: 34)),
           const SizedBox(width: 12),
           Expanded(
@@ -906,79 +912,87 @@ class _ShellState extends State<Shell> {
   String mealWindow(num start, num end) =>
       '${clockDigits(DateTime(2000, 1, 1, start.toInt()), m.clock12)} – ${clockDigits(DateTime(2000, 1, 1, end.toInt()), m.clock12)}';
   Future<void> confirmStatus(String kind, {String? category}) async {
-    final selected = kind == 'meal' ? m.mealNow() : category;
-    bool share = m.snapshot['shareLocation'] == true;
-    final okay = await showDialog<bool>(
-        context: context,
-        builder: (context) => StatefulBuilder(
-            builder: (context, update) => AlertDialog(
-                    title: Text(t['confirmStatus']),
-                    content: SingleChildScrollView(
-                        child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: SizedBox(
-                                  height: 100,
-                                  width: 280,
-                                  child: PixelSky(
-                                      action: kind,
-                                      together: m.together,
-                                      animate:
-                                          m.animations && !m.energySaver))),
-                          const SizedBox(height: 14),
-                          if (twoWay) ...[
-                            badge(t.fill('sharingWith', peerName),
-                                icon: Icons.favorite_outline_rounded),
-                            const SizedBox(height: 12)
-                          ],
-                          Row(children: [
-                            PixelIcon(kind, size: 38),
-                            const SizedBox(width: 12),
-                            Expanded(
-                                child: Text(
-                                    kind == 'meal'
-                                        ? t.label(selected!)
-                                        : m.actionLabel(kind),
-                                    style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w700)))
-                          ]),
-                          const SizedBox(height: 12),
-                          small(m.time(DateTime.now().millisecondsSinceEpoch)),
-                          if (kind == 'meal') ...[
+    if (_statusDialogOpen || m.busy || !m.sender) return;
+    _statusDialogOpen = true;
+    try {
+      final selected = kind == 'meal' ? m.mealNow() : category;
+      bool share = m.snapshot['shareLocation'] == true;
+      final okay = await showDialog<bool>(
+          context: context,
+          builder: (context) => StatefulBuilder(
+              builder: (context, update) => AlertDialog(
+                      title: Text(t['confirmStatus']),
+                      content: SingleChildScrollView(
+                          child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                            ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: SizedBox(
+                                    height: 100,
+                                    width: 280,
+                                    child: PixelSky(
+                                        action: kind,
+                                        together: m.together,
+                                        animate:
+                                            m.animations && !m.energySaver))),
+                            const SizedBox(height: 14),
+                            if (twoWay) ...[
+                              badge(t.fill('sharingWith', peerName),
+                                  icon: Icons.favorite_outline_rounded),
+                              const SizedBox(height: 12)
+                            ],
+                            Row(children: [
+                              PixelIcon(kind, size: 38),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                  child: Text(
+                                      kind == 'meal'
+                                          ? t.label(selected!)
+                                          : m.actionLabel(kind),
+                                      style: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w700)))
+                            ]),
+                            const SizedBox(height: 12),
+                            small(
+                                m.time(DateTime.now().millisecondsSinceEpoch)),
+                            if (kind == 'meal') ...[
+                              const SizedBox(height: 16),
+                              small(
+                                  t.fill('mealScheduled', t.label(selected!))),
+                              const SizedBox(height: 6),
+                              small(t['mealAutomatic']),
+                              const SizedBox(height: 10),
+                              small(t['mealKeepsPlace'])
+                            ],
                             const SizedBox(height: 16),
-                            small(t.fill('mealScheduled', t.label(selected!))),
-                            const SizedBox(height: 6),
-                            small(t['mealAutomatic']),
-                            const SizedBox(height: 10),
-                            small(t['mealKeepsPlace'])
-                          ],
-                          const SizedBox(height: 16),
-                          SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(t['shareLocation']),
-                              value: share,
-                              onChanged: (value) =>
-                                  update(() => share = value)),
-                          small(t['locationConsent'])
-                        ])),
-                    actions: [
-                      TextButton(
-                          key: const ValueKey('cancel-status'),
-                          onPressed: () => Navigator.pop(context, false),
-                          child: Text(t['cancel'])),
-                      FilledButton(
-                          key: const ValueKey('confirm-status'),
-                          onPressed: () => Navigator.pop(context, true),
-                          child: Text(t['send']))
-                    ])));
-    if (okay == true) {
-      if (share && !await ensureLocationServices()) return;
-      await m.command(
-          'record', {'kind': kind, 'category': null, 'shareLocation': share});
+                            SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(t['shareLocation']),
+                                value: share,
+                                onChanged: (value) =>
+                                    update(() => share = value)),
+                            small(t['locationConsent'])
+                          ])),
+                      actions: [
+                        TextButton(
+                            key: const ValueKey('cancel-status'),
+                            onPressed: () => Navigator.pop(context, false),
+                            child: Text(t['cancel'])),
+                        FilledButton(
+                            key: const ValueKey('confirm-status'),
+                            onPressed: () => Navigator.pop(context, true),
+                            child: Text(t['send']))
+                      ])));
+      if (okay == true) {
+        if (share && !await ensureLocationServices()) return;
+        await m.command(
+            'record', {'kind': kind, 'category': null, 'shareLocation': share});
+      }
+    } finally {
+      _statusDialogOpen = false;
     }
   }
 

@@ -13,8 +13,9 @@ public final class Seirama {
         return Pairing.parse(new String(Pairing.decode(clean.substring(4)),StandardCharsets.UTF_8));
     }
     public static void requireDifferent(Pairing own,Pairing peer)throws Exception {
-        if(own.topic().equals(peer.topic()))throw new IllegalArgumentException("Gunakan kode dari perangkat pasangan");
+        if(isOwn(own,peer))throw new IllegalArgumentException("Gunakan kode dari perangkat pasangan");
     }
+    public static boolean isOwn(Pairing own,Pairing peer){return java.util.Arrays.equals(own.publicKey.getEncoded(),peer.publicKey.getEncoded());}
     public static JSONObject packet(KabarState state,boolean notify,Pairing peer)throws Exception {
         state.fitRelay();
         JSONObject packet=new JSONObject().put("state",state.json()).put("notify",notify);

@@ -36,14 +36,37 @@ private final class PixelWorld {
     init(context: GraphicsContext, size: CGSize, phase: Int, pair: Bool, action: String) {
         self.context = context; self.size = size; self.phase = phase; self.pair = pair; self.action = action
     }
-    func wave(_ offset: Double, _ amount: Int) -> Int { Int((sin(cycle + offset) * Double(amount)).rounded()) }
-    func mix(_ a: Int, _ b: Int, _ amount: Double) -> Int {
-        let red = Int((Double((a >> 16) & 255) * (1 - amount) + Double((b >> 16) & 255) * amount).rounded())
-        let green = Int((Double((a >> 8) & 255) * (1 - amount) + Double((b >> 8) & 255) * amount).rounded())
-        let blue = Int((Double(a & 255) * (1 - amount) + Double(b & 255) * amount).rounded())
-        return (red << 16) | (green << 8) | blue
+    func wave(_ offset: Double, _ amount: Int) -> Int {
+        let angle: Double = cycle + offset
+        let value: Double = sin(angle) * Double(amount)
+        return Int(value.rounded())
     }
-    func color(_ hex: Int) -> Color { Color(red: Double((hex >> 16) & 255) / 255, green: Double((hex >> 8) & 255) / 255, blue: Double(hex & 255) / 255) }
+    func channel(_ hex: Int, _ shift: Int) -> Double {
+        let shifted: Int = hex >> shift
+        let component: Int = shifted & 255
+        return Double(component)
+    }
+    func mix(_ a: Int, _ b: Int, _ amount: Double) -> Int {
+        let inverse: Double = 1.0 - amount
+        func blend(_ shift: Int) -> Int {
+            let start: Double = channel(a, shift)
+            let end: Double = channel(b, shift)
+            let weightedStart: Double = start * inverse
+            let weightedEnd: Double = end * amount
+            let value: Double = weightedStart + weightedEnd
+            return Int(value.rounded())
+        }
+        let red: Int = blend(16) << 16
+        let green: Int = blend(8) << 8
+        let blue: Int = blend(0)
+        return red | green | blue
+    }
+    func color(_ hex: Int) -> Color {
+        let red: Double = channel(hex, 16) / 255.0
+        let green: Double = channel(hex, 8) / 255.0
+        let blue: Double = channel(hex, 0) / 255.0
+        return Color(red: red, green: green, blue: blue)
+    }
     func r(_ x: Int, _ y: Int, _ w: Int, _ h: Int, _ hex: Int) {
         context.fill(Path(CGRect(x: CGFloat(x), y: CGFloat(y), width: CGFloat(w), height: CGFloat(h))), with: .color(color(hex)))
     }

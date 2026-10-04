@@ -61,7 +61,12 @@ public final class WidgetAssertions {
             LocalProfile.prefs(original).edit().putBoolean("animations",false).commit();
             View still=KabarWidget.views(original).apply(original,new FrameLayout(original));
             check(!((ViewFlipper)still.findViewById(R.id.widget_frames)).isAutoStart(),"animations off must use a static card");
-            android.graphics.Bitmap bitmap=KabarWidget.art(original,own,0);try{check(bitmap.getAllocationByteCount()*8<800000,"eight scene bitmaps exceed 800 kB budget");}finally{bitmap.recycle();}
+            android.graphics.Bitmap bitmap=KabarWidget.art(original,own,0);try{
+                check(bitmap.getWidth()==320&&bitmap.getHeight()==128,"scene must use the exact 2x pixel grid");
+                check(bitmap.getConfig()==android.graphics.Bitmap.Config.RGB_565&&!bitmap.hasAlpha(),"opaque scenes must not allocate an alpha channel");
+                check(bitmap.getAllocationByteCount()*8==655360,"eight scene bitmaps exceed the 655,360 byte budget");
+                check(android.graphics.Color.alpha(bitmap.getPixel(0,0))==255&&android.graphics.Color.alpha(bitmap.getPixel(319,127))==255,"scene background must fill the opaque frame");
+            }finally{bitmap.recycle();}
             return checks;
         }finally{restore(Store.prefs(original),saved);restore(LocalProfile.prefs(original),profile);}
     }

@@ -193,6 +193,9 @@ public class DomainTests {
         eq(bobRead.privateKey,null,"Seirama invitation never includes writer private key");
         rejects(()->bobRead.encrypt("{}"),"peer cannot write partner stream");
         rejects(()->Seirama.requireDifferent(alice,aliceRead),"cannot pair own stream to itself");
+        Pairing rewrappedOwn=new Pairing(new byte[32],alice.publicKey,null);
+        ok(!rewrappedOwn.topic().equals(alice.topic()),"altered invitation secret produces different relay topic");
+        rejects(()->Seirama.requireDifferent(alice,rewrappedOwn),"matching own writer key rejected even with different invitation secret/topic");
         rejects(()->Seirama.parseInvite(alice.code()),"legacy one-way code does not silently consent to Seirama");
         rejects(()->Seirama.parseInvite("KB2.bad"),"malformed reciprocal invite rejected");
         rejects(()->aliceRead.withPrivate(Pairing.encode(bob.privateKey.getEncoded())),"foreign signing key rejected on restore");

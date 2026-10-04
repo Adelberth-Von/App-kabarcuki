@@ -32,10 +32,11 @@ public class KabarWidget extends AppWidgetProvider {
     private static long statusAt(KabarState s){return action(s).equals("meal")&&s.mealAt>0?s.mealAt:s.locationAt;}
     public static Bitmap art(Context c,KabarState s,int frame){return art(c,s,frame,Store.isTwoWay(c));}
     private static Bitmap art(Context c,KabarState s,int frame,boolean together){
-        // Eight ARGB frames total 737,280 bytes, leaving room for text and metadata in RemoteViews.
-        Bitmap bitmap=Bitmap.createBitmap(240,96,Bitmap.Config.ARGB_8888);
+        // Opaque scenes need no alpha. An exact 2x pixel grid improves definition
+        // while eight RGB565 frames total only 655,360 bytes in RemoteViews.
+        Bitmap bitmap=Bitmap.createBitmap(320,128,Bitmap.Config.RGB_565);bitmap.setHasAlpha(false);
         DayScene scene=new DayScene(c,together,System.currentTimeMillis(),TimeZone.getDefault(),action(s),frame);
-        scene.layout(0,0,240,96);scene.draw(new Canvas(bitmap));return bitmap;
+        scene.layout(0,0,320,128);scene.draw(new Canvas(bitmap));return bitmap;
     }
     public static RemoteViews views(Context c){return views(c,320,280);}
     public static RemoteViews views(Context c,int width,int height){

@@ -127,7 +127,7 @@ import CoreLocation
             case "enableSeirama":try model.enableSeirama(confirmed:a["confirmed"] as? Bool ?? false)
             case "joinSeirama":
                 guard let invite=a["code"] as? String,let incoming=try? Seirama.parseInvite(invite) else {result(FlutterError(code:"invalid_code",message:"Invalid Seirama code",details:nil));return}
-                guard incoming.topic != SharedStore.pairing()?.topic else {result(FlutterError(code:"own_code",message:"Use your partner's code",details:nil));return}
+                guard let own=SharedStore.pairing(),!Seirama.isOwn(own,incoming) else {result(FlutterError(code:"own_code",message:"Use your partner's code",details:nil));return}
                 try model.joinSeirama(invite,confirmed:a["confirmed"] as? Bool ?? false)
             case "disableSeirama":try model.disableSeirama(confirmed:a["confirmed"] as? Bool ?? false)
             case "record":

@@ -100,6 +100,8 @@ final class KabarCoreTests: XCTestCase {
         XCTAssertEqual(aliceRead.topic,alice.topic);XCTAssertNil(bobRead.privateKey)
         XCTAssertThrowsError(try bobRead.encrypt(Data("{}".utf8)))
         XCTAssertThrowsError(try Seirama.requireDifferent(alice,aliceRead))
+        let rewrapped=try Pairing(code:"KB1.\(Encoding.b64(Data(repeating:0,count:32))).\(Encoding.b64(alice.publicKey.derRepresentation))")
+        XCTAssertNotEqual(rewrapped.topic,alice.topic);XCTAssertThrowsError(try Seirama.requireDifferent(alice,rewrapped))
         XCTAssertThrowsError(try Seirama.parseInvite(alice.code))
         XCTAssertThrowsError(try Seirama.parseInvite("KB2.invalid"))
         var own=KabarState(),peer=KabarState();own.zone="Asia/Jakarta";peer.zone="Europe/Berlin";own.name="Alice";peer.name="Bob"
