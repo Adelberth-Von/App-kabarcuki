@@ -41,7 +41,12 @@ public class SyncService extends Service {
     }
     private void stopRuntime() {
         running=false;if(connection!=null)connection.disconnect();if(outgoingConnection!=null)outgoingConnection.disconnect();if(worker!=null)worker.interrupt();if(incomingWorker!=null)incomingWorker.interrupt();
-        Store.wakeSync();stopForeground(STOP_FOREGROUND_REMOVE);
+        Store.wakeSync();
+        // Detach foreground ownership before cancellation. Android can still be
+        // processing a preceding foreground update; detachment removes its FGS
+        // protection so the queued cancellation can remove the same notification.
+        stopForeground(STOP_FOREGROUND_DETACH);
+        getSystemService(NotificationManager.class).cancel(1);
     }
     @Override public void onCreate() {
         super.onCreate();live=this;channels(this);

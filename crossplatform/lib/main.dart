@@ -1137,37 +1137,45 @@ class _ShellState extends State<Shell> {
           useSafeArea: true,
           builder: (context) => AnimatedBuilder(
               animation: m,
-              builder: (context, _) => SizedBox(
-                  height: MediaQuery.sizeOf(context).height * .82,
-                  child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(children: [
-                              Expanded(
-                                  child: Text(t[titleKey],
-                                      style: const TextStyle(
-                                          fontSize: 25,
-                                          fontWeight: FontWeight.w800))),
-                              IconButton(
-                                  tooltip: t['close'],
-                                  onPressed: () => Navigator.pop(context),
-                                  icon: const Icon(Icons.close_rounded))
-                            ]),
-                            const SizedBox(height: 16),
-                            Expanded(
-                                child: SingleChildScrollView(
-                                    child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: contents()
-                                            .map((w) => Padding(
-                                                padding: const EdgeInsets.only(
-                                                    bottom: 16),
-                                                child: w))
-                                            .toList())))
-                          ])))));
+              builder: (context, _) => AnimatedPadding(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  padding: EdgeInsets.only(
+                      bottom: MediaQuery.viewInsetsOf(context).bottom),
+                  child: SizedBox(
+                      height: (MediaQuery.sizeOf(context).height -
+                              MediaQuery.viewInsetsOf(context).bottom) *
+                          .82,
+                      child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(children: [
+                                  Expanded(
+                                      child: Text(t[titleKey],
+                                          style: const TextStyle(
+                                              fontSize: 25,
+                                              fontWeight: FontWeight.w800))),
+                                  IconButton(
+                                      tooltip: t['close'],
+                                      onPressed: () => Navigator.pop(context),
+                                      icon: const Icon(Icons.close_rounded))
+                                ]),
+                                const SizedBox(height: 16),
+                                Expanded(
+                                    child: SingleChildScrollView(
+                                        child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: contents()
+                                                .map((w) => Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            bottom: 16),
+                                                    child: w))
+                                                .toList())))
+                              ]))))));
   Widget detailRow(String name, String value) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         small(name),
@@ -1368,6 +1376,10 @@ class _ShellState extends State<Shell> {
               danger: true, key: 'remove-application'),
         ]),
         small(t['version']),
+        Text('develop by terrence',
+            key: const ValueKey('developer-credit'),
+            style: TextStyle(color: p.muted, fontSize: 12),
+            textAlign: TextAlign.center),
       ], storage: 'settings');
   Widget section(String title, List<Widget> children) =>
       card(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

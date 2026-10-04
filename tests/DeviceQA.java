@@ -62,6 +62,10 @@ public class DeviceQA extends Instrumentation {
         try {
             Context c=getTargetContext();String mode=args.getString("mode","ui");
             if(mode.equals("ui")){
+                // A notification-permission activity can pause the host during
+                // recreation. This disposable fixture tests the resumed UI;
+                // grant its notification permission before starting that host.
+                if(Build.VERSION.SDK_INT>=33)shell("pm grant id.kabar.app android.permission.POST_NOTIFICATIONS");
                 testWidgetLayouts(c);
                 c.stopService(new Intent(c,SyncService.class));Store.prefs(c).edit().clear().commit();Appearance.prefs(c).edit().clear().commit();
                 Intent launch=new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

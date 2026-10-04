@@ -632,6 +632,27 @@ void main() {
     expect(jsonEncode(b.data['peerState']), peerBefore);
     await close(tester);
   });
+  testWidgets('partner connection remains reachable above the keyboard',
+      (tester) async {
+    final b = FakeBackend(together: true);
+    await show(tester, b, size: const Size(360, 800));
+    await tapVisible(tester, find.text(Copy('id')['settings']).last);
+    await tapVisible(tester, find.byKey(const ValueKey('mode-seirama')));
+    await tester.enterText(
+        find.byKey(const ValueKey('seirama-peer-code')), 'KB2.fixture');
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpAndSettle();
+    final connect = find.byKey(const ValueKey('join-seirama'));
+    await tester.ensureVisible(connect);
+    await tester.pumpAndSettle();
+    expect(tester.getBottomRight(connect).dy, lessThanOrEqualTo(500));
+    expect(tester.takeException(), isNull);
+    await tapVisible(tester, connect);
+    expect(find.text(Copy('id')['joinSeiramaTitle']), findsOneWidget);
+    expect(b.calls.contains('joinSeirama'), false);
+    await close(tester);
+  });
   for (final lang in languages.keys) {
     for (final scale in [1.0, 2.0]) {
       testWidgets('$lang at font scale $scale has no layout errors',
