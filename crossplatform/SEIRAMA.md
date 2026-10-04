@@ -19,7 +19,7 @@ Semua perintah mutasi memberikan `snapshot` terbaru. `confirmed` harus berupa bo
 | --- | --- | --- |
 | `enableSeirama` | `confirmed: true` | Mengaktifkan mode lokal. Pengirim lama mempertahankan kunci, status, label dan riwayat. Penerima lama mendapat stream milik sendiri dengan nama panggilan lokal; stream yang sebelumnya dibaca menjadi stream pasangan. |
 | `pairCode` | — | `KB1` pada pengirim satu arah; `KB2` pada Seirama. |
-| `joinSeirama` | `code`, `confirmed: true` | Memasang stream pasangan yang dapat dibaca. Kode milik sendiri ditolak, termasuk kode dengan kunci publik sendiri yang dibungkus ulang dengan secret lain. |
+| `joinSeirama` | `code`, `confirmed: true` | Memasang stream pasangan yang dapat dibaca. Kode milik sendiri ditolak, termasuk kode dengan kunci publik sendiri yang dibungkus ulang dengan secret lain. Mengonfirmasi kode pasangan yang sama mempertahankan bukti dan cursor; berganti pasangan mereset slot pasangan saja. |
 | `record`, `edit`, `clearGps`, `clearHistory` | Sesuai API yang sudah ada | Mengubah milik sendiri. Tidak mengubah status atau riwayat pasangan. |
 | `disableSeirama` | `confirmed: true` | Menghentikan mode lokal dan memulihkan peran satu arah sebelumnya. Mengantrekan pemberitahuan penghentian bertanda tangan tanpa suara. |
 | `toggleConnection` | — | Menjeda atau melanjutkan koneksi; data dan antrean tetap disimpan. |
@@ -63,10 +63,12 @@ Putuskan sambungan atau hapus data aplikasi membatalkan antrean lokal, termasuk 
 - Revisi pasangan yang lebih kecil daripada revisi milik sendiri tetap diterima pada slot pasangan. Replay atau revisi yang lebih kecil pada stream yang sama ditolak.
 - Bukti timbal balik mengharuskan tanda tangan stream pasangan dan pengikatan topik penerima yang benar.
 - Penghentian terbaru bersifat senyap, mengubah bukti menjadi `inactive`, dan tidak dapat dibatalkan oleh replay kabar aktif yang lebih lama.
+- Mengonfirmasi undangan pasangan yang sama tidak menghapus bukti `active` maupun `inactive`, tidak mengulang pembacaan dari awal, dan tidak memerlukan tindakan baru dari pasangan untuk mempertahankan status yang sudah valid. Ganti pasangan mereset revisi/bukti/cursor pasangan tanpa mengubah riwayat milik sendiri.
 - Antrean penghentian dapat dikirim setelah private key stream yang dihentikan dihapus. Pause/logout/cleanup membatalkan pekerjaan dan mencegah antrean lama dipakai kembali.
 - Payload dengan nama/lokasi multibyte dan pengikatan pasangan tetap di bawah batas relay 4096 byte; lokasi terbaru dipertahankan ketika riwayat lama dipadatkan.
 - GPS hanya diperbarui saat pengguna memilihnya dan mengonfirmasi tindakan. Widget/notifikasi tidak memulai pengambilan GPS.
 - Cleanup menghapus `code`, `private`, `peerCode`, `oneWayCode`, status pasangan dan kedua antrean. Item Keychain aplikasi lain tetap utuh.
+- Pada Android, shutdown layanan foreground dikonfirmasi di main thread sebelum menghapus preferensi; notifikasi koneksi tidak dipost ulang oleh pembaruan format waktu setelah layanan berhenti. Semua notifikasi aplikasi hilang setelah cleanup.
 - Pemeriksa release melarang definisi `QaProbe`, `SeiramaProbe`, `DeviceQA` dan kelas turunannya di seluruh DEX. Probe penyimpanan tersedia hanya di build debug.
 
 `qaSeiramaProbe` pada Android menguji penyimpanan, tanda tangan, revisi independen, replay, penghentian dan cleanup dalam file preferensi fixture terpisah. Pengujian migrasi/konfirmasi UI dan pengiriman dua arah tetap dijalankan lewat alur aplikasi pada dua perangkat uji.

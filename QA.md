@@ -1,4 +1,68 @@
-# Laporan QA — abc 0.7.0
+# Laporan QA — abc 0.8.0
+
+Tanggal: **4 Oktober 2026**. Fokus: UI dan adegan pixel baru, widget adaptif, Seirama sebagai mode dua arah dengan konfirmasi, serta kredit **develop by terrence**. Nama dan lokasi pada [preview](TAMPILAN.md) merupakan data simulasi pengujian.
+
+## APK yang dibagikan
+
+- Paket `id.kabar.app`, versionName **0.8.0**, versionCode **8**, minimum Android **10/API 29**, target/compile **36**. APK universal ARM32, ARM64, x86_64.
+- Ukuran **51.466.926 byte**; SHA-256 `54b14634beae277bc1a418a691e19b85bc48a2e7237919f91fef40d2dc916e88`.
+- Signature v2 dan alignment ZIP 16 KB diverifikasi. Sertifikat SHA-256 `ae0b8561a0364415fb9c13292fbae8903fe55e97714a4595f2cf0249323d3065` sama dengan rilis sebelumnya: pemasangan sebagai update mempertahankan pasangan dan data.
+- Guard release memeriksa nada asli, kelas debug yang tidak ikut dibundel, dan fixture kode pasangan. Paket sumber mengecualikan kunci pribadi, kredensial, fixture privat, SDK serta hasil build. Segmen LOAD keenam library ELF diperiksa untuk alignment 16 KB.
+
+## Hasil aktual
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Flutter analyze | Lulus tanpa issue |
+| Unit/widget Flutter | **33 kasus lulus**, termasuk konfirmasi/migrasi Seirama, riwayat sendiri/pasangan, waktu pasangan, tiga bahasa, tulisan 200%, kredit pengembang, tombol Hubungkan saat keyboard terbuka, penolakan dialog ganda dari widget, 24 variasi adegan, lifecycle dan pengurangan gerakan |
+| Domain Java | **146 assertions lulus**: dua stream independen, kode baca saja, penolakan kode sendiri termasuk kode yang dibungkus ulang, tanda tangan, revisi/cursor per sumber, replay, bukti hubungan timbal balik, penghentian dan penyambungan ulang |
+| Widget native Android | **327 assertions lulus** pada 24 kombinasi mode/ukuran/font; kartu dan tombol berada di dalam layout. Delapan bitmap opaque RGB565 320×128 memakai **655.360 byte** dan parcel berada di bawah **950.000 byte** |
+| Flutter Android/iPhone | Lulus pada **API 29/30/35/36 dan simulator iPhone**; alur UI, preferensi, bahasa, format waktu, mode warna, detail dan cleanup. Driver mewajibkan marker native dan sembilan screenshot per perangkat |
+| Android native API 29–36 | Semua job lulus; smoke UI arsip dan komponen native. Pada API 35, widget juga diuji dengan **font sistem 1,5×**. UI MainActivity arsip tidak masuk APK Flutter; UI aplikasi saat ini diuji melalui Flutter |
+| Apple core/native/widget | **9 kasus XCTest core lulus**, interoperabilitas Java/CryptoKit dua arah, build aplikasi/widget/ekstensi dan satu tes UI native simulator lulus |
+| APK release di dua emulator | Seirama dikonfirmasi pada kedua HP, kode KB2 ditukar secara privat. Keluar dari Cuki dan Makan dari Mama masuk ke kartu pasangan masing-masing tanpa menimpa kabar sendiri. Asia/Jakarta dan Europe/Berlin tetap memakai zona yang berbeda |
+| Migrasi dan persetujuan | Membatalkan migrasi Seirama lama mempertahankan peran dan status. Pengirim mempertahankan riwayat; penerima membuat stream sendiri dengan panggilan lokal. Membatalkan konfirmasi tindakan tidak mengirim status |
+| Widget release di launcher | **Empat sampel frame berbeda** ketika aktif, statis pada Battery Saver, lalu kembali bergerak setelah Battery Saver dimatikan. Tombol Keluar membuka konfirmasi kabar sendiri; Batal tidak mengubah data |
+| Animasi aplikasi | Adegan berubah per tindakan/mode/fase hari; frame bergerak saat aktif, berhenti saat hemat daya dan berlanjut setelahnya. Render 12 fps hanya memperbarui canvas ilustrasi |
+| Notifikasi dan suara | Pembaruan pasangan diterima saat aplikasi berada di latar belakang. Nada asli mono PCM 22.050 Hz, **1,08 detik**, muncul satu kali dalam APK teroptimasi dan bytes-nya sama dengan nada di build iPhone. Channel suara khusus dipertahankan |
+| Cleanup | Lulus lokal serta matrix Flutter Android/iPhone. File, cache, database, preferensi, kode/kunci, antrean, riwayat dan data mode dua arah dibersihkan. Notifikasi foreground Android ikut hilang; pembersihan dibatasi data abc |
+| Pemeriksaan visual | Beranda kedua mode, kabar sendiri/pasangan, Settings dengan kredit, konfirmasi, detail, mode terang/gelap, widget renderer/launcher dan sembilan screenshot iPhone diperiksa. Video 30 detik memperlihatkan tiga tindakan dan konfirmasi, tanpa kode pasangan privat |
+
+Jumlah assertions dan kasus yang tumpang tindih tidak dijumlahkan sebagai jumlah kasus unik. Preview animasi direkam dari build release 0.8 sebelum penambahan footer kredit dan koreksi keyboard; tampilan utama/adegan pada APK akhir memakai implementasi yang sama. Screenshot kredit dan widget launcher berasal dari APK akhir.
+
+### Bukti CI
+
+- [Flutter Android 10/11/15/16 dan iPhone — seluruh job lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37191042614), sumber `1fce1d5`.
+- [Komponen Android API 29–36 dan widget dengan font besar — seluruh job lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37192262414), sumber `f83e2b3`.
+- [Apple core/native/widget/ekstensi — lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37176378964), sumber `a1f068a`.
+- [Guard asset release teroptimasi — lulus](https://github.com/Adelberth-Von/App-kabarcuki/actions/runs/37176378992), sumber `a1f068a`; guard juga dijalankan pada APK akhir setelah perubahan kredit/cleanup.
+
+Kode aplikasi APK akhir berasal dari `1fce1d5`; commit berikutnya hanya memperbaiki runner QA native dan dokumentasi. Bagian Swift tidak berubah sejak run Apple yang ditautkan. UI Flutter iPhone terbaru diuji pada run `1fce1d5`.
+
+### Temuan dan perbaikan
+
+Cleanup Android awalnya meninggalkan notifikasi koneksi meski layanan telah berhenti. Pembaruan foreground yang masih mengantre dapat memunculkan notifikasi itu lagi. Penghentian sekarang melepas keterikatan foreground sebelum membatalkan notifikasi; tes cleanup lokal dan API 29/30/35/36 kembali lulus.
+
+Sheet kode pasangan kini menyesuaikan ruang keyboard sehingga tombol Hubungkan tetap dapat dijangkau. Penyambungan ulang ke pasangan yang sama mempertahankan bukti persetujuan dan cursor. Undangan yang memakai kunci publik sendiri ditolak meskipun dikemas ulang. Tidak ada kode pasangan privat atau kelas probe QA dalam APK release.
+
+Percobaan QA UI native arsip dengan font sistem besar mengalami kegagalan pemulihan Activity pada API 35. Hasil tersebut tidak dipakai sebagai bukti UI APK Flutter. Pemeriksaan font sistem besar sekarang ditujukan pada widget native yang memang dibundel; UI aplikasi yang digunakan diuji lewat Flutter dengan teks 200%. Semua job pada run terakhir di atas lulus.
+
+## Batas pengujian
+
+QA menggunakan emulator/simulator, belum seluruh merek Android, launcher, atau perangkat page-size 16 KB fisik. Belum mengukur persentase konsumsi baterai maupun suara secara akustik pada HP fisik. Berhentinya frame membuktikan penghentian animasi, bukan angka penghematan keseluruhan. Koneksi foreground Android tetap bergantung pada jaringan, Doze dan kebijakan baterai HP.
+
+Widget iPhone dibangun tetapi belum diuji pada layar utama iPhone fisik. WidgetKit mengatur timeline dan transisi pembaruan, tanpa loop animasi berkelanjutan. Instalasi iPhone fisik memerlukan signing/provisioning/TestFlight; notifikasi saat tertutup memerlukan deployment APNs. Keberhasilan simulator bukan bukti pengiriman APNs fisik.
+
+Seirama tidak otomatis mencabut akses pemilik kode satu arah lama: ganti kode jika ingin mencabutnya. Penghentian hubungan diterima pasangan setelah paket bertanda tangan terkirim. Penghapusan lokal/uninstall tidak menghapus salinan pada HP pasangan atau riwayat yang sudah diterima relay. [Rincian mode dan cleanup](crossplatform/SEIRAMA.md).
+
+GPS diambil sekali setelah pilihan dan persetujuan pemilik HP, tanpa pelacakan latar belakang. Sistem tidak mengizinkan aplikasi menyalakan GPS diam-diam; nama kota bergantung layanan geocoder. QA ini bukan audit keamanan independen atau pengesahan Play Protect. Sertifikat APK masih kunci pengembangan.
+
+---
+
+Laporan berikut merupakan arsip versi sebelumnya; ukuran, hash dan hasilnya berlaku untuk versi yang disebutkan.
+
+
+# Arsip QA — abc 0.7.0
 
 Tanggal: **3 Oktober 2026**. Fokus: animasi per tindakan/tema/fase hari, widget, nada notifikasi, lokasi dengan nama dan kategori makan sesuai jam lokal. [Pratinjau dan video release](TAMPILAN.md).
 
