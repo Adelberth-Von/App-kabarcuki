@@ -58,7 +58,14 @@ jobs:
             for mode in oneway duplex; do for height in 235 360 560; do for font in 1 15; do name=widget-$mode-$height-font$font.png; adb exec-out run-as id.kabar.app cat cache/$name > $name || true; done; done; done
             grep -q 'PASS Device UI' result.txt
             if grep -q 'FAIL' result.txt; then exit 1; fi
-            if [ ${{ matrix.api }} -eq 35 ]; then adb shell settings put system font_scale 1.5; adb shell am instrument -w -e mode ui -e fixture disposable id.kabar.qa/id.kabar.app.DeviceQA | tee large-font.txt; grep -q 'PASS Device UI' large-font.txt; fi
+            if [ ${{ matrix.api }} -eq 35 ]; then
+              # A second instrumentation session needs a fresh host process.
+              # Keep fixture data, but stop the prior session before changing font.
+              adb shell am force-stop id.kabar.app
+              adb shell settings put system font_scale 1.5
+              adb shell am instrument -w -e mode ui -e fixture disposable id.kabar.qa/id.kabar.app.DeviceQA | tee large-font.txt
+              grep -q 'PASS Device UI' large-font.txt
+            fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
